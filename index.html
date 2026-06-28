@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toki Editor — 動画編集</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ===== メニューバー ===== -->
+    <header class="menubar">
+        <div class="menubar__left">
+            <div class="logo">
+                <span class="logo__mark">▶</span>
+                <span class="logo__text">Toki<b>Editor</b></span>
+            </div>
+            <nav class="menu">
+                <button class="menu__item">ファイル</button>
+                <button class="menu__item">編集</button>
+                <button class="menu__item">クリップ</button>
+                <button class="menu__item">シーケンス</button>
+                <button class="menu__item">エフェクト</button>
+                <button class="menu__item">ヘルプ</button>
+            </nav>
+        </div>
+        <div class="menubar__center">
+            <div class="workspace-tabs">
+                <button class="ws-tab is-active">編集</button>
+                <button class="ws-tab">カラー</button>
+                <button class="ws-tab">オーディオ</button>
+                <button class="ws-tab">書き出し</button>
+            </div>
+        </div>
+        <div class="menubar__right">
+            <button class="btn btn--ghost" id="btnSave" title="保存 (Ctrl+S)">保存</button>
+            <button class="btn btn--primary" id="btnExport">書き出し</button>
+            <div class="avatar" title="ときくん">時</div>
+        </div>
+    </header>
+
+    <!-- ===== メイン領域 ===== -->
+    <main class="layout">
+        <!-- 左：メディアブラウザ -->
+        <aside class="panel panel--media">
+            <div class="panel__head">
+                <div class="panel__tabs">
+                    <button class="ptab is-active" data-tab="media">メディア</button>
+                    <button class="ptab" data-tab="effects">エフェクト</button>
+                    <button class="ptab" data-tab="text">テキスト</button>
+                </div>
+            </div>
+
+            <div class="panel__body">
+                <!-- メディアタブ -->
+                <section class="ptab-content is-active" data-content="media">
+                    <div class="media-toolbar">
+                        <button class="btn btn--block" id="btnImport">＋ メディアを読み込む</button>
+                        <input type="file" id="fileInput" accept="video/*,image/*,audio/*" multiple hidden>
+                    </div>
+                    <div class="media-grid" id="mediaGrid">
+                        <!-- JSで生成 -->
+                    </div>
+                </section>
+
+                <!-- エフェクトタブ -->
+                <section class="ptab-content" data-content="effects">
+                    <div class="effect-list" id="effectList"></div>
+                </section>
+
+                <!-- テキストタブ -->
+                <section class="ptab-content" data-content="text">
+                    <div class="text-presets" id="textPresets"></div>
+                </section>
+            </div>
+        </aside>
+
+        <!-- 中央：プレビュー -->
+        <section class="stage">
+            <div class="stage__head">
+                <span class="stage__label">プログラムモニター</span>
+                <div class="stage__res">
+                    <select id="resSelect">
+                        <option>1920 × 1080 (16:9)</option>
+                        <option>1080 × 1920 (9:16)</option>
+                        <option>1080 × 1080 (1:1)</option>
+                        <option>3840 × 2160 (4K)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="viewer">
+                <div class="viewer__canvas" id="viewerCanvas">
+                    <div class="viewer__placeholder" id="viewerPlaceholder"></div>
+                    <canvas id="compositor" width="1920" height="1080"></canvas>
+                    <video id="previewVideo" playsinline></video>
+                    <div class="viewer__overlay" id="textOverlay"></div>
+                </div>
+            </div>
+
+            <!-- トランスポート -->
+            <div class="transport">
+                <div class="transport__time">
+                    <span id="curTime">00:00:00:00</span>
+                    <span class="transport__sep">/</span>
+                    <span id="durTime">00:00:10:00</span>
+                </div>
+                <div class="transport__controls">
+                    <button class="tbtn" id="btnStart" title="先頭へ">⏮</button>
+                    <button class="tbtn" id="btnPrev" title="前のフレーム">◀|</button>
+                    <button class="tbtn tbtn--play" id="btnPlay" title="再生/停止 (Space)">▶</button>
+                    <button class="tbtn" id="btnNext" title="次のフレーム">|▶</button>
+                    <button class="tbtn" id="btnEnd" title="末尾へ">⏭</button>
+                </div>
+                <div class="transport__right">
+                    <button class="tbtn" id="btnLoop" title="ループ">🔁</button>
+                    <div class="volume">
+                        <span>🔊</span>
+                        <input type="range" id="volume" min="0" max="100" value="80">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右：プロパティ -->
+        <aside class="panel panel--props">
+            <div class="panel__head">
+                <div class="panel__tabs">
+                    <button class="ptab is-active">プロパティ</button>
+                </div>
+            </div>
+            <div class="panel__body" id="propsBody">
+                <div class="props-empty" id="propsEmpty">
+                    <p>クリップを選択すると<br>プロパティが表示されます</p>
+                </div>
+                <div class="props-content" id="propsContent" hidden>
+                    <div class="prop-group">
+                        <h4 class="prop-group__title">変形</h4>
+                        <div class="prop-row">
+                            <label>位置 X</label>
+                            <input type="range" min="-500" max="500" value="0" data-prop="x">
+                            <output>0</output>
+                        </div>
+                        <div class="prop-row">
+                            <label>位置 Y</label>
+                            <input type="range" min="-500" max="500" value="0" data-prop="y">
+                            <output>0</output>
+                        </div>
+                        <div class="prop-row">
+                            <label>スケール</label>
+                            <input type="range" min="10" max="300" value="100" data-prop="scale">
+                            <output>100</output>
+                        </div>
+                        <div class="prop-row">
+                            <label>回転</label>
+                            <input type="range" min="-180" max="180" value="0" data-prop="rotate">
+                            <output>0</output>
+                        </div>
+                    </div>
+                    <div class="prop-group">
+                        <h4 class="prop-group__title">不透明度</h4>
+                        <div class="prop-row">
+                            <label>透明度</label>
+                            <input type="range" min="0" max="100" value="100" data-prop="opacity">
+                            <output>100</output>
+                        </div>
+                    </div>
+                    <div class="prop-group">
+                        <h4 class="prop-group__title">速度</h4>
+                        <div class="prop-row">
+                            <label>再生速度</label>
+                            <input type="range" min="25" max="200" value="100" data-prop="speed">
+                            <output>100</output>
+                        </div>
+                    </div>
+                    <div class="prop-group">
+                        <h4 class="prop-group__title">カラー補正</h4>
+                        <div class="prop-row">
+                            <label>明るさ</label>
+                            <input type="range" min="0" max="200" value="100" data-prop="brightness">
+                            <output>100</output>
+                        </div>
+                        <div class="prop-row">
+                            <label>コントラスト</label>
+                            <input type="range" min="0" max="200" value="100" data-prop="contrast">
+                            <output>100</output>
+                        </div>
+                        <div class="prop-row">
+                            <label>彩度</label>
+                            <input type="range" min="0" max="200" value="100" data-prop="saturate">
+                            <output>100</output>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- ===== タイムライン ===== -->
+    <section class="timeline">
+        <div class="timeline__toolbar">
+            <div class="tl-tools">
+                <button class="tl-tool is-active" data-tool="select" title="選択ツール (V)">⤧</button>
+                <button class="tl-tool" data-tool="cut" title="カットツール (C)">✂</button>
+                <button class="tl-tool" data-tool="hand" title="ハンドツール (H)">✋</button>
+            </div>
+            <div class="tl-actions">
+                <button class="btn btn--ghost btn--sm" id="btnSplit">分割</button>
+                <button class="btn btn--ghost btn--sm" id="btnDelete">削除</button>
+                <button class="btn btn--ghost btn--sm" id="btnUndo">↶ 元に戻す</button>
+                <button class="btn btn--ghost btn--sm" id="btnRedo">↷ やり直し</button>
+            </div>
+            <div class="tl-zoom">
+                <span>ズーム</span>
+                <input type="range" id="zoom" min="20" max="200" value="60">
+            </div>
+        </div>
+
+        <div class="timeline__body">
+            <!-- トラックヘッダー -->
+            <div class="track-headers" id="trackHeaders"></div>
+
+            <!-- タイムライン本体 -->
+            <div class="tracks-area" id="tracksArea">
+                <div class="ruler" id="ruler"></div>
+                <div class="tracks" id="tracks"></div>
+                <div class="playhead" id="playhead"><div class="playhead__head"></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- トースト通知 -->
+    <div class="toast" id="toast"></div>
+
+    <script src="main.js"></script>
+</body>
+</html>

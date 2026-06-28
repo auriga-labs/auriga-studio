@@ -1,0 +1,13 @@
+# VS Code settings
+.vscode/
+
+# Claude Code 使ってるのばれちゃう…！
+.claude/
+
+# こんなのいれる必要ないよね
+node_modules/
+
+.env
+
+# プロジェクトの仕様
+PROJECT.md
