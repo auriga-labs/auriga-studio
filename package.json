@@ -1,4 +1,10 @@
 {
+  "name": "auriga-studio",
+  "version": "0.0.1",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
   "devDependencies": {
     "electron": "^42.2.0"
   }

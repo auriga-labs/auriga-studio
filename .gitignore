@@ -1,5 +1,9 @@
-# VS Code settings
+# ゴミファイル
+.DS_Store
+Thumbs.db
 .vscode/
+.idea/
+desktop.ini
 
 # Claude Code 使ってるのばれちゃう…！
 .claude/
@@ -7,7 +11,20 @@
 # こんなのいれる必要ないよね
 node_modules/
 
+# 環境変数・秘密情報
 .env
+.env.local
+.env.*.local
 
-# プロジェクトの仕様
-PROJECT.md
+# プロジェクトの仕様 (みせますかぁ)
+# PROJECT.md
+
+# ビルド
+dist/
+out/
+build/
+
+# ログ
+*.log
+npm-debug.log*
+yarn-debug.log*
