@@ -39,3 +39,5 @@ assets/vendor/tabler-icons-webfont/3.44.0/fonts/*
 !assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons.*
 !assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons-filled.*
 assets/vendor/tabler-icons-webfont/3.44.0/fonts/*.svg
+
+oauth
