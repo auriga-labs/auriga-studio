@@ -1918,7 +1918,7 @@
     // 現在ログイン中のユーザー（未ログインは null）
     // 形: { id, email, name, picture, verified }
     let currentUser = null;
-    let authPopup = null;             // ログイン用ポップアップの参照
+    let authPopup = null;             // ログイン用タブ（window.open）の参照
 
     // 使用容量ゲージを現在値で更新する
     function updateCloudGauge() {
@@ -1991,19 +1991,14 @@
         applyAccountUI();
     }
 
-    // Google ログインをポップアップで開始する
+    // Google ログインを新しいタブで直接開く
     function startGoogleLogin() {
-        // 既存のポップアップがあれば前面化するだけ
+        // 既存のログインタブがあれば前面化するだけ
         if (authPopup && !authPopup.closed) { authPopup.focus(); return; }
-        const w = 480, h = 640;
-        const left = Math.max(0, (window.screen.width - w) / 2);
-        const top = Math.max(0, (window.screen.height - h) / 2);
-        authPopup = window.open(
-            OAUTH_LOGIN_URL,
-            'auriga-oauth',
-            `width=${w},height=${h},left=${left},top=${top}`
-        );
-        if (!authPopup) { toast('ポップアップをブロックされました 🚫'); return; }
+        // 名前付きターゲットで開く（サイズ指定なし＝新しいタブ）。
+        // 結果は postMessage で受け取るため opener を残す必要があり、noopener は付けない。
+        authPopup = window.open(OAUTH_LOGIN_URL, 'auriga-oauth');
+        if (!authPopup) { toast('タブを開けませんでした 🚫'); return; }
         toast('Google でログイン中…🔑');
     }
 
