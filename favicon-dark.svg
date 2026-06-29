@@ -1,0 +1,77 @@
+<svg width="512" height="512" viewBox="0 0 680 680" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Auriga Studio ファビコン</title>
+<desc>御者座をモチーフにしたAuriga Studioのファビコン（文字なし）</desc>
+<defs>
+  <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#2D1B6B"/>
+    <stop offset="100%" stop-color="#0F0826"/>
+  </radialGradient>
+</defs>
+
+<!-- 背景 -->
+<rect x="40" y="40" width="600" height="600" rx="140" fill="url(#bgGrad)"/>
+
+<!-- 装飾用の小さな星 -->
+<circle cx="120" cy="130" r="3" fill="#9B8EC4" opacity="0.6"/>
+<circle cx="200" cy="90" r="2" fill="#C4B8E8" opacity="0.5"/>
+<circle cx="520" cy="110" r="2.5" fill="#9B8EC4" opacity="0.6"/>
+<circle cx="570" cy="160" r="2" fill="#C4B8E8" opacity="0.4"/>
+<circle cx="90" cy="520" r="2" fill="#9B8EC4" opacity="0.5"/>
+<circle cx="560" cy="540" r="3" fill="#C4B8E8" opacity="0.6"/>
+<circle cx="150" cy="580" r="2" fill="#9B8EC4" opacity="0.4"/>
+<circle cx="590" cy="400" r="2" fill="#C4B8E8" opacity="0.5"/>
+
+<!-- 星座線 -->
+<g stroke="#A78BDB" stroke-width="2.5" stroke-linecap="round" opacity="0.7">
+  <line x1="340" y1="200" x2="190" y2="280"/>
+  <line x1="190" y1="280" x2="150" y2="400"/>
+  <line x1="150" y1="400" x2="280" y2="480"/>
+  <line x1="280" y1="480" x2="490" y2="450"/>
+  <line x1="490" y1="450" x2="340" y2="200"/>
+  <line x1="340" y1="200" x2="395" y2="130"/>
+  <line x1="395" y1="130" x2="440" y2="148"/>
+</g>
+
+<!-- Capella (α) — メイン星、大きめ -->
+<circle cx="340" cy="200" r="26" fill="#FFE566" opacity="0.18"/>
+<circle cx="340" cy="200" r="16" fill="#FFE566" opacity="0.5"/>
+<circle cx="340" cy="200" r="9" fill="#FFFDE0"/>
+
+<!-- β Aurigae -->
+<circle cx="190" cy="280" r="18" fill="#FFB347" opacity="0.2"/>
+<circle cx="190" cy="280" r="10" fill="#FFB347" opacity="0.65"/>
+<circle cx="190" cy="280" r="6" fill="#FFE8C0"/>
+
+<!-- θ Aurigae -->
+<circle cx="150" cy="400" r="16" fill="#7EC8E3" opacity="0.25"/>
+<circle cx="150" cy="400" r="9" fill="#7EC8E3" opacity="0.65"/>
+<circle cx="150" cy="400" r="5" fill="#E0F7FF"/>
+
+<!-- ι Aurigae -->
+<circle cx="280" cy="480" r="16" fill="#B8A9F7" opacity="0.25"/>
+<circle cx="280" cy="480" r="9" fill="#B8A9F7" opacity="0.65"/>
+<circle cx="280" cy="480" r="5" fill="#EDE8FF"/>
+
+<!-- ε Aurigae -->
+<circle cx="490" cy="450" r="18" fill="#FF8FAB" opacity="0.2"/>
+<circle cx="490" cy="450" r="10" fill="#FF8FAB" opacity="0.65"/>
+<circle cx="490" cy="450" r="6" fill="#FFE0E9"/>
+
+<!-- 小ヤギ ζ -->
+<circle cx="395" cy="130" r="12" fill="#7EC8E3" opacity="0.25"/>
+<circle cx="395" cy="130" r="7" fill="#7EC8E3" opacity="0.65"/>
+<circle cx="395" cy="130" r="3.5" fill="#E0F7FF"/>
+
+<!-- 小ヤギ η -->
+<circle cx="440" cy="148" r="12" fill="#B8A9F7" opacity="0.25"/>
+<circle cx="440" cy="148" r="7" fill="#B8A9F7" opacity="0.65"/>
+<circle cx="440" cy="148" r="3.5" fill="#EDE8FF"/>
+
+<!-- タイムラインバー -->
+<rect x="110" y="548" width="460" height="13" rx="6.5" fill="#FFFFFF" opacity="0.08"/>
+<rect x="110" y="548" width="190" height="13" rx="6.5" fill="#C084FC" opacity="0.7"/>
+<rect x="308" y="548" width="95" height="13" rx="6.5" fill="#38BDF8" opacity="0.7"/>
+<rect x="410" y="548" width="75" height="13" rx="6.5" fill="#F472B6" opacity="0.7"/>
+<line x1="275" y1="538" x2="275" y2="569" stroke="#FFE566" stroke-width="2.5" stroke-linecap="round"/>
+<circle cx="275" cy="537" r="4.5" fill="#FFE566"/>
+</svg>
