@@ -9,6 +9,7 @@ type TopLevelMenu = {
   id: string;             // 識別子 (e.g. "file", "edit")
   label: string;          // 表示名
   mnemonic?: string;      // Alt+キーで開くニーモニック 1文字 (e.g. "F")
+  icon?: string;          // Tablerアイコン名 (e.g. "file", "edit") — 接頭辞 "icon-" や "tabler-" は付けない
   items: MenuItem[];
 };
 
@@ -33,6 +34,7 @@ type ActionItem = {
   label: string;
   mnemonic?: string;
   shortcut?: string;      // e.g. "Ctrl+N" — 後述の記法参照
+  icon?: string;          // Tablerアイコン名 (e.g. "device-floppy") — 接頭辞 "icon-" や "tabler-" は付けない
   enabled?: boolean;      // default: true
 };
 
@@ -42,6 +44,7 @@ type SubmenuItem = {
   id: string;
   label: string;
   mnemonic?: string;
+  icon?: string;          // Tablerアイコン名 (e.g. "folder") — 接頭辞 "icon-" や "tabler-" は付けない
   enabled?: boolean;
   items: MenuItem[];      // 空配列 = 現時点で未実装
 };
@@ -53,6 +56,7 @@ type CheckboxItem = {
   label: string;
   mnemonic?: string;
   shortcut?: string;
+  icon?: string;          // Tablerアイコン名 (e.g. "checkbox") — 接頭辞 "icon-" や "tabler-" は付けない
   checked?: boolean;      // default: false
   enabled?: boolean;
 };
@@ -63,6 +67,7 @@ type RadioItem = {
   id: string;
   label: string;
   group: string;          // グループ名 (e.g. "controlPointVisibility")
+  icon?: string;          // Tablerアイコン名 (e.g. "circle-dot") — 接頭辞 "icon-" や "tabler-" は付けない
   checked?: boolean;      // default: false
   enabled?: boolean;
 };
