@@ -1091,12 +1091,15 @@
         // 解像度切替
         $('#resSelect').addEventListener('change', (e) => {
             const v = e.target.value;
-            const ratio = v.includes('9:16') ? '9/16'
-                : v.includes('1:1') ? '1/1' : '16/9';
-            els.viewerCanvas.style.aspectRatio = ratio;
-            // キャンバスの解像度を更新（"1920 × 1080" を解析）
+            // 解像度（"1920 × 1080"）を解析し、実際の数値からアスペクト比を強制する
             const m = v.match(/(\d+)\s*[×x]\s*(\d+)/);
-            if (m) { els.compositor.width = +m[1]; els.compositor.height = +m[2]; }
+            if (m) {
+                const w = +m[1], h = +m[2];
+                els.compositor.width = w; els.compositor.height = h;
+                // モニターのアスペクト比を解像度に合わせて固定（CSS変数で制御）
+                els.viewerCanvas.style.setProperty('--ar-w', w);
+                els.viewerCanvas.style.setProperty('--ar-h', h);
+            }
             composite(state.playhead, state.playing);
             toast(`解像度: ${v}`);
         });

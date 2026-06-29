@@ -366,12 +366,19 @@ body {
         radial-gradient(circle at 50% 40%, rgba(108,92,231,.06), transparent 60%),
         var(--bg-0);
     min-height: 0;
+    /* コンテナクエリ単位(cqw/cqh)で内側のモニターサイズを計算するための基準にする */
+    container-type: size;
 }
 .viewer__canvas {
     position: relative;
-    aspect-ratio: 16/9;
+    /* アスペクト比は --ar-w / --ar-h で指定（解像度切替時にJSが更新する） */
+    --ar-w: 16; --ar-h: 9;
+    aspect-ratio: var(--ar-w) / var(--ar-h);
+    /* 幅・高さの両方に収まる最大サイズを選び、必ずアスペクト比を保つ
+       （width基準だと縦長、height基準だと横長ではみ出すため min() で両方を考慮） */
+    width: min(100cqw, 100cqh * var(--ar-w) / var(--ar-h));
+    height: auto;
     max-width: 100%; max-height: 100%;
-    width: auto; height: 100%;
     background: #000;
     border-radius: var(--radius);
     overflow: hidden;
