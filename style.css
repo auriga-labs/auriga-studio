@@ -200,7 +200,8 @@ body {
 }
 .appmenu__item.is-checked .appmenu__icon { color: var(--accent-2); }
 .appmenu__item:hover .appmenu__icon, .appmenu__item.is-open .appmenu__icon { color: #fff; }
-.appmenu__label { flex: 1; }
+/* 縦線(left:41px)に名前が重ならないよう、ラベルを右に寄せる */
+.appmenu__label { flex: 1; margin-left: 8px; }
 .appmenu__key {
     color: var(--text-mute); font-size: 11px; letter-spacing: .3px; margin-left: 18px;
     flex: none; display: inline-flex; align-items: center;
