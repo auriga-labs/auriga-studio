@@ -1575,8 +1575,15 @@
     // Tabler アイコン要素を生成する（アイコン名は接頭辞なし。例: "device-floppy"）
     function iconHtml(name) {
         if (!name) return '';
-        const safe = String(name).replace(/[^a-z0-9-]/g, '');
-        return safe ? `<i class="ti ti-${safe}"></i>` : '';
+        let safe = String(name).replace(/[^a-z0-9-]/g, '');
+        // 末尾が "-filled" ならフィルド（塗りつぶし）バリアントとして ti-fi を付ける。
+        // 接尾辞自体はアイコン名から取り除く（フォント側のクラス名は接尾辞なしのため）。
+        let fill = '';
+        if (safe.endsWith('-filled')) {
+            safe = safe.slice(0, -'-filled'.length);
+            fill = ' ti-fi';
+        }
+        return safe ? `<i class="ti${fill} ti-${safe}"></i>` : '';
     }
 
     // ラベルを生成する。mnemonic があれば "ラベル (M)" の形にする

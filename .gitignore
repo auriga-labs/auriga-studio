@@ -33,6 +33,7 @@ yarn-debug.log*
 assets/vendor/tabler-icons-webfont/3.44.0/*
 !assets/vendor/tabler-icons-webfont/3.44.0/fonts/
 !assets/vendor/tabler-icons-webfont/3.44.0/tabler-icons.min.css
+!assets/vendor/tabler-icons-webfont/3.44.0/tabler-icons-filled.scoped.css
 
 assets/vendor/tabler-icons-webfont/3.44.0/fonts/*
 !assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons.ttf
