@@ -36,6 +36,6 @@ assets/vendor/tabler-icons-webfont/3.44.0/*
 !assets/vendor/tabler-icons-webfont/3.44.0/tabler-icons-filled.scoped.css
 
 assets/vendor/tabler-icons-webfont/3.44.0/fonts/*
-!assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons.ttf
-!assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons.woff
-!assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons.woff2
+!assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons.*
+!assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons-filled.*
+assets/vendor/tabler-icons-webfont/3.44.0/fonts/*.svg
