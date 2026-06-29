@@ -177,6 +177,14 @@ body {
     font-size: 12.5px;
     pointer-events: auto;
 }
+/* アイコン列と名前列を区切る縦線。各行ではなくメニュー全体を貫くように描く
+   （アイコンがない行や区切り線の行も含めて1本の線でつなぐ）
+   位置 = appmenuのpadding(5) + itemのpadding-left(10) + アイコン幅(18) + アイコンpadding-right(8) = 41px */
+.appmenu::before {
+    content: ""; position: absolute;
+    top: 5px; bottom: 5px; left: 41px; width: 1px;
+    background: var(--line); pointer-events: none;
+}
 .appmenu__item {
     display: flex; align-items: center; gap: 8px;
     padding: 7px 10px; border-radius: var(--radius-sm);
@@ -187,13 +195,11 @@ body {
     width: 18px; text-align: center; flex: none;
     font-size: 15px; color: var(--text-dim);
     display: grid; place-items: center;
-    /* アイコン列と名前列を縦線で区切る */
-    padding-right: 8px; border-right: 1px solid var(--line);
+    /* 縦線はメニュー全体を貫く .appmenu::before で描くため、ここでは余白だけ確保する */
+    padding-right: 8px;
 }
 .appmenu__item.is-checked .appmenu__icon { color: var(--accent-2); }
 .appmenu__item:hover .appmenu__icon, .appmenu__item.is-open .appmenu__icon { color: #fff; }
-/* ホバー時は背景がアクセント色になるので区切り線も明るくする */
-.appmenu__item:hover .appmenu__icon, .appmenu__item.is-open .appmenu__icon { border-right-color: rgba(255,255,255,.35); }
 .appmenu__label { flex: 1; }
 .appmenu__key {
     color: var(--text-mute); font-size: 11px; letter-spacing: .3px; margin-left: 18px;
