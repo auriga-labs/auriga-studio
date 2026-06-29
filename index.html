@@ -18,10 +18,12 @@
     <!-- ===== メニューバー ===== -->
     <header class="menubar">
         <div class="menubar__left">
-            <div class="logo">
+            <!-- ロゴ文字のメニュー（全テーマ共通のアプリメニュー）。クリックでドロップダウンを開く -->
+            <button class="logo" id="appLogoMenu" type="button" title="Auriga Studio メニュー">
                 <img class="logo__mark" src="favicon-symbol.svg" alt="Auriga Studio" width="26" height="26">
                 <span class="logo__text">Auriga<b>Studio</b></span>
-            </div>
+                <i class="ti ti-chevron-down logo__caret"></i>
+            </button>
             <!-- メニューバーは menu_layout の定義から動的生成する -->
             <nav class="menu" id="appMenu"></nav>
         </div>

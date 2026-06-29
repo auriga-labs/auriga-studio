@@ -1365,6 +1365,24 @@
 
     let activeMenuId = null;   // 現在開いているトップメニューの id
 
+    // ロゴ文字のメニュー（全テーマ共通のアプリメニュー）。
+    // メニューバーは対応ソフトごとに切り替わるが、これはテーマに依存せず常に同じ内容。
+    const LOGO_MENU = {
+        id: '__logo__',
+        items: [
+            { id: 'about',             label: 'Auriga Studio について', icon: 'info-circle' },
+            { id: 'whats-new',         label: '新着情報',               icon: 'sparkles' },
+            { type: 'separator' },
+            { id: 'preferences',       label: '環境設定…',             icon: 'settings',  shortcut: 'Ctrl+,' },
+            { id: 'keyboard-shortcuts', label: 'キーボードショートカット', icon: 'keyboard' },
+            { type: 'separator' },
+            { id: 'check-updates',     label: 'アップデートを確認…',   icon: 'refresh' },
+            { id: 'website',           label: '公式サイトを開く',       icon: 'world' },
+            { type: 'separator' },
+            { id: 'quit',              label: '終了',                  icon: 'power',     shortcut: 'Ctrl+Q' },
+        ],
+    };
+
     // メニュー定義を読み込んでバーを生成する
     async function loadMenuBar(key) {
         const path = MENU_LAYOUTS[key] || MENU_LAYOUTS[DEFAULT_MENU_LAYOUT];
@@ -1423,6 +1441,23 @@
         menuLayer.innerHTML = '';
         activeMenuId = null;
         els.appMenu.querySelectorAll('.menu__item').forEach((b) => b.classList.remove('is-active'));
+        const logo = $('#appLogoMenu');
+        if (logo) logo.classList.remove('is-active');
+    }
+
+    // ロゴ文字のメニューを開閉できるようにバインドする
+    function bindLogoMenu() {
+        const logo = $('#appLogoMenu');
+        if (!logo) return;
+        logo.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (activeMenuId === LOGO_MENU.id) { closeMenuBar(); return; }
+            openTopMenu(logo, LOGO_MENU);
+        });
+        // 他のメニューが開いている間はホバーで切り替わる（ネイティブ風）
+        logo.addEventListener('mouseenter', () => {
+            if (activeMenuId && activeMenuId !== LOGO_MENU.id) openTopMenu(logo, LOGO_MENU);
+        });
     }
 
     // 1 枚のパネル（メニュー/サブメニュー）を組み立てる
@@ -1549,6 +1584,14 @@
             case 'timeline-zoom-in':  setZoom(state.zoom + 20); return;
             case 'timeline-zoom-out': setZoom(state.zoom - 20); return;
             case 'add-text-item':   addClip('text', 'テキスト', 'T1', state.playhead, 3); return;
+            // ---- ロゴ文字のメニュー（全テーマ共通） ----
+            case 'about':           toast('Auriga Studio v0.0.1 🌟'); return;
+            case 'whats-new':       toast('新着情報（準備中）'); return;
+            case 'preferences':     toast('環境設定（準備中）⚙️'); return;
+            case 'keyboard-shortcuts': toast('キーボードショートカット（準備中）'); return;
+            case 'check-updates':   toast('お使いのバージョンは最新です ✅'); return;
+            case 'website':         toast('公式サイトを開きます 🌐'); return;
+            case 'quit':            toast('終了（デモ）'); return;
             default:
                 toast(`「${it.label}」（未実装）`);
         }
@@ -1563,9 +1606,10 @@
 
     // メニューを閉じる操作をまとめてバインド
     function bindMenuBar() {
+        bindLogoMenu();   // ロゴ文字のメニューも同じ機構で開閉する
         document.addEventListener('mousedown', (e) => {
             if (!activeMenuId) return;
-            if (e.target.closest('.appmenu') || e.target.closest('#appMenu')) return;
+            if (e.target.closest('.appmenu') || e.target.closest('#appMenu') || e.target.closest('#appLogoMenu')) return;
             closeMenuBar();
         });
         document.addEventListener('keydown', (e) => {

@@ -142,7 +142,15 @@ body {
 }
 .menubar__left, .menubar__right { display: flex; align-items: center; gap: 14px; }
 
-.logo { display: flex; align-items: center; gap: 8px; padding-right: 8px; }
+/* ロゴはアプリメニューを開くボタン。ボタンの既定スタイルは打ち消す */
+.logo {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 8px 4px 6px;
+    background: none; border: none; cursor: pointer;
+    color: inherit; font: inherit; line-height: 1;
+    border-radius: var(--radius-sm); transition: background .12s;
+}
+.logo:hover, .logo.is-active { background: var(--bg-3); }
 .logo__mark {
     width: 26px; height: 26px;
     display: block;
@@ -151,6 +159,10 @@ body {
 }
 .logo__text { font-size: 15px; letter-spacing: .3px; }
 .logo__text b { color: var(--accent-2); font-weight: 700; }
+/* 開閉を示す小さな▼。ホバー/展開中だけはっきり見せる */
+.logo__caret { font-size: 14px; color: var(--text-mute); transition: color .12s, transform .12s; }
+.logo:hover .logo__caret, .logo.is-active .logo__caret { color: var(--accent); }
+.logo.is-active .logo__caret { transform: rotate(180deg); }
 
 .menu { display: flex; gap: 2px; }
 .menu__item {
