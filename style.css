@@ -187,9 +187,13 @@ body {
     width: 18px; text-align: center; flex: none;
     font-size: 15px; color: var(--text-dim);
     display: grid; place-items: center;
+    /* アイコン列と名前列を縦線で区切る */
+    padding-right: 8px; border-right: 1px solid var(--line);
 }
 .appmenu__item.is-checked .appmenu__icon { color: var(--accent-2); }
 .appmenu__item:hover .appmenu__icon, .appmenu__item.is-open .appmenu__icon { color: #fff; }
+/* ホバー時は背景がアクセント色になるので区切り線も明るくする */
+.appmenu__item:hover .appmenu__icon, .appmenu__item.is-open .appmenu__icon { border-right-color: rgba(255,255,255,.35); }
 .appmenu__label { flex: 1; }
 .appmenu__key {
     color: var(--text-mute); font-size: 11px; letter-spacing: .3px; margin-left: 18px;
