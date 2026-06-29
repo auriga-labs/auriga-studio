@@ -1025,6 +1025,7 @@
         bindContextMenu();
         bindMenuBar();
         bindAboutModal();   // バージョン情報モーダルの開閉
+        bindTimelineResizer();   // タイムラインの高さをドラッグで調整
 
         // テーマ切り替え
         $('#themeSelect').addEventListener('change', (e) => applyTheme(e.target.value));
@@ -1772,6 +1773,69 @@
             navigator.clipboard.writeText(text);
             toast('バージョン情報をコピーしました 📋');
         } catch (e) { toast('コピーに失敗しました'); }
+    }
+
+    // ======================================================
+    // タイムラインの高さリサイズ
+    // ======================================================
+    // 高さの下限・上限（px）。上限はウィンドウ高さから一定量を引いて算出する
+    const TL_MIN_HEIGHT = 120;
+    const TL_HEIGHT_KEY = 'auriga.timelineHeight';
+
+    // ウィンドウサイズに応じた高さの上限を求める
+    function timelineMaxHeight() {
+        return Math.max(TL_MIN_HEIGHT, window.innerHeight - 240);
+    }
+
+    // 高さを範囲内に収めてタイムラインへ適用する
+    function setTimelineHeight(h) {
+        const clamped = Math.min(timelineMaxHeight(), Math.max(TL_MIN_HEIGHT, Math.round(h)));
+        const timeline = $('.timeline');
+        if (timeline) timeline.style.height = clamped + 'px';
+        return clamped;
+    }
+
+    // 境界バーのドラッグでタイムラインの高さを変える
+    function bindTimelineResizer() {
+        const resizer = $('#tlResizer');
+        const timeline = $('.timeline');
+        if (!resizer || !timeline) return;
+
+        // 保存済みの高さがあれば復元する
+        const stored = parseInt(localStorage.getItem(TL_HEIGHT_KEY), 10);
+        if (Number.isFinite(stored)) setTimelineHeight(stored);
+
+        let startY = 0;
+        let startHeight = 0;
+
+        function onMove(e) {
+            // 上にドラッグするほど高さが増える
+            setTimelineHeight(startHeight - (e.clientY - startY));
+        }
+
+        function onUp() {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            document.body.classList.remove('is-resizing-timeline');
+            resizer.classList.remove('is-dragging');
+            // 確定した高さを保存する
+            localStorage.setItem(TL_HEIGHT_KEY, parseInt(timeline.style.height, 10));
+        }
+
+        resizer.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            startY = e.clientY;
+            startHeight = timeline.getBoundingClientRect().height;
+            document.body.classList.add('is-resizing-timeline');
+            resizer.classList.add('is-dragging');
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+        });
+
+        // ウィンドウ縮小時に上限を超えないよう再クランプする
+        window.addEventListener('resize', () => {
+            if (timeline.style.height) setTimelineHeight(parseInt(timeline.style.height, 10));
+        });
     }
 
     // モーダルの開閉操作をバインドする
