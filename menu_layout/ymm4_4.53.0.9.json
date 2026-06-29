@@ -78,7 +78,7 @@
           "type": "submenu", "id": "preview-ops", "label": "プレビュー操作", "mnemonic": "P",
           "items": [
             { "type": "action", "id": "play-pause", "label": "再生/一時停止", "icon": "player-pause" },
-            { "type": "action", "id": "stop",       "label": "停止", "icon": "player-stop" },
+            { "type": "action", "id": "stop",       "label": "停止", "icon": "player-stop-filled" },
             { "type": "separator" },
             { "type": "action", "id": "speed-up",    "label": "再生速度を上げる", "icon": "player-track-next-filled" },
             { "type": "action", "id": "speed-down",  "label": "再生速度を下げる", "icon": "player-track-prev-filled" },
