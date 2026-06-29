@@ -967,10 +967,10 @@
         if (!silent) toast(`テーマ：${THEME_LABELS[theme]}`);
     }
 
-    // 起動時に保存済みテーマを復元する
+    // 起動時に保存済みテーマを復元する（未保存なら既定は YMM4）
     function applyStoredTheme() {
-        let saved = 'tokikun';
-        try { saved = localStorage.getItem(THEME_KEY) || 'tokikun'; } catch (e) {}
+        let saved = 'ymm4';
+        try { saved = localStorage.getItem(THEME_KEY) || 'ymm4'; } catch (e) {}
         applyTheme(saved, true);
     }
 
