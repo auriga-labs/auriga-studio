@@ -71,7 +71,6 @@
       "id": "edit",
       "label": "編集",
       "mnemonic": "E",
-      "icon": "edit",
       "items": [
         { "type": "action", "id": "undo", "label": "元に戻す", "mnemonic": "U", "shortcut": "Ctrl+Z", "icon": "arrow-back-up" },
         { "type": "action", "id": "redo", "label": "やり直し", "mnemonic": "R", "shortcut": "Ctrl+Shift+Z", "icon": "arrow-forward-up" },
@@ -146,8 +145,8 @@
         }
       ]
     },
-    { "id": "layout", "label": "レイアウト", "mnemonic": "L", "icon": "layout-2", "items": [] },
-    { "id": "tools",  "label": "ツール",     "mnemonic": "T", "icon": "tools", "items": [] },
-    { "id": "help",   "label": "ヘルプ",     "mnemonic": "H", "icon": "help", "items": [] }
+    { "id": "layout", "label": "レイアウト", "mnemonic": "L", "items": [] },
+    { "id": "tools",  "label": "ツール",     "mnemonic": "T", "items": [] },
+    { "id": "help",   "label": "ヘルプ",     "mnemonic": "H", "items": [] }
   ]
 }
