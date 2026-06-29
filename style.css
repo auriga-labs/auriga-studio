@@ -160,6 +160,9 @@ body {
 }
 .menu__item:hover { background: var(--bg-3); color: var(--text); }
 .menu__item.is-active { background: var(--bg-3); color: var(--text); }
+.menu__item { display: inline-flex; align-items: center; gap: 6px; }
+.menu__item .ti { font-size: 15px; color: var(--text-mute); }
+.menu__item:hover .ti, .menu__item.is-active .ti { color: var(--accent); }
 
 /* ===== アプリメニュー（メニューバーのドロップダウン） ===== */
 .appmenu-layer { position: fixed; inset: 0; z-index: 900; pointer-events: none; }
@@ -180,12 +183,22 @@ body {
     color: var(--text); cursor: pointer; white-space: nowrap;
 }
 .appmenu__item:hover, .appmenu__item.is-open { background: var(--accent); color: #fff; }
-.appmenu__check { width: 14px; text-align: center; flex: none; font-size: 11px; color: var(--accent-2); }
-.appmenu__item:hover .appmenu__check, .appmenu__item.is-open .appmenu__check { color: #fff; }
+.appmenu__icon {
+    width: 18px; text-align: center; flex: none;
+    font-size: 15px; color: var(--text-dim);
+    display: grid; place-items: center;
+}
+.appmenu__item.is-checked .appmenu__icon { color: var(--accent-2); }
+.appmenu__item:hover .appmenu__icon, .appmenu__item.is-open .appmenu__icon { color: #fff; }
 .appmenu__label { flex: 1; }
-.appmenu__key { color: var(--text-mute); font-size: 11px; letter-spacing: .3px; margin-left: 18px; }
+.appmenu__key {
+    color: var(--text-mute); font-size: 11px; letter-spacing: .3px; margin-left: 18px;
+    flex: none; display: inline-flex; align-items: center;
+}
+.appmenu__key .ti { font-size: 14px; color: var(--accent-2); }
 .appmenu__item:hover .appmenu__key, .appmenu__item.is-open .appmenu__key { color: rgba(255,255,255,.8); }
-.appmenu__arrow { color: var(--text-mute); font-size: 10px; flex: none; }
+.appmenu__item:hover .appmenu__key .ti, .appmenu__item.is-open .appmenu__key .ti { color: #fff; }
+.appmenu__arrow { color: var(--text-mute); font-size: 13px; flex: none; display: grid; place-items: center; }
 .appmenu__item:hover .appmenu__arrow, .appmenu__item.is-open .appmenu__arrow { color: #fff; }
 .appmenu__sep { height: 1px; background: var(--line); margin: 4px 6px; }
 .appmenu__empty, .appmenu__dynamic {

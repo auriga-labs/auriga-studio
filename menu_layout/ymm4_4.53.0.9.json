@@ -131,8 +131,8 @@
             { "type": "action", "id": "toolbar-height-up",   "label": "ツールバーの高さを上げる", "icon": "arrow-up" },
             { "type": "action", "id": "toolbar-height-down", "label": "ツールバーの高さを下げる", "icon": "arrow-down" },
             { "type": "separator" },
-            { "type": "action", "id": "move-layer-up",   "label": "上のレイヤーへ移動", "icon": "layers-up" },
-            { "type": "action", "id": "move-layer-down", "label": "下のレイヤーへ移動", "icon": "layers-down" },
+            { "type": "action", "id": "move-layer-up",   "label": "上のレイヤーへ移動", "icon": "stack-forward" },
+            { "type": "action", "id": "move-layer-down", "label": "下のレイヤーへ移動", "icon": "stack-back" },
             { "type": "separator" },
             { "type": "action", "id": "timeline-zoom-in",  "label": "タイムラインを拡大", "icon": "zoom-in" },
             { "type": "action", "id": "timeline-zoom-out", "label": "タイムラインを縮小", "icon": "zoom-out" },
@@ -142,7 +142,7 @@
             { "type": "separator" },
             { "type": "action", "id": "toggle-grid", "label": "グリッド線を表示/非表示", "icon": "grid-dots" },
             { "type": "action", "id": "show-grid",   "label": "グリッド線を表示", "icon": "grid-pattern" },
-            { "type": "action", "id": "hide-grid",   "label": "グリッド線を非表示", "icon": "grid-3x3-off" }
+            { "type": "action", "id": "hide-grid",   "label": "グリッド線を非表示", "icon": "eye-off" }
           ]
         }
       ]

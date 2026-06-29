@@ -1387,7 +1387,7 @@
         const menus = (layout && layout.menus) || [];
         closeMenuBar();
         els.appMenu.innerHTML = menus.map((m) =>
-            `<button class="menu__item" data-menu="${m.id}">${escapeHtml(m.label)}</button>`
+            `<button class="menu__item" data-menu="${m.id}">${iconHtml(m.icon)}<span>${escapeHtml(m.label)}</span></button>`
         ).join('');
 
         els.appMenu.querySelectorAll('.menu__item').forEach((btn) => {
@@ -1454,17 +1454,21 @@
 
         const el = document.createElement('div');
         const hasSub = it.type === 'submenu';
-        el.className = 'appmenu__item' + (hasSub ? ' has-sub' : '');
+        const checked = (it.type === 'radio' || it.type === 'checkbox') && !!it.checked;
+        el.className = 'appmenu__item'
+            + (hasSub ? ' has-sub' : '')
+            + (checked ? ' is-checked' : '');
 
-        let mark = '';
-        if (it.type === 'radio') mark = it.checked ? '●' : '';
-        if (it.type === 'checkbox') mark = it.checked ? '✔' : '';
+        // 右側：ショートカット優先、なければチェック中のみチェックアイコン
+        let keyHtml = '';
+        if (it.shortcut) keyHtml = escapeHtml(it.shortcut);
+        else if (checked) keyHtml = '<i class="ti ti-check"></i>';
 
         el.innerHTML = `
-            <span class="appmenu__check">${mark}</span>
+            <span class="appmenu__icon">${iconHtml(it.icon)}</span>
             <span class="appmenu__label">${escapeHtml(it.label)}</span>
-            ${it.shortcut ? `<span class="appmenu__key">${escapeHtml(it.shortcut)}</span>` : ''}
-            ${hasSub ? '<span class="appmenu__arrow">▸</span>' : ''}`;
+            <span class="appmenu__key">${keyHtml}</span>
+            <span class="appmenu__arrow">${hasSub ? '<i class="ti ti-chevron-right"></i>' : ''}</span>`;
 
         // ホバー：この階層より深いパネルを閉じ、同階層の開閉状態をリセット
         el.addEventListener('mouseenter', () => {
@@ -1566,6 +1570,13 @@
         });
         window.addEventListener('blur', closeMenuBar);
         window.addEventListener('resize', closeMenuBar);
+    }
+
+    // Tabler アイコン要素を生成する（アイコン名は接頭辞なし。例: "device-floppy"）
+    function iconHtml(name) {
+        if (!name) return '';
+        const safe = String(name).replace(/[^a-z0-9-]/g, '');
+        return safe ? `<i class="ti ti-${safe}"></i>` : '';
     }
 
     // HTML エスケープ（メニューラベル用）
