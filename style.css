@@ -117,11 +117,11 @@ body {
 }
 .btn:hover { background: var(--bg-hover); border-color: #3a4150; }
 .btn:active { transform: translateY(1px); }
+/* グラデーションと発光を外し、周囲のツールバーになじむフラットな単色にする */
 .btn--primary {
-    background: linear-gradient(135deg, var(--accent), #8b7cf0);
+    background: var(--accent);
     border-color: transparent;
     font-weight: 600;
-    box-shadow: 0 2px 12px var(--accent-glow);
 }
 .btn--primary:hover { filter: brightness(1.1); }
 .btn--ghost { background: transparent; }
@@ -238,14 +238,52 @@ body {
 }
 .ws-tab:hover { color: var(--text); }
 .ws-tab.is-active { background: var(--bg-3); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+/* YMM4 は DaVinci ライクなワークスペースタブ（編集/カラー/オーディオ/書き出し）を持たないため隠す */
+[data-theme="ymm4"] .workspace-tabs { display: none; }
 
 .avatar {
     width: 32px; height: 32px; border-radius: 50%;
-    background: linear-gradient(135deg, #f368e0, var(--accent));
+    background: var(--bg-3);
     display: grid; place-items: center;
-    font-weight: 700; font-size: 13px; color: #fff;
-    border: 2px solid var(--bg-3);
+    font-size: 16px; color: var(--text-dim);
+    border: 1px solid var(--line); cursor: pointer;
+    transition: all .15s ease; padding: 0;
 }
+.avatar:hover { color: var(--text); border-color: var(--accent); }
+.avatar--lg { width: 44px; height: 44px; font-size: 22px; cursor: default; }
+
+/* ===== アカウントポップオーバー ===== */
+.account { position: relative; }
+.account-pop {
+    position: absolute; top: calc(100% + 10px); right: 0;
+    width: 264px; z-index: 200;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 14px;
+}
+.account-pop[hidden] { display: none; }
+.account-pop__head { display: flex; align-items: center; gap: 12px; }
+.account-pop__name { font-size: 14px; font-weight: 600; }
+.account-pop__mail { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+
+.cloud { display: flex; flex-direction: column; gap: 8px; }
+.cloud__head { display: flex; align-items: center; justify-content: space-between; }
+.cloud__title { font-size: 12px; display: flex; align-items: center; gap: 5px; }
+.cloud__title .ti { color: var(--accent-2); }
+.cloud__usage { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.cloud__gauge {
+    height: 7px; border-radius: 4px; overflow: hidden;
+    background: var(--bg-0); border: 1px solid var(--line);
+}
+.cloud__bar {
+    display: block; height: 100%; width: 0;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    border-radius: 4px; transition: width .4s ease;
+}
+.cloud__note { font-size: 10.5px; color: var(--text-mute); line-height: 1.4; }
 
 /* ===== レイアウト ===== */
 .layout {
@@ -452,11 +490,14 @@ body {
     display: grid; place-items: center;
 }
 .tbtn:hover { background: var(--bg-hover); }
+.tbtn .ti { font-size: 16px; line-height: 1; }
 .tbtn--play {
     width: 42px; height: 38px; font-size: 14px;
     background: linear-gradient(135deg, var(--accent), #8b7cf0);
     border-color: transparent; box-shadow: 0 2px 10px var(--accent-glow);
 }
+.tbtn--play .ti { font-size: 18px; }
+.volume__icon { display: grid; place-items: center; color: var(--text-dim); font-size: 15px; }
 .tbtn.is-active { background: var(--accent); border-color: transparent; }
 .transport__right { display: flex; align-items: center; gap: 12px; justify-self: end; }
 .volume { display: flex; align-items: center; gap: 6px; }
@@ -527,6 +568,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 .tl-resizer.is-dragging::after { background: var(--accent); }
 /* ドラッグ中は本文の選択を抑止する */
 body.is-resizing-timeline { cursor: row-resize; user-select: none; }
+body.is-scrubbing { cursor: ew-resize; user-select: none; }
 
 .timeline {
     flex: none;
@@ -559,7 +601,14 @@ body.is-resizing-timeline { cursor: row-resize; user-select: none; }
     background: var(--bg-2);
     border-right: 1px solid var(--line);
     overflow: hidden;
-    padding-top: 28px; /* ルーラー分 */
+}
+/* ルーラー(28px)と高さを合わせるスティッキースペーサー。
+   縦スクロール時にレイヤー行が上端へ潜り込むのを隠す */
+.track-headers__spacer {
+    position: sticky; top: 0; z-index: 2;
+    height: 28px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line);
 }
 .track-header {
     height: 56px;
@@ -570,11 +619,9 @@ body.is-resizing-timeline { cursor: row-resize; user-select: none; }
 .track-header__icon {
     width: 24px; height: 24px; border-radius: 5px;
     display: grid; place-items: center; font-size: 12px;
-    background: var(--bg-3);
+    font-weight: 700; font-variant-numeric: tabular-nums;
+    background: var(--bg-3); color: var(--text-dim);
 }
-.track-header__icon--v { background: rgba(58,109,240,.2); color: #6f9bff; }
-.track-header__icon--a { background: rgba(0,206,201,.2); color: var(--accent-2); }
-.track-header__icon--t { background: rgba(243,104,224,.2); color: #f368e0; }
 .track-header__label { font-size: 12px; }
 .track-header__ctrl { margin-left: auto; display: flex; gap: 3px; }
 .track-header__btn {
@@ -666,6 +713,11 @@ body.is-resizing-timeline { cursor: row-resize; user-select: none; }
     clip-path: polygon(0 0, 100% 0, 50% 100%);
     pointer-events: auto; cursor: ew-resize;
 }
+/* シーク赤線を縦のどこでも掴めるようにする透明なグラブ領域 */
+.playhead__hit {
+    position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 11px; pointer-events: auto; cursor: ew-resize;
+}
 
 /* ===== トースト ===== */
 .toast {
@@ -737,9 +789,48 @@ body.is-resizing-timeline { cursor: row-resize; user-select: none; }
 .theme-select:hover { background: var(--bg-3); border-color: #3a4150; }
 .theme-select:focus { outline: none; border-color: var(--accent); }
 
+/* ===== スマホ幅メニュー（ハンバーガー） ===== */
+/* 既定（デスクトップ）では非表示 */
+.menu-burger {
+    display: none;
+    width: 34px; height: 34px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    color: var(--text); border-radius: var(--radius-sm);
+    cursor: pointer; place-items: center; font-size: 18px;
+    transition: all .15s ease;
+}
+.menu-burger:hover { background: var(--bg-3); border-color: var(--accent); }
+
+/* ヘッダー操作を縦に積むネストパネル */
+.mobile-panel {
+    position: fixed; top: 52px; left: 0; right: 0; z-index: 150;
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 12px;
+    max-height: calc(100vh - 52px); overflow-y: auto;
+}
+.mobile-panel[hidden] { display: none; }
+/* パネル内ではアプリメニュー・ワークスペースタブを縦並びにする */
+.mobile-panel .menu { flex-direction: column; gap: 2px; }
+.mobile-panel .menu__item { width: 100%; justify-content: flex-start; padding: 9px 11px; }
+.mobile-panel .workspace-tabs { width: 100%; }
+.mobile-panel .ws-tab { flex: 1; text-align: center; }
+.mobile-panel .theme-select { width: 100%; padding: 9px 10px; }
+.mobile-panel .btn { width: 100%; justify-content: center; padding: 9px 14px; }
+
 /* ===== レスポンシブ ===== */
 @media (max-width: 1100px) {
     .layout { grid-template-columns: 240px 1fr 240px; }
+}
+@media (max-width: 720px) {
+    .menu-burger { display: grid; }
+    /* 中央のワークスペース領域は空になるので潰す */
+    .menubar__center { display: none; }
+    .menubar { gap: 8px; }
+    .logo__text { display: none; }   /* ロゴはマークのみに */
+    .account-pop { width: min(280px, calc(100vw - 24px)); }
 }
 
 /* ===== バージョン情報モーダル ===== */

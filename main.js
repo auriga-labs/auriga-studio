@@ -6,7 +6,9 @@
 
     // ---- 定数 ----
     const FPS = 30;
-    const THEME_KEY = 'auriga.theme';   // テーマ設定の保存キー
+    const THEME_KEY = 'auriga.theme';   // テーマ（モード）設定の保存キー
+    const RES_KEY = 'auriga.resolution';   // 解像度選択の保存キー
+    const PLAYHEAD_KEY = 'auriga.playhead'; // 再生ヘッド位置(秒)の保存キー
     const THEMES = ['tokikun', 'ymm4', 'davinci', 'premiere'];
     const THEME_LABELS = { tokikun: 'ときくん', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
 
@@ -39,12 +41,14 @@
     };
 
     // ---- トラック定義（上から） ----
-    const TRACKS = [
-        { id: 'T1', kind: 'text',  label: 'テキスト', icon: 'T' },
-        { id: 'V2', kind: 'video', label: 'ビデオ 2', icon: '▦' },
-        { id: 'V1', kind: 'video', label: 'ビデオ 1', icon: '▦' },
-        { id: 'A1', kind: 'audio', label: 'オーディオ', icon: '♪' },
-    ];
+    // YMM4 ライクに種類を設けず「レイヤー1」のような連番にする。
+    // どのレイヤーにも映像・音声・テキストを置ける。上のレイヤーほど手前に描画する。
+    const LAYER_COUNT = 5;             // 既定のレイヤー数（上から レイヤー1…）
+    const DEFAULT_TRACK = 'L1';        // 新規クリップの既定レイヤー
+    const TRACKS = Array.from({ length: LAYER_COUNT }, (_, i) => ({
+        id: 'L' + (i + 1),
+        label: 'レイヤー ' + (i + 1),
+    }));
 
     // ---- メディアプール（読み込んだファイルが入る） ----
     const MEDIA = [];
@@ -111,6 +115,7 @@
         renderTracks();
         renderRuler();
         bindUI();
+        restorePersistedState();   // 保存済みの解像度・再生ヘッド位置を復元
         updateTimeDisplay();
         updatePlayhead();
         els.viewerCanvas.classList.add('program');   // 既定はプログラム（合成）モニター
@@ -205,7 +210,7 @@
                     kind: 'media', type: 'text', name: TEXT_PRESETS[i].name,
                 }));
             });
-            el.addEventListener('dblclick', () => addClip('text', TEXT_PRESETS[i].name, 'T1', state.playhead, 3));
+            el.addEventListener('dblclick', () => addClip('text', TEXT_PRESETS[i].name, DEFAULT_TRACK, state.playhead, 3));
         });
     }
 
@@ -213,11 +218,13 @@
     // 描画：トラックヘッダー
     // ======================================================
     function renderTrackHeaders() {
-        els.trackHeaders.innerHTML = TRACKS.map((t) => {
-            const iconCls = t.kind === 'audio' ? 'a' : t.kind === 'text' ? 't' : 'v';
+        // 先頭のスペーサーはルーラー(28px)と高さを合わせ、縦スクロール時に
+        // レイヤー行が潜り込んでも隠すスティッキー要素にする
+        els.trackHeaders.innerHTML = '<div class="track-headers__spacer"></div>' + TRACKS.map((t, i) => {
+            // 連番レイヤー。種類アイコンの代わりにレイヤー番号を表示する
             return `
             <div class="track-header" data-track="${t.id}">
-                <div class="track-header__icon track-header__icon--${iconCls}">${t.icon}</div>
+                <div class="track-header__icon">${i + 1}</div>
                 <div class="track-header__label">${t.label}</div>
                 <div class="track-header__ctrl">
                     <button class="track-header__btn" data-act="mute" title="ミュート">M</button>
@@ -411,11 +418,9 @@
         }
     }
 
-    // 適切なトラックへ自動振り分け（落としたトラックが種別違いなら補正）
+    // レイヤーは種類を問わないので、落としたレイヤーにそのまま配置する
     function placeClip(type, name, track, start, dur, src) {
-        const kind = TRACKS.find((t) => t.id === track)?.kind;
-        if (type === 'audio' && kind !== 'audio') track = 'A1';
-        if (type !== 'audio' && kind === 'audio') track = 'V1';
+        if (!TRACKS.some((t) => t.id === track)) track = DEFAULT_TRACK;
         return addClip(type, name, track, start, dur, true, src);
     }
 
@@ -438,8 +443,7 @@
     }
 
     function addClipToBestTrack(type, name, src) {
-        const track = type === 'audio' ? 'A1' : type === 'text' ? 'T1' : 'V1';
-        addClip(type, name, track, state.playhead, type === 'image' || type === 'text' ? 3 : 5, false, src);
+        addClip(type, name, DEFAULT_TRACK, state.playhead, type === 'image' || type === 'text' ? 3 : 5, false, src);
     }
 
     function renderClips() {
@@ -710,7 +714,8 @@
             const clip = activeClipOnTrack(tr.id, time);
             if (!clip) continue;
             active.add(clip.id);
-            if (tr.kind !== 'audio' && trackVisible(tr.id)) {
+            // クリップ自身の種類で映像か音声かを判定（レイヤーは種類を持たない）
+            if (clip.type !== 'audio' && trackVisible(tr.id)) {
                 drawVisualClip(clip);
             }
             // 動画の音声・オーディオクリップを同期再生
@@ -919,7 +924,10 @@
 
     function togglePlay() {
         state.playing = !state.playing;
-        els.btnPlay.textContent = state.playing ? '⏸' : '▶';
+        // 再生/一時停止アイコンを切り替える（Tabler アイコン）
+        els.btnPlay.innerHTML = state.playing
+            ? '<i class="ti ti-fi ti-player-pause"></i>'
+            : '<i class="ti ti-fi ti-player-play"></i>';
         if (state.playing) {
             enterProgram();                  // 再生は常に合成モニターで
             els.viewerCanvas.classList.add('program');
@@ -930,6 +938,7 @@
             cancelAnimationFrame(rafId);
             pauseAllMedia();
             composite(state.playhead, false);
+            savePlayhead();   // 停止位置をブラウザに保存
         }
     }
 
@@ -962,6 +971,25 @@
         updatePlayhead();
         updateTimeDisplay();
         composite(state.playhead, state.playing);
+        savePlayhead();   // 再生ヘッド位置をブラウザに保存
+    }
+
+    // タイムライン上のマウス位置から時間を求めてシークする（ドラッグ継続対応）
+    function startScrub(e) {
+        const scrub = (ev) => {
+            const rect = els.tracksArea.getBoundingClientRect();
+            const x = ev.clientX - rect.left + els.tracksArea.scrollLeft;
+            seek(x / state.zoom);
+        };
+        scrub(e);
+        const up = () => {
+            document.removeEventListener('mousemove', scrub);
+            document.removeEventListener('mouseup', up);
+            document.body.classList.remove('is-scrubbing');
+        };
+        document.body.classList.add('is-scrubbing');
+        document.addEventListener('mousemove', scrub);
+        document.addEventListener('mouseup', up);
     }
 
     function updatePlayhead() {
@@ -1018,6 +1046,49 @@
     }
 
     // ======================================================
+    // 解像度
+    // ======================================================
+    // 解像度（"1920 × 1080 (16:9)"）を適用する。silent=trueでトーストを抑制
+    function applyResolution(v, silent) {
+        const m = v.match(/(\d+)\s*[×x]\s*(\d+)/);
+        if (m) {
+            const w = +m[1], h = +m[2];
+            els.compositor.width = w; els.compositor.height = h;
+            // モニターのアスペクト比を解像度に合わせて固定（CSS変数で制御）
+            els.viewerCanvas.style.setProperty('--ar-w', w);
+            els.viewerCanvas.style.setProperty('--ar-h', h);
+        }
+        composite(state.playhead, state.playing);
+        if (!silent) toast(`解像度: ${v}`);
+    }
+
+    // ======================================================
+    // ブラウザに保存した状態の復元
+    // ======================================================
+    // 解像度・再生ヘッド位置を localStorage から復元する（モード=テーマは別途復元済み）
+    function restorePersistedState() {
+        // 解像度：保存値が選択肢にあれば反映する
+        try {
+            const res = localStorage.getItem(RES_KEY);
+            const sel = $('#resSelect');
+            if (res && sel && Array.from(sel.options).some((o) => o.value === res)) {
+                sel.value = res;
+                applyResolution(res, true);
+            }
+        } catch (e) {}
+        // 再生ヘッド位置：尺の範囲内なら復元する
+        try {
+            const ph = parseFloat(localStorage.getItem(PLAYHEAD_KEY));
+            if (Number.isFinite(ph) && ph > 0) seek(ph);
+        } catch (e) {}
+    }
+
+    // 再生ヘッド位置をブラウザに保存する
+    function savePlayhead() {
+        try { localStorage.setItem(PLAYHEAD_KEY, String(state.playhead)); } catch (e) {}
+    }
+
+    // ======================================================
     // UI バインド
     // ======================================================
     function bindUI() {
@@ -1025,6 +1096,8 @@
         bindContextMenu();
         bindMenuBar();
         bindAboutModal();   // バージョン情報モーダルの開閉
+        bindAccountMenu();   // アカウント情報ポップオーバーの開閉
+        bindMobileMenu();   // スマホ幅でヘッダー操作をネストする
         bindTimelineResizer();   // タイムラインの高さをドラッグで調整
 
         // テーマ切り替え
@@ -1088,33 +1161,33 @@
             updatePlayhead();
         });
 
-        // タイムラインクリックでシーク
+        // タイムラインの空白をクリック/ドラッグで連続シーク（スクラブ）
         els.tracksArea.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;   // 右クリックは無視
             if (e.target.closest('.clip')) return;
-            const rect = els.tracksArea.getBoundingClientRect();
-            const x = e.clientX - rect.left + els.tracksArea.scrollLeft;
-            seek(x / state.zoom);
-            // 空白クリックで選択解除
-            if (!e.target.closest('.clip')) selectClip(null);
+            // 赤線（再生ヘッド）上は専用ハンドラに任せる
+            if (e.target.closest('.playhead')) return;
+            selectClip(null);   // 空白クリックで選択解除
+            startScrub(e);
         });
-        els.tracksArea.addEventListener('scroll', updatePlayhead);
+
+        // シーク赤線をどこでも掴んでドラッグできるようにする
+        els.playhead.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            startScrub(e);
+        });
+        // タイムラインのスクロールに合わせて再生ヘッドとレイヤーヘッダーを連動させる
+        els.tracksArea.addEventListener('scroll', () => {
+            updatePlayhead();
+            // 縦スクロールをレイヤーヘッダー側にも反映する
+            els.trackHeaders.scrollTop = els.tracksArea.scrollTop;
+        });
 
         // ルーラードラッグでスクラブ
         els.ruler.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;
-            const scrub = (ev) => {
-                const rect = els.tracksArea.getBoundingClientRect();
-                const x = ev.clientX - rect.left + els.tracksArea.scrollLeft;
-                seek(x / state.zoom);
-            };
-            scrub(e);
-            const up = () => {
-                document.removeEventListener('mousemove', scrub);
-                document.removeEventListener('mouseup', up);
-            };
-            document.addEventListener('mousemove', scrub);
-            document.addEventListener('mouseup', up);
+            startScrub(e);
         });
 
         // ツールバーアクション
@@ -1135,18 +1208,9 @@
 
         // 解像度切替
         $('#resSelect').addEventListener('change', (e) => {
-            const v = e.target.value;
-            // 解像度（"1920 × 1080"）を解析し、実際の数値からアスペクト比を強制する
-            const m = v.match(/(\d+)\s*[×x]\s*(\d+)/);
-            if (m) {
-                const w = +m[1], h = +m[2];
-                els.compositor.width = w; els.compositor.height = h;
-                // モニターのアスペクト比を解像度に合わせて固定（CSS変数で制御）
-                els.viewerCanvas.style.setProperty('--ar-w', w);
-                els.viewerCanvas.style.setProperty('--ar-h', h);
-            }
-            composite(state.playhead, state.playing);
-            toast(`解像度: ${v}`);
+            applyResolution(e.target.value);
+            // 選択した解像度をブラウザに保存する
+            try { localStorage.setItem(RES_KEY, e.target.value); } catch (err) {}
         });
 
         // 音量
@@ -1172,7 +1236,7 @@
                     case 'KeyC': if (c) copyClip(c); return;
                     case 'KeyV': e.preventDefault();
                         if (state.clipboard) {
-                            const tr = c ? c.track : (state.clipboard.type === 'audio' ? 'A1' : state.clipboard.type === 'text' ? 'T1' : 'V1');
+                            const tr = c ? c.track : DEFAULT_TRACK;
                             pasteClip(tr, state.playhead);
                         }
                         return;
@@ -1333,8 +1397,8 @@
         showContextMenu(x, y, [
             { icon: '📋', label: 'ここに貼り付け', key: 'Ctrl+V', disabled: !state.clipboard,
               action: () => pasteClip(trackEl.dataset.track, at) },
-            { icon: '🅰', label: 'ここにテキストを追加', disabled: trackEl.dataset.track !== 'T1',
-              action: () => addClip('text', 'テキスト', 'T1', at, 3, false) },
+            { icon: '🅰', label: 'ここにテキストを追加',
+              action: () => addClip('text', 'テキスト', trackEl.dataset.track, at, 3, false) },
             { separator: true },
             { icon: '⏱', label: 'ここへ再生ヘッドを移動', action: () => seek(at) },
             { icon: '🔍', label: 'ズームをリセット', action: () => { $('#zoom').value = 60; $('#zoom').dispatchEvent(new Event('input')); } },
@@ -1387,8 +1451,7 @@
     function pasteClip(track, at) {
         const cb = state.clipboard;
         if (!cb) { toast('コピーされたクリップがありません'); return; }
-        const dest = TRACKS.find((t) => t.id === track) ? track
-            : (cb.type === 'audio' ? 'A1' : cb.type === 'text' ? 'T1' : 'V1');
+        const dest = TRACKS.find((t) => t.id === track) ? track : DEFAULT_TRACK;
         const c = addClip(cb.type, cb.name, dest, at, cb.dur, true, cb.src);
         c.props = { ...cb.props };
         renderClips();
@@ -1652,7 +1715,7 @@
             case 'backward-1sec':   seek(state.playhead - 1); return;
             case 'timeline-zoom-in':  setZoom(state.zoom + 20); return;
             case 'timeline-zoom-out': setZoom(state.zoom - 20); return;
-            case 'add-text-item':   addClip('text', 'テキスト', 'T1', state.playhead, 3); return;
+            case 'add-text-item':   addClip('text', 'テキスト', DEFAULT_TRACK, state.playhead, 3); return;
             // ---- ロゴ文字のメニュー（全テーマ共通） ----
             case 'about':           showAboutModal(); return;
             case 'whats-new':       toast('新着情報（準備中）'); return;
@@ -1836,6 +1899,117 @@
         window.addEventListener('resize', () => {
             if (timeline.style.height) setTimelineHeight(parseInt(timeline.style.height, 10));
         });
+    }
+
+    // ======================================================
+    // アカウント情報ポップオーバー（Auriga Cloud 使用容量つき）
+    // ======================================================
+    const CLOUD_TOTAL_GB = 15;        // 無料枠（GB）
+    // 未ログインなので使用量は 0。ログイン実装後は実値を入れる
+    let cloudUsedGB = 0;
+
+    // 使用容量ゲージを現在値で更新する
+    function updateCloudGauge() {
+        const bar = $('#cloudBar');
+        const usage = $('#cloudUsage');
+        const note = $('#cloudNote');
+        if (!bar || !usage) return;
+        const pct = Math.max(0, Math.min(100, (cloudUsedGB / CLOUD_TOTAL_GB) * 100));
+        bar.style.width = pct + '%';
+        usage.textContent = `${cloudUsedGB.toFixed(1)} / ${CLOUD_TOTAL_GB} GB`;
+        if (note) note.textContent = cloudUsedGB > 0
+            ? `残り ${(CLOUD_TOTAL_GB - cloudUsedGB).toFixed(1)} GB`
+            : 'ログインすると 15 GB を無料で利用できます';
+    }
+
+    // アカウントポップオーバーの開閉とログインボタンをバインドする
+    function bindAccountMenu() {
+        const btn = $('#avatarBtn');
+        const pop = $('#accountPop');
+        if (!btn || !pop) return;
+
+        const open = () => {
+            updateCloudGauge();
+            pop.hidden = false;
+            btn.setAttribute('aria-expanded', 'true');
+        };
+        const close = () => {
+            pop.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+        };
+        const toggle = () => (pop.hidden ? open() : close());
+
+        btn.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
+        // ポップオーバー内クリックでは閉じない
+        pop.addEventListener('click', (e) => e.stopPropagation());
+        // 外側クリック / Esc で閉じる
+        document.addEventListener('click', () => { if (!pop.hidden) close(); });
+        document.addEventListener('keydown', (e) => { if (e.code === 'Escape' && !pop.hidden) close(); });
+
+        $('#btnSignIn').addEventListener('click', () => toast('Google ログイン（準備中）🔑'));
+    }
+
+    // ======================================================
+    // スマホ幅メニュー（ヘッダー操作をネスト）
+    // ======================================================
+    // 狭い画面では、アプリメニュー・ワークスペース・テーマ・保存・書き出しを
+    // ハンバーガーのパネルへ実体ごと移設する（イベントを保ったまま移動）。
+    function bindMobileMenu() {
+        const burger = $('#menuBurger');
+        const panel = $('#mobilePanel');
+        if (!burger || !panel) return;
+
+        // 移設対象と、デスクトップ復帰時の戻し先
+        const left = $('.menubar__left');
+        const center = $('.menubar__center');
+        const right = $('.menubar__right');
+        const account = $('.account');
+        const appMenu = $('#appMenu');
+        const wsTabs = $('.workspace-tabs');
+        const themeSel = $('#themeSelect');
+        const btnSave = $('#btnSave');
+        const btnExport = $('#btnExport');
+
+        const mq = window.matchMedia('(max-width: 720px)');
+        let mobile = false;
+
+        // パネルへ集約する（DOM ノードごと移動するのでイベントは維持される）
+        function toMobile() {
+            panel.append(appMenu, wsTabs, themeSel, btnSave, btnExport);
+            mobile = true;
+        }
+        // ヘッダーの元の位置・順序へ戻す
+        function toDesktop() {
+            closePanel();
+            left.append(appMenu);               // ロゴの直後
+            center.append(wsTabs);
+            right.insertBefore(themeSel, account);
+            right.insertBefore(btnSave, account);
+            right.insertBefore(btnExport, account);
+            mobile = false;
+        }
+        function apply(e) {
+            if (e.matches && !mobile) toMobile();
+            else if (!e.matches && mobile) toDesktop();
+        }
+
+        function openPanel() { panel.hidden = false; burger.setAttribute('aria-expanded', 'true'); }
+        function closePanel() { panel.hidden = true; burger.setAttribute('aria-expanded', 'false'); }
+
+        burger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            panel.hidden ? openPanel() : closePanel();
+        });
+        // パネル内のボタン操作後は閉じる（メニュー以外）
+        panel.addEventListener('click', (e) => {
+            if (e.target.closest('#btnSave, #btnExport')) closePanel();
+        });
+        document.addEventListener('click', (e) => {
+            if (!panel.hidden && !e.target.closest('#mobilePanel, #menuBurger')) closePanel();
+        });
+
+        apply(mq);
+        mq.addEventListener('change', apply);
     }
 
     // モーダルの開閉操作をバインドする

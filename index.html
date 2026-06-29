@@ -18,6 +18,10 @@
     <!-- ===== メニューバー ===== -->
     <header class="menubar">
         <div class="menubar__left">
+            <!-- スマホ幅で表示するハンバーガー。ヘッダーの各操作をパネルに集約する -->
+            <button class="menu-burger" id="menuBurger" type="button" title="メニュー" aria-haspopup="true" aria-expanded="false">
+                <i class="ti ti-menu-2"></i>
+            </button>
             <!-- ロゴ文字のメニュー（全テーマ共通のアプリメニュー）。クリックでドロップダウンを開く -->
             <button class="logo" id="appLogoMenu" type="button" title="Auriga Studio メニュー">
                 <img class="logo__mark" src="favicon-symbol.svg" alt="Auriga Studio" width="26" height="26">
@@ -44,9 +48,39 @@
             </select>
             <button class="btn btn--ghost" id="btnSave" title="保存 (Ctrl+S)">保存</button>
             <button class="btn btn--primary" id="btnExport">書き出し</button>
-            <div class="avatar" title="ときくん">時</div>
+            <!-- アカウント。未ログインは Unknown ユーザーアイコン。クリックでアカウント情報を開く -->
+            <div class="account">
+                <button class="avatar" id="avatarBtn" type="button" title="アカウント" aria-haspopup="true" aria-expanded="false">
+                    <i class="ti ti-user"></i>
+                </button>
+                <!-- アカウント情報ポップオーバー（Auriga Cloud の使用容量つき） -->
+                <div class="account-pop" id="accountPop" hidden>
+                    <div class="account-pop__head">
+                        <div class="avatar avatar--lg"><i class="ti ti-user"></i></div>
+                        <div class="account-pop__id">
+                            <div class="account-pop__name">ゲスト</div>
+                            <div class="account-pop__mail">未ログイン</div>
+                        </div>
+                    </div>
+                    <button class="btn btn--block" id="btnSignIn">
+                        <i class="ti ti-brand-google"></i> Google でログイン
+                    </button>
+                    <div class="cloud">
+                        <div class="cloud__head">
+                            <span class="cloud__title"><i class="ti ti-cloud"></i> Auriga Cloud</span>
+                            <span class="cloud__usage" id="cloudUsage">— / 15 GB</span>
+                        </div>
+                        <div class="cloud__gauge"><span class="cloud__bar" id="cloudBar"></span></div>
+                        <div class="cloud__note" id="cloudNote">ログインすると 15 GB を無料で利用できます</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
+
+    <!-- スマホ幅で、ヘッダーの操作（アプリメニュー/ワークスペース/テーマ/保存/書き出し）を
+         まとめてネストするパネル。中身は JS でヘッダーから移設する -->
+    <nav class="mobile-panel" id="mobilePanel" hidden></nav>
 
     <!-- ===== メイン領域 ===== -->
     <main class="layout">
@@ -115,16 +149,16 @@
                     <span id="durTime">00:00:10:00</span>
                 </div>
                 <div class="transport__controls">
-                    <button class="tbtn" id="btnStart" title="先頭へ">⏮</button>
-                    <button class="tbtn" id="btnPrev" title="前のフレーム">◀|</button>
-                    <button class="tbtn tbtn--play" id="btnPlay" title="再生/停止 (Space)">▶</button>
-                    <button class="tbtn" id="btnNext" title="次のフレーム">|▶</button>
-                    <button class="tbtn" id="btnEnd" title="末尾へ">⏭</button>
+                    <button class="tbtn" id="btnStart" title="先頭へ"><i class="ti ti-fi ti-player-skip-back"></i></button>
+                    <button class="tbtn" id="btnPrev" title="前のフレーム"><i class="ti ti-fi ti-player-track-prev"></i></button>
+                    <button class="tbtn tbtn--play" id="btnPlay" title="再生/停止 (Space)"><i class="ti ti-fi ti-player-play"></i></button>
+                    <button class="tbtn" id="btnNext" title="次のフレーム"><i class="ti ti-fi ti-player-track-next"></i></button>
+                    <button class="tbtn" id="btnEnd" title="末尾へ"><i class="ti ti-fi ti-player-skip-forward"></i></button>
                 </div>
                 <div class="transport__right">
-                    <button class="tbtn" id="btnLoop" title="ループ">🔁</button>
+                    <button class="tbtn" id="btnLoop" title="ループ"><i class="ti ti-repeat"></i></button>
                     <div class="volume">
-                        <span>🔊</span>
+                        <span class="volume__icon"><i class="ti ti-volume"></i></span>
                         <input type="range" id="volume" min="0" max="100" value="80">
                     </div>
                 </div>
@@ -235,7 +269,7 @@
             <div class="tracks-area" id="tracksArea">
                 <div class="ruler" id="ruler"></div>
                 <div class="tracks" id="tracks"></div>
-                <div class="playhead" id="playhead"><div class="playhead__head"></div></div>
+                <div class="playhead" id="playhead"><div class="playhead__head"></div><div class="playhead__hit"></div></div>
             </div>
         </div>
     </section>
