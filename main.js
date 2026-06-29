@@ -1,5 +1,5 @@
 /* ======================================================
-   Toki Editor — 動画編集UI ロジック
+   Auriga Studio — 動画編集UI ロジック
    ====================================================== */
 (() => {
     'use strict';
@@ -101,7 +101,7 @@
         updatePlayhead();
         els.viewerCanvas.classList.add('program');   // 既定はプログラム（合成）モニター
         composite(state.playhead, false);
-        toast('Toki Editor へようこそ 🎬');
+        toast('Auriga Studio へようこそ 🎬');
     }
 
     // ======================================================
