@@ -61,7 +61,7 @@
         { "type": "separator" },
         { "type": "action", "id": "edit-characters", "label": "キャラクターの編集", "icon": "user-edit" },
         { "type": "action", "id": "video-settings",  "label": "動画の設定", "icon": "adjustments-horizontal" },
-        { "type": "action", "id": "grid-settings",   "label": "グリッド設定", "icon": "grid-4x4" },
+        { "type": "action", "id": "grid-settings",   "label": "グリッド設定", "icon": "frame" },
         { "type": "action", "id": "settings",        "label": "設定", "icon": "settings" },
         { "type": "separator" },
         { "type": "action", "id": "exit", "label": "終了", "mnemonic": "X", "shortcut": "Alt+F4" }
@@ -109,38 +109,38 @@
         {
           "type": "submenu", "id": "voice-ops", "label": "ボイス操作", "mnemonic": "V",
           "items": [
-            { "type": "action", "id": "change-character",    "label": "キャラクターを変更",       "shortcut": "Ctrl+D", "icon": "user-edit" },
-            { "type": "action", "id": "prev-character",      "label": "前のキャラクターに変更",   "shortcut": "Ctrl+ArrowUp", "icon": "user-up" },
-            { "type": "action", "id": "next-character",      "label": "次のキャラクターに変更",   "shortcut": "Ctrl+ArrowDown", "icon": "user-down" },
-            { "type": "action", "id": "change-voice-add-mode", "label": "音声追加モードを変更",  "shortcut": "Ctrl+M", "icon": "transform" }
+            { "type": "action", "id": "change-character",    "label": "キャラクターを変更",       "shortcut": "Ctrl+D" },
+            { "type": "action", "id": "prev-character",      "label": "前のキャラクターに変更",   "shortcut": "Ctrl+ArrowUp" },
+            { "type": "action", "id": "next-character",      "label": "次のキャラクターに変更",   "shortcut": "Ctrl+ArrowDown" },
+            { "type": "action", "id": "change-voice-add-mode", "label": "音声追加モードを変更",  "shortcut": "Ctrl+M" }
           ]
         },
         {
           "type": "submenu", "id": "timeline", "label": "タイムライン", "mnemonic": "T",
           "items": [
-            { "type": "action", "id": "new-scene",        "label": "新しいシーンを作成", "icon": "square-plus" },
-            { "type": "action", "id": "rename-scene",     "label": "シーンの名前を変更", "icon": "edit" },
-            { "type": "action", "id": "delete-scene",     "label": "シーンを削除", "icon": "trash" },
-            { "type": "action", "id": "next-scene",       "label": "次のシーンに切り替え", "icon": "arrow-right" },
-            { "type": "action", "id": "prev-scene",       "label": "前のシーンに切り替え", "icon": "arrow-left" },
-            { "type": "action", "id": "move-scene-left",  "label": "シーンを左に移動", "icon": "arrow-bar-left" },
-            { "type": "action", "id": "move-scene-right", "label": "シーンを右に移動", "icon": "arrow-bar-right" },
+            { "type": "action", "id": "new-scene",        "label": "新しいシーンを作成" },
+            { "type": "action", "id": "rename-scene",     "label": "シーンの名前を変更" },
+            { "type": "action", "id": "delete-scene",     "label": "シーンを削除" },
+            { "type": "action", "id": "next-scene",       "label": "次のシーンに切り替え" },
+            { "type": "action", "id": "prev-scene",       "label": "前のシーンに切り替え" },
+            { "type": "action", "id": "move-scene-left",  "label": "シーンを左に移動" },
+            { "type": "action", "id": "move-scene-right", "label": "シーンを右に移動" },
             { "type": "separator" },
-            { "type": "action", "id": "toolbar-height-up",   "label": "ツールバーの高さを上げる", "icon": "arrow-up" },
-            { "type": "action", "id": "toolbar-height-down", "label": "ツールバーの高さを下げる", "icon": "arrow-down" },
+            { "type": "action", "id": "toolbar-height-up",   "label": "ツールバーの高さを上げる" },
+            { "type": "action", "id": "toolbar-height-down", "label": "ツールバーの高さを下げる" },
             { "type": "separator" },
-            { "type": "action", "id": "move-layer-up",   "label": "上のレイヤーへ移動", "icon": "stack-forward" },
-            { "type": "action", "id": "move-layer-down", "label": "下のレイヤーへ移動", "icon": "stack-back" },
+            { "type": "action", "id": "move-layer-up",   "label": "上のレイヤーへ移動" },
+            { "type": "action", "id": "move-layer-down", "label": "下のレイヤーへ移動" },
             { "type": "separator" },
-            { "type": "action", "id": "timeline-zoom-in",  "label": "タイムラインを拡大", "icon": "zoom-in" },
-            { "type": "action", "id": "timeline-zoom-out", "label": "タイムラインを縮小", "icon": "zoom-out" },
+            { "type": "action", "id": "timeline-zoom-in",  "label": "タイムラインを拡大" },
+            { "type": "action", "id": "timeline-zoom-out", "label": "タイムラインを縮小" },
             { "type": "separator" },
-            { "type": "action", "id": "layer-height-up",   "label": "レイヤーの高さを上げる", "icon": "arrow-autofit-up" },
-            { "type": "action", "id": "layer-height-down", "label": "レイヤーの高さを下げる", "icon": "arrow-autofit-down" },
+            { "type": "action", "id": "layer-height-up",   "label": "レイヤーの高さを上げる" },
+            { "type": "action", "id": "layer-height-down", "label": "レイヤーの高さを下げる" },
             { "type": "separator" },
-            { "type": "action", "id": "toggle-grid", "label": "グリッド線を表示/非表示", "icon": "grid-dots" },
-            { "type": "action", "id": "show-grid",   "label": "グリッド線を表示", "icon": "grid-pattern" },
-            { "type": "action", "id": "hide-grid",   "label": "グリッド線を非表示", "icon": "eye-off" }
+            { "type": "action", "id": "toggle-grid", "label": "グリッド線を表示/非表示", "icon": "frame" },
+            { "type": "action", "id": "show-grid",   "label": "グリッド線を表示", "icon": "frame" },
+            { "type": "action", "id": "hide-grid",   "label": "グリッド線を非表示", "icon": "frame-off" }
           ]
         }
       ]
