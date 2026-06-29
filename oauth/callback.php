@@ -9,14 +9,16 @@ require_once 'oauth.php';
 
 session_start();
 
-// アプリ起点かどうか。エラー時もブリッジで親へ通知できるようにする。
-$isApp = !empty($_SESSION['oauth_app']);
+// アプリ（Electron）起点かどうかは state の 'app.' プレフィックスで判別する。
+// アプリ起点は Google を直接開くためサーバーセッションに oauth_state を持たない。
+// その場合 state の照合はクライアント側で行うので、ここでは形式判定のみ。
+$reqState = $_GET['state'] ?? '';
+$isApp = str_starts_with($reqState, 'app.');
 
 // アプリ起点ならブリッジでエラーを返し、通常は die する共通ハンドラ
-$failAuth = function (string $message) use ($isApp) {
+$failAuth = function (string $message) use ($isApp, $reqState) {
     if ($isApp) {
-        unset($_SESSION['oauth_app']);
-        render_app_bridge(null, $message);
+        render_app_bridge(null, $message, $reqState);
         exit;
     }
     die(htmlspecialchars($message));
@@ -28,15 +30,19 @@ if (isset($_GET['error'])) {
 }
 
 // ── 2. 必須パラメータの確認 ──────────────────────────────────────────────
-if (empty($_GET['code']) || empty($_GET['state'])) {
+if (empty($_GET['code']) || empty($reqState)) {
     $failAuth('不正なリクエストです。');
 }
 
 // ── 3. CSRF対策: stateパラメータの検証 ──────────────────────────────────
-if (!hash_equals($_SESSION['oauth_state'] ?? '', $_GET['state'])) {
-    $failAuth('セキュリティエラー: stateが一致しません。');
+if ($isApp) {
+    // アプリ起点: state はクライアント側で照合する（サーバーにセッション無し）。
+} else {
+    if (!hash_equals($_SESSION['oauth_state'] ?? '', $reqState)) {
+        $failAuth('セキュリティエラー: stateが一致しません。');
+    }
+    unset($_SESSION['oauth_state']); // 使い捨て
 }
-unset($_SESSION['oauth_state']); // 使い捨て
 
 // ── 4. 認可コード → アクセストークン ────────────────────────────────────
 try {
@@ -61,10 +67,9 @@ $_SESSION['user'] = [
 
 // ── 6. 遷移先の振り分け ─────────────────────────────────────────────────
 // アプリ（Electron）起点のログインなら、ダッシュボードではなく
-// ブリッジページを返してポップアップから親ウィンドウへ結果を渡す。
-if (!empty($_SESSION['oauth_app'])) {
-    unset($_SESSION['oauth_app']);
-    render_app_bridge($_SESSION['user']);
+// ブリッジページを返してログインタブから親ウィンドウへ結果を渡す。
+if ($isApp) {
+    render_app_bridge($_SESSION['user'], '', $reqState);
     exit;
 }
 

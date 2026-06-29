@@ -12,11 +12,16 @@
     const USER_KEY = 'auriga.user';     // ログイン中ユーザー情報の保存キー
 
     // ---- OAuth（Google ログイン）----
-    // 認証は別ホストの PHP バックエンド（app.auriga.studio/oauth/）が処理する。
-    // アプリ側はポップアップでログインを開始し、postMessage でユーザー情報を受け取る。
+    // Google の認可画面を新しいタブで直接開く。リダイレクト先の PHP バックエンド
+    // （app.auriga.studio/oauth/callback.php）がトークン交換を行い、postMessage で
+    // ユーザー情報を返す。client_id / redirect_uri / scope は公開情報なのでここに持つ。
     const OAUTH_ORIGIN = 'https://app.auriga.studio';            // 認証サーバーのオリジン
-    const OAUTH_LOGIN_URL = OAUTH_ORIGIN + '/oauth/index.php?app=1';   // ログイン開始URL（ポップアップ）
-    const OAUTH_LOGOUT_URL = OAUTH_ORIGIN + '/oauth/logout.php?app=1'; // ログアウトURL（ポップアップ）
+    const OAUTH_GOOGLE_AUTH = 'https://accounts.google.com/o/oauth2/v2/auth';  // Google 認可エンドポイント
+    const OAUTH_CLIENT_ID = '1056602047872-2ajrhud4bs4iemgnhtro9bhb4fa9alpf.apps.googleusercontent.com';
+    const OAUTH_REDIRECT_URI = OAUTH_ORIGIN + '/oauth/callback.php';  // 承認済みリダイレクトURI
+    // ⚠ oauth/config.php の GOOGLE_SCOPES と一致させること
+    const OAUTH_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive'];
+    const OAUTH_LOGOUT_URL = OAUTH_ORIGIN + '/oauth/logout.php?app=1'; // ログアウトURL
     const THEMES = ['tokikun', 'ymm4', 'davinci', 'premiere'];
     const THEME_LABELS = { tokikun: 'ときくん', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
 
@@ -1919,6 +1924,7 @@
     // 形: { id, email, name, picture, verified }
     let currentUser = null;
     let authPopup = null;             // ログイン用タブ（window.open）の参照
+    let authState = null;             // CSRF対策のstate（クライアント生成・照合用）
 
     // 使用容量ゲージを現在値で更新する
     function updateCloudGauge() {
@@ -1991,13 +1997,36 @@
         applyAccountUI();
     }
 
-    // Google ログインを新しいタブで直接開く
+    // CSRF対策用のランダムな16進文字列を生成する
+    function randomHex(bytes) {
+        const a = new Uint8Array(bytes);
+        (window.crypto || window.msCrypto).getRandomValues(a);
+        return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Google の認可画面を新しいタブで直接開く
     function startGoogleLogin() {
         // 既存のログインタブがあれば前面化するだけ
         if (authPopup && !authPopup.closed) { authPopup.focus(); return; }
+
+        // state はクライアントで生成する。'app.' プレフィックスで
+        // callback.php がアプリ起点だと判別し、照合はこちらで行う。
+        authState = 'app.' + randomHex(16);
+
+        const params = new URLSearchParams({
+            client_id:     OAUTH_CLIENT_ID,
+            redirect_uri:  OAUTH_REDIRECT_URI,
+            response_type: 'code',
+            scope:         OAUTH_SCOPES.join(' '),
+            state:         authState,
+            access_type:   'offline',   // refresh_token を取得する
+            prompt:        'consent',
+        });
+        const url = OAUTH_GOOGLE_AUTH + '?' + params.toString();
+
         // 名前付きターゲットで開く（サイズ指定なし＝新しいタブ）。
         // 結果は postMessage で受け取るため opener を残す必要があり、noopener は付けない。
-        authPopup = window.open(OAUTH_LOGIN_URL, 'auriga-oauth');
+        authPopup = window.open(url, 'auriga-oauth');
         if (!authPopup) { toast('タブを開けませんでした 🚫'); return; }
         toast('Google でログイン中…🔑');
     }
@@ -2018,6 +2047,16 @@
             if (e.origin !== OAUTH_ORIGIN) return;
             const data = e.data;
             if (!data || data.type !== 'auriga-oauth') return;
+
+            // state を照合する（クライアント生成値と一致しなければ拒否）
+            if (authState && data.state !== authState) {
+                toast('セキュリティエラー: state が一致しません 🚫');
+                authState = null;
+                if (authPopup && !authPopup.closed) { try { authPopup.close(); } catch (err) {} }
+                authPopup = null;
+                return;
+            }
+            authState = null;
 
             if (data.user) {
                 setUser(data.user, true);

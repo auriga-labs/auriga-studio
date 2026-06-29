@@ -8,20 +8,8 @@ require_once 'oauth.php';
 
 session_start();
 
-// Auriga Studio アプリ（Electron）からのログインかどうかを記録する。
-// アプリ起点の場合は callback で dashboard ではなくブリッジページを返す。
-if (isset($_GET['app'])) {
-    $_SESSION['oauth_app'] = true;
-}
-
-// すでにログイン済みの場合
+// すでにログイン済みの場合はダッシュボードへ
 if (isset($_SESSION['user'])) {
-    // アプリ起点ならブリッジでユーザー情報を返す、通常はダッシュボードへ
-    if (!empty($_SESSION['oauth_app'])) {
-        unset($_SESSION['oauth_app']);
-        render_app_bridge($_SESSION['user']);
-        exit;
-    }
     header('Location: dashboard.php');
     exit;
 }
