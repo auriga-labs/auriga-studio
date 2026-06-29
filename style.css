@@ -268,6 +268,10 @@ body {
 .account-pop__head { display: flex; align-items: center; gap: 12px; }
 .account-pop__name { font-size: 14px; font-weight: 600; }
 .account-pop__mail { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+/* 規約・プライバシーへの導線 */
+.account-pop__legal { text-align: center; }
+.account-pop__legal a { font-size: 11.5px; color: var(--text-mute); text-decoration: none; }
+.account-pop__legal a:hover { color: var(--text-dim); text-decoration: underline; }
 
 .cloud { display: flex; flex-direction: column; gap: 8px; }
 .cloud__head { display: flex; align-items: center; justify-content: space-between; }
