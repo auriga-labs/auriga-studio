@@ -867,6 +867,49 @@
         const b = document.querySelector(`.track-header[data-track="${trackId}"] [data-act="mute"]`);
         return !!(b && b.classList.contains('is-off'));
     }
+    // 指定トラックの表示/非表示を切り替える
+    function toggleTrackVisible(trackId) {
+        const b = document.querySelector(`.track-header[data-track="${trackId}"] [data-act="hide"]`);
+        if (b) { b.classList.toggle('is-off'); renderViewer(); }
+    }
+    // 指定トラックの表示状態を明示的に設定する
+    function setTrackVisible(trackId, visible) {
+        const b = document.querySelector(`.track-header[data-track="${trackId}"] [data-act="hide"]`);
+        if (b) b.classList.toggle('is-off', !visible);
+    }
+    // すべてのトラックを表示する
+    function showAllTracks() {
+        TRACKS.forEach((t) => setTrackVisible(t.id, true));
+        renderViewer();
+        toast('すべてのレイヤーを表示しました');
+    }
+    // 指定トラック以外を非表示にする
+    function hideOtherTracks(trackId) {
+        TRACKS.forEach((t) => setTrackVisible(t.id, t.id === trackId));
+        renderViewer();
+        toast('他のレイヤーを非表示にしました');
+    }
+    // 指定トラック上のクリップをすべて削除する
+    function clearTrackClips(trackId) {
+        const targets = state.clips.filter((c) => c.track === trackId);
+        if (!targets.length) { toast('このレイヤーにクリップはありません'); return; }
+        targets.forEach((c) => { if (c._el) { try { c._el.pause(); } catch (e) {} } });
+        if (targets.some((c) => c.id === state.selectedClipId)) state.selectedClipId = null;
+        state.clips = state.clips.filter((c) => c.track !== trackId);
+        renderClips();
+        updateProps();
+        recomputeDuration();
+        renderViewer();
+        toast('レイヤーのクリップを削除しました');
+    }
+    // 指定トラックの表示/ミュート状態を初期化する
+    function resetTrackState(trackId) {
+        setTrackVisible(trackId, true);
+        const m = document.querySelector(`.track-header[data-track="${trackId}"] [data-act="mute"]`);
+        if (m) m.classList.remove('is-off');
+        renderViewer();
+        toast('レイヤー設定を初期化しました');
+    }
 
     // ======================================================
     // 再生コントロール
@@ -1219,6 +1262,7 @@
     function bindContextMenu() {
         document.addEventListener('contextmenu', (e) => {
             const clipEl = e.target.closest('.clip');
+            const headerEl = e.target.closest('.track-header');
             const mediaEl = e.target.closest('.media-item');
             const trackEl = e.target.closest('.track');
             const viewerEl = e.target.closest('.viewer__canvas');
@@ -1227,6 +1271,10 @@
                 e.preventDefault();
                 const clip = state.clips.find((c) => c.id === clipEl.dataset.clip);
                 if (clip) { selectClip(clip.id); showClipMenu(e.clientX, e.clientY, clip); }
+            } else if (headerEl) {
+                e.preventDefault();
+                const t = TRACKS.find((x) => x.id === headerEl.dataset.track);
+                if (t) showTrackHeaderMenu(e.clientX, e.clientY, t);
             } else if (mediaEl) {
                 e.preventDefault();
                 const m = MEDIA.find((x) => x.id === mediaEl.dataset.media);
@@ -1290,6 +1338,25 @@
             { icon: '⏱', label: 'ここへ再生ヘッドを移動', action: () => seek(at) },
             { icon: '🔍', label: 'ズームをリセット', action: () => { $('#zoom').value = 60; $('#zoom').dispatchEvent(new Event('input')); } },
         ], 'タイムライン');
+    }
+
+    // ---- トラックヘッダー（タイムラインソース）用メニュー ----
+    function showTrackHeaderMenu(x, y, t) {
+        const visible = trackVisible(t.id);
+        const muted = trackMuted(t.id);
+        showContextMenu(x, y, [
+            { icon: visible ? '✓' : '', label: '表示', action: () => toggleTrackVisible(t.id) },
+            { icon: muted ? '🔇' : '🔈', label: muted ? 'ミュートを解除' : 'ミュート', action: () => toggleTrackMute(t.id) },
+            { separator: true },
+            { icon: '📋', label: 'ここに貼り付け', key: 'Ctrl+V', disabled: !state.clipboard,
+              action: () => pasteClip(t.id, Math.round(state.playhead * 10) / 10) },
+            { icon: '🗑', label: 'このレイヤーのクリップを削除', danger: true, action: () => clearTrackClips(t.id) },
+            { separator: true },
+            { icon: '👁', label: 'すべてのレイヤーを表示', action: showAllTracks },
+            { icon: '🙈', label: '他のレイヤーを非表示', action: () => hideOtherTracks(t.id) },
+            { separator: true },
+            { icon: '↺', label: 'レイヤー設定を初期化', action: () => resetTrackState(t.id) },
+        ], t.label);
     }
 
     // ---- モニター用メニュー ----
