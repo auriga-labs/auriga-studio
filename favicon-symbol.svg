@@ -1,0 +1,30 @@
+<svg width="512" height="512" viewBox="0 0 680 680" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Auriga Studio ファビコン（シンボル版）</title>
+<desc>御者座の五角形をシンボル化した小サイズ向けファビコン</desc>
+<defs>
+  <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#241456"/>
+    <stop offset="100%" stop-color="#0B0620"/>
+  </radialGradient>
+</defs>
+
+<!-- 背景 -->
+<rect x="40" y="40" width="600" height="600" rx="140" fill="url(#bgGrad)"/>
+
+<!-- 御者座の五角形（太線でシンボル化） -->
+<polygon points="340,160 520,290 455,500 225,500 160,290"
+  fill="none" stroke="#F0EBFF" stroke-width="48" stroke-linejoin="round"/>
+
+<!-- 頂点の星 -->
+<!-- Capella(頂点・最大・黄) -->
+<circle cx="340" cy="160" r="56" fill="#FFE566" opacity="0.22"/>
+<circle cx="340" cy="160" r="44" fill="#FFD93B"/>
+<!-- β(右上・オレンジ) -->
+<circle cx="520" cy="290" r="34" fill="#FFA53D"/>
+<!-- ε(右下・ピンク) -->
+<circle cx="455" cy="500" r="34" fill="#FF6B93"/>
+<!-- ι(左下・紫) -->
+<circle cx="225" cy="500" r="34" fill="#A98BFF"/>
+<!-- θ(左・水色) -->
+<circle cx="160" cy="290" r="34" fill="#56C4EC"/>
+</svg>
