@@ -1,10 +1,5 @@
 {
   "version": "0.0.1",
-  "commit": "4f23f1e3104a655e2c37f7088a2b18d2dda5b1bc",
-  "date": "2026-06-29T04:46:03.089Z",
-  "electron": "",
-  "electronBuildId": "",
-  "chromium": "",
-  "node": "22.22.3",
-  "v8": "12.4.254.21-node.56"
+  "commit": "6afbcfe28089126959c18ecd3e324a68135562e0",
+  "date": "2026-06-29T04:47:18.530Z"
 }

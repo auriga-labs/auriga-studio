@@ -16,11 +16,11 @@ const version = {
   version: pkg.version,
   commit: safe('git rev-parse HEAD'),
   date: new Date().toISOString(),
-  electron: process.versions.electron || '',
-  electronBuildId: process.env.ELECTRON_BUILD_ID || '',
-  chromium: process.versions.chrome || '',
-  node: process.versions.node || process.version.replace(/^v/, ''),
-  v8: process.versions.v8 || ''
+//   electron: process.versions.electron || '',
+//   electronBuildId: process.env.ELECTRON_BUILD_ID || '',
+//   chromium: process.versions.chrome || '',
+//   node: process.versions.node || process.version.replace(/^v/, ''),
+//   v8: process.versions.v8 || ''
 };
 
 fs.writeFileSync(
