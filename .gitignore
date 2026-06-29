@@ -28,3 +28,12 @@ build/
 *.log
 npm-debug.log*
 yarn-debug.log*
+
+# Tabler Icons
+assets/vendor/tabler-icons-webfont/3.44.0/*
+!assets/vendor/tabler-icons-webfont/3.44.0/tabler-icons.min.css
+!assets/vendor/tabler-icons-webfont/3.44.0/fonts/
+assets/vendor/tabler-icons-webfont/3.44.0/fonts/*
+!assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons.ttf
+!assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons.woff
+!assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons.woff2
