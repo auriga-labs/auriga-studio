@@ -19,6 +19,68 @@
     font-size: 13px;
 }
 
+/* ===== テーマ別トークン上書き ===== */
+/* ときくんオリジナル（既定）は上の :root の値をそのまま使う */
+
+/* YMM4 風：明るいライトテーマ＋グリーン系アクセント */
+[data-theme="ymm4"] {
+    --bg-0: #e9ebf0;
+    --bg-1: #f4f5f8;
+    --bg-2: #ffffff;
+    --bg-3: #e3e6ec;
+    --bg-hover: #d6dae3;
+    --line: #ccd2dc;
+    --text: #1c2330;
+    --text-dim: #5a6373;
+    --text-mute: #8a93a3;
+    --accent: #2bae8f;
+    --accent-2: #f0a020;
+    --accent-glow: rgba(43, 174, 143, 0.35);
+    --danger: #e0506a;
+    --shadow: 0 8px 30px rgba(40, 50, 70, 0.18);
+}
+
+/* DaVinci Resolve 風：ニュートラルなダークグレー＋ブルー系アクセント */
+[data-theme="davinci"] {
+    --bg-0: #1a1a1a;
+    --bg-1: #232323;
+    --bg-2: #2b2b2b;
+    --bg-3: #383838;
+    --bg-hover: #454545;
+    --line: #3d3d3d;
+    --text: #e8e8e8;
+    --text-dim: #a0a0a0;
+    --text-mute: #6b6b6b;
+    --accent: #4a90d9;
+    --accent-2: #e6953c;
+    --accent-glow: rgba(74, 144, 217, 0.4);
+    --danger: #d9534f;
+    --shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+}
+
+/* Adobe Premiere Pro 風：ダークパープル系 */
+[data-theme="premiere"] {
+    --bg-0: #16151a;
+    --bg-1: #1d1c24;
+    --bg-2: #25232e;
+    --bg-3: #322f3e;
+    --bg-hover: #3e3a4d;
+    --line: #38354a;
+    --text: #ececf2;
+    --text-dim: #9c98ac;
+    --text-mute: #686477;
+    --accent: #9a7cf7;
+    --accent-2: #d36cf0;
+    --accent-glow: rgba(154, 124, 247, 0.45);
+    --danger: #ff5b6e;
+    --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* テーマ切替時の色変化を滑らかに */
+.menubar, .panel, .stage, .timeline, .btn, .menu__item, .ws-tab {
+    transition: background-color .25s ease, color .25s ease, border-color .25s ease;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -560,6 +622,20 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 .ctxmenu__label { flex: 1; }
 .ctxmenu__key { color: var(--text-mute); font-size: 11px; letter-spacing: .3px; }
 .ctxmenu__sep { height: 1px; background: var(--line); margin: 4px 6px; }
+
+/* ===== テーマ選択 ===== */
+.theme-select {
+    background: var(--bg-2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s ease;
+}
+.theme-select:hover { background: var(--bg-3); border-color: #3a4150; }
+.theme-select:focus { outline: none; border-color: var(--accent); }
 
 /* ===== レスポンシブ ===== */
 @media (max-width: 1100px) {

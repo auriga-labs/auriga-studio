@@ -6,6 +6,9 @@
 
     // ---- 定数 ----
     const FPS = 30;
+    const THEME_KEY = 'auriga.theme';   // テーマ設定の保存キー
+    const THEMES = ['tokikun', 'ymm4', 'davinci', 'premiere'];
+    const THEME_LABELS = { tokikun: 'ときくん', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
     const PX_PER_SEC_BASE = 1;        // ズーム値(px)がそのまま1秒あたりのpx
     const TIMELINE_SECONDS = 60;      // タイムライン全体の長さ(秒)
 
@@ -90,6 +93,7 @@
     // 初期化
     // ======================================================
     function init() {
+        applyStoredTheme();   // 保存済みテーマを最初に適用
         renderMedia();
         renderEffects();
         renderTextPresets();
@@ -937,11 +941,38 @@
     }
 
     // ======================================================
+    // テーマ切り替え
+    // ======================================================
+    // テーマを適用して保存する（ときくんは既定なので data-theme を外す）
+    function applyTheme(name, silent) {
+        const theme = THEMES.includes(name) ? name : 'tokikun';
+        if (theme === 'tokikun') {
+            delete document.documentElement.dataset.theme;
+        } else {
+            document.documentElement.dataset.theme = theme;
+        }
+        try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* 保存不可でも継続 */ }
+        const sel = $('#themeSelect');
+        if (sel) sel.value = theme;
+        if (!silent) toast(`テーマ：${THEME_LABELS[theme]}`);
+    }
+
+    // 起動時に保存済みテーマを復元する
+    function applyStoredTheme() {
+        let saved = 'tokikun';
+        try { saved = localStorage.getItem(THEME_KEY) || 'tokikun'; } catch (e) {}
+        applyTheme(saved, true);
+    }
+
+    // ======================================================
     // UI バインド
     // ======================================================
     function bindUI() {
         bindProps();
         bindContextMenu();
+
+        // テーマ切り替え
+        $('#themeSelect').addEventListener('change', (e) => applyTheme(e.target.value));
 
         // ファイルがトラック外に落ちてもブラウザがファイルを開かないようにする
         ['dragover', 'drop'].forEach((evt) => {
