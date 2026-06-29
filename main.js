@@ -981,6 +981,7 @@
         bindProps();
         bindContextMenu();
         bindMenuBar();
+        bindAboutModal();   // バージョン情報モーダルの開閉
 
         // テーマ切り替え
         $('#themeSelect').addEventListener('change', (e) => applyTheme(e.target.value));
@@ -1585,7 +1586,7 @@
             case 'timeline-zoom-out': setZoom(state.zoom - 20); return;
             case 'add-text-item':   addClip('text', 'テキスト', 'T1', state.playhead, 3); return;
             // ---- ロゴ文字のメニュー（全テーマ共通） ----
-            case 'about':           toast('Auriga Studio v0.0.1 🌟'); return;
+            case 'about':           showAboutModal(); return;
             case 'whats-new':       toast('新着情報（準備中）'); return;
             case 'preferences':     toast('環境設定（準備中）⚙️'); return;
             case 'keyboard-shortcuts': toast('キーボードショートカット（準備中）'); return;
@@ -1644,6 +1645,80 @@
     function escapeHtml(s) {
         return String(s).replace(/[&<>"]/g, (c) =>
             ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    // ======================================================
+    // バージョン情報モーダル（Auriga Studio について）
+    // ======================================================
+    // version.json の値を表示する順番とラベル（VS Code の About に倣う）
+    const ABOUT_FIELDS = [
+        { key: 'version',         label: 'Version' },
+        { key: 'commit',          label: 'Commit' },
+        { key: 'date',            label: 'Date' },
+        { key: 'electron',        label: 'Electron' },
+        { key: 'electronBuildId', label: 'ElectronBuildId' },
+        { key: 'chromium',        label: 'Chromium' },
+        { key: 'node',            label: 'Node.js' },
+        { key: 'v8',              label: 'V8' },
+        { key: 'os',              label: 'OS' },
+    ];
+
+    let aboutInfoCache = null;   // 読み込んだ version.json を保持
+
+    // version.json を読み込んでモーダルを開く
+    async function showAboutModal() {
+        const modal = $('#aboutModal');
+        const infoEl = $('#aboutInfo');
+        if (!modal || !infoEl) return;
+        if (!aboutInfoCache) {
+            try {
+                const res = await fetch('version.json');
+                if (!res.ok) throw new Error('fetch failed');
+                aboutInfoCache = await res.json();
+            } catch (e) {
+                toast('バージョン情報の読み込みに失敗しました');
+                return;
+            }
+        }
+        // 取得済みの値を dt/dd で描画する（未定義の項目は飛ばす）
+        infoEl.innerHTML = ABOUT_FIELDS
+            .filter((f) => aboutInfoCache[f.key] != null)
+            .map((f) => `<dt>${escapeHtml(f.label)}</dt><dd>${escapeHtml(aboutInfoCache[f.key])}</dd>`)
+            .join('');
+        modal.hidden = false;
+    }
+
+    // モーダルを閉じる
+    function closeAboutModal() {
+        const modal = $('#aboutModal');
+        if (modal) modal.hidden = true;
+    }
+
+    // バージョン情報を「ラベル: 値」の複数行テキストにしてクリップボードへ
+    function copyAboutInfo() {
+        if (!aboutInfoCache) return;
+        const text = ABOUT_FIELDS
+            .filter((f) => aboutInfoCache[f.key] != null)
+            .map((f) => `${f.label}: ${aboutInfoCache[f.key]}`)
+            .join('\n');
+        try {
+            navigator.clipboard.writeText(text);
+            toast('バージョン情報をコピーしました 📋');
+        } catch (e) { toast('コピーに失敗しました'); }
+    }
+
+    // モーダルの開閉操作をバインドする
+    function bindAboutModal() {
+        const modal = $('#aboutModal');
+        if (!modal) return;
+        $('#aboutClose').addEventListener('click', closeAboutModal);
+        $('#aboutCopy').addEventListener('click', copyAboutInfo);
+        // 背景クリックで閉じる
+        modal.querySelector('[data-about-close]').addEventListener('click', closeAboutModal);
+        // Esc で閉じる
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape' && !modal.hidden) closeAboutModal();
+        });
     }
 
     // ======================================================
