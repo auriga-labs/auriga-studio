@@ -56,7 +56,7 @@
         { "type": "action", "id": "export-exo",   "label": "Exo出力", "icon": "movie" },
         { "type": "action", "id": "export-video", "label": "動画出力", "icon": "video" },
         { "type": "separator" },
-        { "type": "action", "id": "export-thumbnail",           "label": "サムネイル画像を出力", "icon": "photo" },
+        { "type": "action", "id": "export-thumbnail",           "label": "サムネイル画像を出力", "icon": "camera" },
         { "type": "action", "id": "export-thumbnail-clipboard", "label": "サムネイル画像をクリップボードに出力", "icon": "clipboard-copy" },
         { "type": "separator" },
         { "type": "action", "id": "edit-characters", "label": "キャラクターの編集", "icon": "user-edit" },

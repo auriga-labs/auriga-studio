@@ -1387,7 +1387,7 @@
         const menus = (layout && layout.menus) || [];
         closeMenuBar();
         els.appMenu.innerHTML = menus.map((m) =>
-            `<button class="menu__item" data-menu="${m.id}">${iconHtml(m.icon)}<span>${escapeHtml(m.label)}</span></button>`
+            `<button class="menu__item" data-menu="${m.id}">${iconHtml(m.icon)}<span>${labelHtml(m)}</span></button>`
         ).join('');
 
         els.appMenu.querySelectorAll('.menu__item').forEach((btn) => {
@@ -1466,7 +1466,7 @@
 
         el.innerHTML = `
             <span class="appmenu__icon">${iconHtml(it.icon)}</span>
-            <span class="appmenu__label">${escapeHtml(it.label)}</span>
+            <span class="appmenu__label">${labelHtml(it)}</span>
             <span class="appmenu__key">${keyHtml}</span>
             <span class="appmenu__arrow">${hasSub ? '<i class="ti ti-chevron-right"></i>' : ''}</span>`;
 
@@ -1577,6 +1577,13 @@
         if (!name) return '';
         const safe = String(name).replace(/[^a-z0-9-]/g, '');
         return safe ? `<i class="ti ti-${safe}"></i>` : '';
+    }
+
+    // ラベルを生成する。mnemonic があれば "ラベル (M)" の形にする
+    function labelHtml(item) {
+        let html = escapeHtml(item.label);
+        if (item.mnemonic) html += ` (${escapeHtml(item.mnemonic)})`;
+        return html;
     }
 
     // HTML エスケープ（メニューラベル用）
