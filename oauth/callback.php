@@ -69,7 +69,8 @@ $_SESSION['user'] = [
 // アプリ（Electron）起点のログインなら、ダッシュボードではなく
 // ブリッジページを返してログインタブから親ウィンドウへ結果を渡す。
 if ($isApp) {
-    render_app_bridge($_SESSION['user'], '', $reqState);
+    // access_token も渡し、アプリ側から Drive API を直接呼べるようにする
+    render_app_bridge($_SESSION['user'], '', $reqState, $tokens);
     exit;
 }
 

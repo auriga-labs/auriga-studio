@@ -1917,14 +1917,33 @@
     // ======================================================
     // アカウント情報ポップオーバー（Auriga Cloud 使用容量つき）
     // ======================================================
-    const CLOUD_TOTAL_GB = 15;        // 無料枠（GB）
-    let cloudUsedGB = 0;              // 使用量（GB）。ログイン後に実値へ更新する
+    const CLOUD_FALLBACK_TOTAL_GB = 15;   // Drive容量が取れないときの表示用フォールバック枠（GB）
+    const QUOTA_KEY = 'auriga.quota';     // Drive容量（usage/limit）のキャッシュ保存キー
+
+    // Drive の使用容量（バイト）。ログイン後に GET drive/v3/about で実値へ更新する。
+    // limit が null のときは「無制限」を意味する。
+    let cloudUsedBytes = 0;
+    let cloudLimitBytes = CLOUD_FALLBACK_TOTAL_GB * 1024 * 1024 * 1024;
+    let cloudHasQuota = false;            // 実値（Drive API由来）を取得済みか
 
     // 現在ログイン中のユーザー（未ログインは null）
     // 形: { id, email, name, picture, verified }
     let currentUser = null;
-    let authPopup = null;             // ログイン用タブ（window.open）の参照
-    let authState = null;             // CSRF対策のstate（クライアント生成・照合用）
+    let accessToken = null;              // Google アクセストークン（メモリ保持のみ・短命）
+    let authPopup = null;                // ログイン用タブ（window.open）の参照
+    let authState = null;                // CSRF対策のstate（クライアント生成・照合用）
+
+    // バイト数を読みやすい単位（GB/TB等）に整形する
+    function formatBytes(bytes) {
+        if (!isFinite(bytes) || bytes < 0) bytes = 0;
+        const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+        let i = 0;
+        let v = bytes;
+        while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+        // GB以上は小数1桁、それ未満は整数寄りで読みやすく
+        const digits = i >= 3 ? 1 : 0;
+        return `${v.toFixed(digits)} ${units[i]}`;
+    }
 
     // 使用容量ゲージを現在値で更新する
     function updateCloudGauge() {
@@ -1932,14 +1951,84 @@
         const usage = $('#cloudUsage');
         const note = $('#cloudNote');
         if (!bar || !usage) return;
-        const pct = Math.max(0, Math.min(100, (cloudUsedGB / CLOUD_TOTAL_GB) * 100));
+
+        const limited = cloudLimitBytes != null && isFinite(cloudLimitBytes) && cloudLimitBytes > 0;
+        const pct = limited
+            ? Math.max(0, Math.min(100, (cloudUsedBytes / cloudLimitBytes) * 100))
+            : 0;
         bar.style.width = pct + '%';
-        usage.textContent = currentUser
-            ? `${cloudUsedGB.toFixed(1)} / ${CLOUD_TOTAL_GB} GB`
-            : `— / ${CLOUD_TOTAL_GB} GB`;
+
+        if (!currentUser) {
+            // 未ログイン：フォールバック枠だけ示す
+            usage.textContent = `— / ${CLOUD_FALLBACK_TOTAL_GB} GB`;
+        } else if (limited) {
+            usage.textContent = `${formatBytes(cloudUsedBytes)} / ${formatBytes(cloudLimitBytes)}`;
+        } else {
+            // 容量無制限（limit なし）
+            usage.textContent = `${formatBytes(cloudUsedBytes)} / 無制限`;
+        }
+
         if (note) {
-            if (!currentUser) note.textContent = 'ログインすると 15 GB を無料で利用できます';
-            else note.textContent = `残り ${(CLOUD_TOTAL_GB - cloudUsedGB).toFixed(1)} GB`;
+            if (!currentUser) {
+                note.textContent = `ログインすると ${CLOUD_FALLBACK_TOTAL_GB} GB を無料で利用できます`;
+            } else if (!cloudHasQuota) {
+                note.textContent = '容量を確認中…';
+            } else if (limited) {
+                note.textContent = `残り ${formatBytes(cloudLimitBytes - cloudUsedBytes)}`;
+            } else {
+                note.textContent = '容量無制限';
+            }
+        }
+    }
+
+    // ---- Drive 容量キャッシュ（localStorage） ----
+    // 再起動後もアクセストークンが無い間、最後に取得した容量を表示するために使う。
+    function loadStoredQuota() {
+        try {
+            const raw = localStorage.getItem(QUOTA_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    }
+    function saveStoredQuota(quota) {
+        try {
+            if (quota) localStorage.setItem(QUOTA_KEY, JSON.stringify(quota));
+            else localStorage.removeItem(QUOTA_KEY);
+        } catch (e) {}
+    }
+
+    // キャッシュ済みの容量を状態へ反映する（実値が無いときの表示用）
+    function applyStoredQuota() {
+        const q = loadStoredQuota();
+        if (!q) return;
+        cloudUsedBytes = Number(q.usage) || 0;
+        cloudLimitBytes = q.limit == null ? null : Number(q.limit);
+        cloudHasQuota = true;
+    }
+
+    // Google Drive の使用容量を取得してゲージへ反映する
+    // GET https://www.googleapis.com/drive/v3/about?fields=storageQuota
+    async function fetchDriveStorage() {
+        if (!accessToken) return;
+        try {
+            const res = await fetch(
+                'https://www.googleapis.com/drive/v3/about?fields=storageQuota',
+                { headers: { Authorization: 'Bearer ' + accessToken } }
+            );
+            if (!res.ok) {
+                // 401（トークン失効）などはキャッシュ表示のまま黙って諦める
+                if (res.status === 401) accessToken = null;
+                return;
+            }
+            const data = await res.json();
+            const q = data.storageQuota || {};
+            // limit は無制限アカウントでは欠落する
+            cloudUsedBytes = Number(q.usage) || 0;
+            cloudLimitBytes = q.limit == null ? null : Number(q.limit);
+            cloudHasQuota = true;
+            saveStoredQuota({ usage: q.usage ?? '0', limit: q.limit ?? null });
+            updateCloudGauge();
+        } catch (e) {
+            // ネットワークエラー等はキャッシュ表示のままにする
         }
     }
 
@@ -2034,6 +2123,13 @@
     // ログアウトする（サーバーのセッションも破棄する）
     function signOut() {
         setUser(null, true);
+        // トークンとキャッシュ済み容量を破棄し、フォールバック表示へ戻す
+        accessToken = null;
+        cloudHasQuota = false;
+        cloudUsedBytes = 0;
+        cloudLimitBytes = CLOUD_FALLBACK_TOTAL_GB * 1024 * 1024 * 1024;
+        saveStoredQuota(null);
+        updateCloudGauge();
         // サーバー側セッションも破棄（自動で閉じるポップアップ）
         const out = window.open(OAUTH_LOGOUT_URL, 'auriga-oauth-out', 'width=420,height=520');
         if (out) setTimeout(() => { try { out.close(); } catch (e) {} }, 1500);
@@ -2060,6 +2156,11 @@
 
             if (data.user) {
                 setUser(data.user, true);
+                // アクセストークンを受け取れたら Drive の実容量を取得する
+                if (data.access_token) {
+                    accessToken = data.access_token;
+                    fetchDriveStorage();
+                }
                 toast(`ようこそ、${data.user.name || 'ユーザー'} さん 🎉`);
             } else if (data.error) {
                 toast('ログインに失敗しました: ' + data.error);
@@ -2077,9 +2178,14 @@
 
         // 認証ブリッジを準備し、保存済みユーザーを復元する
         bindOAuthBridge();
-        setUser(loadStoredUser(), false);
+        const stored = loadStoredUser();
+        // ログイン中なら、トークンが無い間でも最後に取得した容量を表示する
+        if (stored) applyStoredQuota();
+        setUser(stored, false);
 
         const open = () => {
+            // トークンが生きていれば開くたびに最新の容量へ更新する
+            if (currentUser && accessToken) fetchDriveStorage();
             updateCloudGauge();
             pop.hidden = false;
             btn.setAttribute('aria-expanded', 'true');
