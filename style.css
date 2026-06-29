@@ -159,6 +159,39 @@ body {
     cursor: pointer; font-size: 12.5px; transition: all .12s;
 }
 .menu__item:hover { background: var(--bg-3); color: var(--text); }
+.menu__item.is-active { background: var(--bg-3); color: var(--text); }
+
+/* ===== アプリメニュー（メニューバーのドロップダウン） ===== */
+.appmenu-layer { position: fixed; inset: 0; z-index: 900; pointer-events: none; }
+.appmenu {
+    position: fixed;
+    min-width: 220px;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 5px;
+    font-size: 12.5px;
+    pointer-events: auto;
+}
+.appmenu__item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: var(--radius-sm);
+    color: var(--text); cursor: pointer; white-space: nowrap;
+}
+.appmenu__item:hover, .appmenu__item.is-open { background: var(--accent); color: #fff; }
+.appmenu__check { width: 14px; text-align: center; flex: none; font-size: 11px; color: var(--accent-2); }
+.appmenu__item:hover .appmenu__check, .appmenu__item.is-open .appmenu__check { color: #fff; }
+.appmenu__label { flex: 1; }
+.appmenu__key { color: var(--text-mute); font-size: 11px; letter-spacing: .3px; margin-left: 18px; }
+.appmenu__item:hover .appmenu__key, .appmenu__item.is-open .appmenu__key { color: rgba(255,255,255,.8); }
+.appmenu__arrow { color: var(--text-mute); font-size: 10px; flex: none; }
+.appmenu__item:hover .appmenu__arrow, .appmenu__item.is-open .appmenu__arrow { color: #fff; }
+.appmenu__sep { height: 1px; background: var(--line); margin: 4px 6px; }
+.appmenu__empty, .appmenu__dynamic {
+    padding: 7px 10px; color: var(--text-mute); font-size: 11.5px; white-space: nowrap;
+}
+.appmenu__dynamic { font-style: italic; }
 
 .workspace-tabs { display: flex; background: var(--bg-2); border-radius: 8px; padding: 3px; gap: 2px; }
 .ws-tab {

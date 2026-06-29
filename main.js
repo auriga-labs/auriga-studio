@@ -9,6 +9,13 @@
     const THEME_KEY = 'auriga.theme';   // テーマ設定の保存キー
     const THEMES = ['tokikun', 'ymm4', 'davinci', 'premiere'];
     const THEME_LABELS = { tokikun: 'ときくん', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
+
+    // ---- メニューレイアウト ----
+    // 対応ソフトごとのメニュー定義ファイル。今は YMM4 のみ。
+    const MENU_LAYOUTS = {
+        ymm4: 'menu_layout/ymm4_4.53.0.9.json',
+    };
+    const DEFAULT_MENU_LAYOUT = 'ymm4';   // 暫定の既定値（YMM4）
     const PX_PER_SEC_BASE = 1;        // ズーム値(px)がそのまま1秒あたりのpx
     const TIMELINE_SECONDS = 60;      // タイムライン全体の長さ(秒)
 
@@ -28,6 +35,7 @@
         tool: 'select',
         clips: [],                    // {id,type,name,track,start,dur,props}
         nextId: 1,
+        menuLayoutKey: DEFAULT_MENU_LAYOUT,   // 現在のメニュー定義
     };
 
     // ---- トラック定義（上から） ----
@@ -67,6 +75,7 @@
     const $$ = (s) => Array.from(document.querySelectorAll(s));
 
     const els = {
+        appMenu: $('#appMenu'),
         mediaGrid: $('#mediaGrid'),
         effectList: $('#effectList'),
         textPresets: $('#textPresets'),
@@ -94,6 +103,7 @@
     // ======================================================
     function init() {
         applyStoredTheme();   // 保存済みテーマを最初に適用
+        loadMenuBar(DEFAULT_MENU_LAYOUT);   // メニューバーを動的生成（既定は YMM4）
         renderMedia();
         renderEffects();
         renderTextPresets();
@@ -970,6 +980,7 @@
     function bindUI() {
         bindProps();
         bindContextMenu();
+        bindMenuBar();
 
         // テーマ切り替え
         $('#themeSelect').addEventListener('change', (e) => applyTheme(e.target.value));
@@ -1339,6 +1350,228 @@
             a.click();
             toast('現在フレームを保存しました 🖼');
         } catch (e) { toast('フレームの保存に失敗しました'); }
+    }
+
+    // ======================================================
+    // メニューバー（menu_layout から動的生成）
+    // ======================================================
+    // ドロップダウンを格納するレイヤー（クリックは各パネルだけが受ける）
+    const menuLayer = document.createElement('div');
+    menuLayer.className = 'appmenu-layer';
+    document.body.appendChild(menuLayer);
+
+    let activeMenuId = null;   // 現在開いているトップメニューの id
+
+    // メニュー定義を読み込んでバーを生成する
+    async function loadMenuBar(key) {
+        const path = MENU_LAYOUTS[key] || MENU_LAYOUTS[DEFAULT_MENU_LAYOUT];
+        try {
+            const res = await fetch(path);
+            if (!res.ok) throw new Error('fetch failed');
+            const layout = await res.json();
+            state.menuLayoutKey = key;
+            renderMenuBar(layout);
+        } catch (e) {
+            // 読み込み失敗時は最小限のフォールバックを表示
+            renderMenuBar({ menus: [
+                { id: 'file', label: 'ファイル', items: [] },
+                { id: 'edit', label: '編集', items: [] },
+                { id: 'help', label: 'ヘルプ', items: [] },
+            ] });
+            toast('メニュー定義の読み込みに失敗しました');
+        }
+    }
+
+    // トップレベルのメニューボタンを生成する
+    function renderMenuBar(layout) {
+        const menus = (layout && layout.menus) || [];
+        closeMenuBar();
+        els.appMenu.innerHTML = menus.map((m) =>
+            `<button class="menu__item" data-menu="${m.id}">${escapeHtml(m.label)}</button>`
+        ).join('');
+
+        els.appMenu.querySelectorAll('.menu__item').forEach((btn) => {
+            const menu = menus.find((m) => m.id === btn.dataset.menu);
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (activeMenuId === menu.id) { closeMenuBar(); return; }
+                openTopMenu(btn, menu);
+            });
+            // 開いている間は他のメニューにマウスを移すだけで切り替わる（ネイティブ風）
+            btn.addEventListener('mouseenter', () => {
+                if (activeMenuId && activeMenuId !== menu.id) openTopMenu(btn, menu);
+            });
+        });
+    }
+
+    // トップメニューを開く
+    function openTopMenu(btn, menu) {
+        closeMenuBar();
+        activeMenuId = menu.id;
+        btn.classList.add('is-active');
+        const panel = buildPanel(menu.items || [], 0);
+        menuLayer.appendChild(panel);
+        const r = btn.getBoundingClientRect();
+        positionPanel(panel, r.left, r.bottom + 2);
+    }
+
+    // すべてのドロップダウンを閉じる
+    function closeMenuBar() {
+        menuLayer.innerHTML = '';
+        activeMenuId = null;
+        els.appMenu.querySelectorAll('.menu__item').forEach((b) => b.classList.remove('is-active'));
+    }
+
+    // 1 枚のパネル（メニュー/サブメニュー）を組み立てる
+    function buildPanel(items, level) {
+        const panel = document.createElement('div');
+        panel.className = 'appmenu' + (level > 0 ? ' appmenu--sub' : '');
+        panel.dataset.level = level;
+        if (!items.length) {
+            const empty = document.createElement('div');
+            empty.className = 'appmenu__empty';
+            empty.textContent = '（項目がありません）';
+            panel.appendChild(empty);
+            return panel;
+        }
+        items.forEach((it) => panel.appendChild(buildMenuItem(it, level, items)));
+        return panel;
+    }
+
+    // メニュー項目 1 行を組み立てる
+    function buildMenuItem(it, level, siblings) {
+        if (it.type === 'separator') {
+            const sep = document.createElement('div');
+            sep.className = 'appmenu__sep';
+            return sep;
+        }
+        if (it.type === 'dynamic') {
+            const ph = document.createElement('div');
+            ph.className = 'appmenu__dynamic';
+            ph.textContent = it.placeholder || dynamicLabel(it.source);
+            return ph;
+        }
+
+        const el = document.createElement('div');
+        const hasSub = it.type === 'submenu';
+        el.className = 'appmenu__item' + (hasSub ? ' has-sub' : '');
+
+        let mark = '';
+        if (it.type === 'radio') mark = it.checked ? '●' : '';
+        if (it.type === 'checkbox') mark = it.checked ? '✔' : '';
+
+        el.innerHTML = `
+            <span class="appmenu__check">${mark}</span>
+            <span class="appmenu__label">${escapeHtml(it.label)}</span>
+            ${it.shortcut ? `<span class="appmenu__key">${escapeHtml(it.shortcut)}</span>` : ''}
+            ${hasSub ? '<span class="appmenu__arrow">▸</span>' : ''}`;
+
+        // ホバー：この階層より深いパネルを閉じ、同階層の開閉状態をリセット
+        el.addEventListener('mouseenter', () => {
+            closeDeeperPanels(level);
+            const panel = el.closest('.appmenu');
+            panel.querySelectorAll(':scope > .appmenu__item.is-open')
+                .forEach((s) => s.classList.remove('is-open'));
+            if (hasSub) {
+                const child = buildPanel(it.items || [], level + 1);
+                menuLayer.appendChild(child);
+                const r = el.getBoundingClientRect();
+                positionPanel(child, r.right - 4, r.top - 5);
+                el.classList.add('is-open');
+            }
+        });
+
+        // クリック可能な項目（サブメニューの親はクリックしても閉じない）
+        if (!hasSub) {
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (it.type === 'radio' && it.group) {
+                    siblings.forEach((s) => { if (s.group === it.group) s.checked = (s === it); });
+                } else if (it.type === 'checkbox') {
+                    it.checked = !it.checked;
+                }
+                closeMenuBar();
+                handleMenuAction(it);
+            });
+        }
+        return el;
+    }
+
+    // 指定階層より深いパネルを閉じる
+    function closeDeeperPanels(level) {
+        menuLayer.querySelectorAll('.appmenu').forEach((p) => {
+            if (Number(p.dataset.level) > level) p.remove();
+        });
+    }
+
+    // パネルを画面内に収めて配置する
+    function positionPanel(panel, x, y) {
+        const r = panel.getBoundingClientRect();
+        const px = Math.max(4, Math.min(x, window.innerWidth - r.width - 6));
+        const py = Math.max(4, Math.min(y, window.innerHeight - r.height - 6));
+        panel.style.left = px + 'px';
+        panel.style.top = py + 'px';
+    }
+
+    // dynamic 項目のフォールバック文言
+    function dynamicLabel(source) {
+        const map = {
+            recentFiles: '最近使ったファイルはありません',
+            recentProjects: '最近のプロジェクトはありません',
+            backups: 'バックアップはありません',
+        };
+        return map[source] || '（項目がありません）';
+    }
+
+    // メニュー項目のアクションを実行する
+    function handleMenuAction(it) {
+        switch (it.id) {
+            case 'save-project':    toast('プロジェクトを保存しました 💾'); return;
+            case 'save-project-as': toast('別名で保存しました 💾'); return;
+            case 'undo':            toast('元に戻す（デモ）'); return;
+            case 'redo':            toast('やり直し（デモ）'); return;
+            case 'export-video':    toast('書き出しを開始しました… 🎞️'); return;
+            case 'play-pause':      togglePlay(); return;
+            case 'stop':            if (state.playing) togglePlay(); seek(0); return;
+            case 'go-to-start':     seek(0); return;
+            case 'go-to-end':       seek(state.duration); return;
+            case 'next-frame':      seek(state.playhead + 1 / FPS); return;
+            case 'prev-frame':      seek(state.playhead - 1 / FPS); return;
+            case 'forward-1sec':    seek(state.playhead + 1); return;
+            case 'backward-1sec':   seek(state.playhead - 1); return;
+            case 'timeline-zoom-in':  setZoom(state.zoom + 20); return;
+            case 'timeline-zoom-out': setZoom(state.zoom - 20); return;
+            case 'add-text-item':   addClip('text', 'テキスト', 'T1', state.playhead, 3); return;
+            default:
+                toast(`「${it.label}」（未実装）`);
+        }
+    }
+
+    // ズーム値を設定してタイムラインを更新する
+    function setZoom(v) {
+        const z = $('#zoom');
+        z.value = Math.max(Number(z.min), Math.min(Number(z.max), v));
+        z.dispatchEvent(new Event('input'));
+    }
+
+    // メニューを閉じる操作をまとめてバインド
+    function bindMenuBar() {
+        document.addEventListener('mousedown', (e) => {
+            if (!activeMenuId) return;
+            if (e.target.closest('.appmenu') || e.target.closest('#appMenu')) return;
+            closeMenuBar();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape' && activeMenuId) closeMenuBar();
+        });
+        window.addEventListener('blur', closeMenuBar);
+        window.addEventListener('resize', closeMenuBar);
+    }
+
+    // HTML エスケープ（メニューラベル用）
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"]/g, (c) =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     }
 
     // ======================================================

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auriga Studio — 動画編集</title>
+    <!-- タブラー アイコン（かわいいよね！！） -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
     <!-- ファビコン -->
     <link rel="icon" type="image/x-icon" href="favicon.ico?symbol">
     <link rel="stylesheet" href="style.css">
@@ -16,14 +18,8 @@
                 <img class="logo__mark" src="favicon-symbol.svg" alt="Auriga Studio" width="26" height="26">
                 <span class="logo__text">Auriga<b>Studio</b></span>
             </div>
-            <nav class="menu">
-                <button class="menu__item">ファイル</button>
-                <button class="menu__item">編集</button>
-                <button class="menu__item">クリップ</button>
-                <button class="menu__item">シーケンス</button>
-                <button class="menu__item">エフェクト</button>
-                <button class="menu__item">ヘルプ</button>
-            </nav>
+            <!-- メニューバーは menu_layout の定義から動的生成する -->
+            <nav class="menu" id="appMenu"></nav>
         </div>
         <div class="menubar__center">
             <div class="workspace-tabs">

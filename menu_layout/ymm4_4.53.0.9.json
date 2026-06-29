@@ -1,0 +1,152 @@
+{
+  "version": "1.0",
+  "menus": [
+    {
+      "id": "file",
+      "label": "ファイル",
+      "mnemonic": "F",
+      "items": [
+        { "type": "action", "id": "new-window", "label": "新しいウインドウを開く", "shortcut": "Ctrl+N" },
+        { "type": "separator" },
+        {
+          "type": "submenu", "id": "add-item", "label": "アイテムを追加", "mnemonic": "A",
+          "items": [
+            { "type": "action", "id": "add-voice-item", "label": "ボイスアイテム", "mnemonic": "Y" },
+            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム" }
+          ]
+        },
+        {
+          "type": "submenu", "id": "add-from-template", "label": "テンプレートからアイテムを追加", "mnemonic": "T",
+          "items": []
+        },
+        {
+          "type": "submenu", "id": "add-recent-file", "label": "最近使ったファイルを追加", "mnemonic": "F",
+          "items": [
+            {
+              "type": "dynamic", "id": "recent-files-list", "source": "recentFiles",
+              "placeholder": "ファイル一覧をここに表示します（保存しておきましょう）"
+            }
+          ]
+        },
+        {
+          "type": "submenu", "id": "import", "label": "インポート",
+          "items": [
+            { "type": "action", "id": "import-subtitle-as-text",  "label": "字幕ファイルをテキストアイテムとしてインポート" },
+            { "type": "action", "id": "import-subtitle-as-voice", "label": "字幕ファイルをボイスアイテムとしてインポート" }
+          ]
+        },
+        { "type": "separator" },
+        { "type": "action", "id": "new-project",   "label": "プロジェクトを新規作成" },
+        { "type": "action", "id": "close-project", "label": "プロジェクトを閉じる" },
+        { "type": "separator" },
+        { "type": "action", "id": "open-project", "label": "プロジェクトを開く" },
+        {
+          "type": "submenu", "id": "recent-projects", "label": "最近のプロジェクト", "mnemonic": "P",
+          "items": [{ "type": "dynamic", "id": "recent-projects-list", "source": "recentProjects" }]
+        },
+        {
+          "type": "submenu", "id": "restore-backup", "label": "バックアップから復元", "mnemonic": "B",
+          "items": [{ "type": "dynamic", "id": "backup-list", "source": "backups" }]
+        },
+        { "type": "action", "id": "open-script", "label": "台本ファイルを開く" },
+        { "type": "separator" },
+        { "type": "action", "id": "save-project",    "label": "プロジェクトを保存",       "mnemonic": "S", "shortcut": "Ctrl+S" },
+        { "type": "action", "id": "save-project-as", "label": "プロジェクトを別名で保存", "shortcut": "Ctrl+Shift+S" },
+        { "type": "separator" },
+        { "type": "action", "id": "export-exo",   "label": "Exo出力" },
+        { "type": "action", "id": "export-video", "label": "動画出力" },
+        { "type": "separator" },
+        { "type": "action", "id": "export-thumbnail",           "label": "サムネイル画像を出力" },
+        { "type": "action", "id": "export-thumbnail-clipboard", "label": "サムネイル画像をクリップボードに出力" },
+        { "type": "separator" },
+        { "type": "action", "id": "edit-characters", "label": "キャラクターの編集" },
+        { "type": "action", "id": "video-settings",  "label": "動画の設定" },
+        { "type": "action", "id": "grid-settings",   "label": "グリッド設定" },
+        { "type": "action", "id": "settings",        "label": "設定" },
+        { "type": "separator" },
+        { "type": "action", "id": "exit", "label": "終了", "mnemonic": "X", "shortcut": "Alt+F4" }
+      ]
+    },
+    {
+      "id": "edit",
+      "label": "編集",
+      "mnemonic": "E",
+      "items": [
+        { "type": "action", "id": "undo", "label": "元に戻す", "mnemonic": "U", "shortcut": "Ctrl+Z" },
+        { "type": "action", "id": "redo", "label": "やり直し", "mnemonic": "R", "shortcut": "Ctrl+Shift+Z" },
+        {
+          "type": "submenu", "id": "preview-ops", "label": "プレビュー操作", "mnemonic": "P",
+          "items": [
+            { "type": "action", "id": "play-pause", "label": "再生/一時停止" },
+            { "type": "action", "id": "stop",       "label": "停止" },
+            { "type": "separator" },
+            { "type": "action", "id": "speed-up",    "label": "再生速度を上げる" },
+            { "type": "action", "id": "speed-down",  "label": "再生速度を下げる" },
+            { "type": "action", "id": "speed-reset", "label": "再生速度をリセット" },
+            { "type": "separator" },
+            {
+              "type": "submenu", "id": "control-point-visibility", "label": "制御点の表示を切り替え",
+              "items": [
+                { "type": "radio", "id": "cp-on-select", "label": "選択時に表示",          "group": "controlPointVisibility", "checked": true },
+                { "type": "radio", "id": "cp-on-hover",  "label": "マウスオーバー時のみ表示", "group": "controlPointVisibility" },
+                { "type": "radio", "id": "cp-hidden",    "label": "表示しない",             "group": "controlPointVisibility" }
+              ]
+            },
+            { "type": "action", "id": "go-to-start",    "label": "動画の先頭に移動" },
+            { "type": "action", "id": "go-to-end",      "label": "動画の末尾に移動" },
+            { "type": "action", "id": "next-edit-point", "label": "次の編集点へ移動" },
+            { "type": "action", "id": "prev-edit-point", "label": "前の編集点へ移動" },
+            { "type": "action", "id": "next-frame",     "label": "次のフレームへ移動" },
+            { "type": "action", "id": "prev-frame",     "label": "前のフレームへ移動" },
+            { "type": "action", "id": "forward-1sec",   "label": "1秒先へ移動" },
+            { "type": "action", "id": "backward-1sec",  "label": "1秒前へ移動" }
+          ]
+        },
+        {
+          "type": "submenu", "id": "item-ops", "label": "アイテム操作", "mnemonic": "I",
+          "items": []
+        },
+        {
+          "type": "submenu", "id": "voice-ops", "label": "ボイス操作", "mnemonic": "V",
+          "items": [
+            { "type": "action", "id": "change-character",    "label": "キャラクターを変更",       "shortcut": "Ctrl+D" },
+            { "type": "action", "id": "prev-character",      "label": "前のキャラクターに変更",   "shortcut": "Ctrl+ArrowUp" },
+            { "type": "action", "id": "next-character",      "label": "次のキャラクターに変更",   "shortcut": "Ctrl+ArrowDown" },
+            { "type": "action", "id": "change-voice-add-mode", "label": "音声追加モードを変更",  "shortcut": "Ctrl+M" }
+          ]
+        },
+        {
+          "type": "submenu", "id": "timeline", "label": "タイムライン", "mnemonic": "T",
+          "items": [
+            { "type": "action", "id": "new-scene",        "label": "新しいシーンを作成" },
+            { "type": "action", "id": "rename-scene",     "label": "シーンの名前を変更" },
+            { "type": "action", "id": "delete-scene",     "label": "シーンを削除" },
+            { "type": "action", "id": "next-scene",       "label": "次のシーンに切り替え" },
+            { "type": "action", "id": "prev-scene",       "label": "前のシーンに切り替え" },
+            { "type": "action", "id": "move-scene-left",  "label": "シーンを左に移動" },
+            { "type": "action", "id": "move-scene-right", "label": "シーンを右に移動" },
+            { "type": "separator" },
+            { "type": "action", "id": "toolbar-height-up",   "label": "ツールバーの高さを上げる" },
+            { "type": "action", "id": "toolbar-height-down", "label": "ツールバーの高さを下げる" },
+            { "type": "separator" },
+            { "type": "action", "id": "move-layer-up",   "label": "上のレイヤーへ移動" },
+            { "type": "action", "id": "move-layer-down", "label": "下のレイヤーへ移動" },
+            { "type": "separator" },
+            { "type": "action", "id": "timeline-zoom-in",  "label": "タイムラインを拡大" },
+            { "type": "action", "id": "timeline-zoom-out", "label": "タイムラインを縮小" },
+            { "type": "separator" },
+            { "type": "action", "id": "layer-height-up",   "label": "レイヤーの高さを上げる" },
+            { "type": "action", "id": "layer-height-down", "label": "レイヤーの高さを下げる" },
+            { "type": "separator" },
+            { "type": "action", "id": "toggle-grid", "label": "グリッド線を表示/非表示" },
+            { "type": "action", "id": "show-grid",   "label": "グリッド線を表示" },
+            { "type": "action", "id": "hide-grid",   "label": "グリッド線を非表示" }
+          ]
+        }
+      ]
+    },
+    { "id": "layout", "label": "レイアウト", "mnemonic": "L", "items": [] },
+    { "id": "tools",  "label": "ツール",     "mnemonic": "T", "items": [] },
+    { "id": "help",   "label": "ヘルプ",     "mnemonic": "H", "items": [] }
+  ]
+}
