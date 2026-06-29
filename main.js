@@ -9,6 +9,14 @@
     const THEME_KEY = 'auriga.theme';   // テーマ（モード）設定の保存キー
     const RES_KEY = 'auriga.resolution';   // 解像度選択の保存キー
     const PLAYHEAD_KEY = 'auriga.playhead'; // 再生ヘッド位置(秒)の保存キー
+    const USER_KEY = 'auriga.user';     // ログイン中ユーザー情報の保存キー
+
+    // ---- OAuth（Google ログイン）----
+    // 認証は別ホストの PHP バックエンド（app.auriga.studio/oauth/）が処理する。
+    // アプリ側はポップアップでログインを開始し、postMessage でユーザー情報を受け取る。
+    const OAUTH_ORIGIN = 'https://app.auriga.studio';            // 認証サーバーのオリジン
+    const OAUTH_LOGIN_URL = OAUTH_ORIGIN + '/oauth/index.php?app=1';   // ログイン開始URL（ポップアップ）
+    const OAUTH_LOGOUT_URL = OAUTH_ORIGIN + '/oauth/logout.php?app=1'; // ログアウトURL（ポップアップ）
     const THEMES = ['tokikun', 'ymm4', 'davinci', 'premiere'];
     const THEME_LABELS = { tokikun: 'ときくん', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
 
@@ -1905,8 +1913,12 @@
     // アカウント情報ポップオーバー（Auriga Cloud 使用容量つき）
     // ======================================================
     const CLOUD_TOTAL_GB = 15;        // 無料枠（GB）
-    // 未ログインなので使用量は 0。ログイン実装後は実値を入れる
-    let cloudUsedGB = 0;
+    let cloudUsedGB = 0;              // 使用量（GB）。ログイン後に実値へ更新する
+
+    // 現在ログイン中のユーザー（未ログインは null）
+    // 形: { id, email, name, picture, verified }
+    let currentUser = null;
+    let authPopup = null;             // ログイン用ポップアップの参照
 
     // 使用容量ゲージを現在値で更新する
     function updateCloudGauge() {
@@ -1916,17 +1928,122 @@
         if (!bar || !usage) return;
         const pct = Math.max(0, Math.min(100, (cloudUsedGB / CLOUD_TOTAL_GB) * 100));
         bar.style.width = pct + '%';
-        usage.textContent = `${cloudUsedGB.toFixed(1)} / ${CLOUD_TOTAL_GB} GB`;
-        if (note) note.textContent = cloudUsedGB > 0
-            ? `残り ${(CLOUD_TOTAL_GB - cloudUsedGB).toFixed(1)} GB`
-            : 'ログインすると 15 GB を無料で利用できます';
+        usage.textContent = currentUser
+            ? `${cloudUsedGB.toFixed(1)} / ${CLOUD_TOTAL_GB} GB`
+            : `— / ${CLOUD_TOTAL_GB} GB`;
+        if (note) {
+            if (!currentUser) note.textContent = 'ログインすると 15 GB を無料で利用できます';
+            else note.textContent = `残り ${(CLOUD_TOTAL_GB - cloudUsedGB).toFixed(1)} GB`;
+        }
     }
 
-    // アカウントポップオーバーの開閉とログインボタンをバインドする
+    // ---- ユーザー情報の永続化（localStorage） ----
+    // 保存済みユーザーを読み込む（壊れていたら null）
+    function loadStoredUser() {
+        try {
+            const raw = localStorage.getItem(USER_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    }
+    // ユーザーを保存／削除する
+    function saveStoredUser(user) {
+        try {
+            if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+            else localStorage.removeItem(USER_KEY);
+        } catch (e) {}
+    }
+
+    // アバター要素にユーザーの画像（なければ人型アイコン）を反映する
+    function renderAvatar(el, user, size) {
+        if (!el) return;
+        if (user && user.picture) {
+            el.innerHTML = `<img src="${user.picture}" alt="" width="${size}" height="${size}" referrerpolicy="no-referrer">`;
+        } else {
+            el.innerHTML = '<i class="ti ti-user"></i>';
+        }
+    }
+
+    // ログイン状態をアカウントUI全体へ反映する
+    function applyAccountUI() {
+        const nameEl = $('#accountName');
+        const mailEl = $('#accountMail');
+        const signBtn = $('#btnSignIn');
+
+        renderAvatar($('#avatarBtn'), currentUser, 26);
+        renderAvatar($('#accountAvatarLg'), currentUser, 56);
+
+        if (currentUser) {
+            if (nameEl) nameEl.textContent = currentUser.name || 'ユーザー';
+            if (mailEl) mailEl.textContent = currentUser.email || '';
+            if (signBtn) signBtn.innerHTML = '<i class="ti ti-logout"></i> ログアウト';
+        } else {
+            if (nameEl) nameEl.textContent = 'ゲスト';
+            if (mailEl) mailEl.textContent = '未ログイン';
+            if (signBtn) signBtn.innerHTML = '<i class="ti ti-brand-google"></i> Google でログイン';
+        }
+        updateCloudGauge();
+    }
+
+    // ログインに成功した（または復元した）ユーザーを反映する
+    function setUser(user, persist) {
+        currentUser = user;
+        if (persist) saveStoredUser(user);
+        applyAccountUI();
+    }
+
+    // Google ログインをポップアップで開始する
+    function startGoogleLogin() {
+        // 既存のポップアップがあれば前面化するだけ
+        if (authPopup && !authPopup.closed) { authPopup.focus(); return; }
+        const w = 480, h = 640;
+        const left = Math.max(0, (window.screen.width - w) / 2);
+        const top = Math.max(0, (window.screen.height - h) / 2);
+        authPopup = window.open(
+            OAUTH_LOGIN_URL,
+            'auriga-oauth',
+            `width=${w},height=${h},left=${left},top=${top}`
+        );
+        if (!authPopup) { toast('ポップアップをブロックされました 🚫'); return; }
+        toast('Google でログイン中…🔑');
+    }
+
+    // ログアウトする（サーバーのセッションも破棄する）
+    function signOut() {
+        setUser(null, true);
+        // サーバー側セッションも破棄（自動で閉じるポップアップ）
+        const out = window.open(OAUTH_LOGOUT_URL, 'auriga-oauth-out', 'width=420,height=520');
+        if (out) setTimeout(() => { try { out.close(); } catch (e) {} }, 1500);
+        toast('ログアウトしました 👋');
+    }
+
+    // 認証サーバーからの postMessage を受け取る
+    function bindOAuthBridge() {
+        window.addEventListener('message', (e) => {
+            // オリジンを厳格に検証する（なりすまし防止）
+            if (e.origin !== OAUTH_ORIGIN) return;
+            const data = e.data;
+            if (!data || data.type !== 'auriga-oauth') return;
+
+            if (data.user) {
+                setUser(data.user, true);
+                toast(`ようこそ、${data.user.name || 'ユーザー'} さん 🎉`);
+            } else if (data.error) {
+                toast('ログインに失敗しました: ' + data.error);
+            }
+            if (authPopup && !authPopup.closed) { try { authPopup.close(); } catch (err) {} }
+            authPopup = null;
+        });
+    }
+
+    // アカウントポップオーバーの開閉とログイン／ログアウトをバインドする
     function bindAccountMenu() {
         const btn = $('#avatarBtn');
         const pop = $('#accountPop');
         if (!btn || !pop) return;
+
+        // 認証ブリッジを準備し、保存済みユーザーを復元する
+        bindOAuthBridge();
+        setUser(loadStoredUser(), false);
 
         const open = () => {
             updateCloudGauge();
@@ -1946,7 +2063,11 @@
         document.addEventListener('click', () => { if (!pop.hidden) close(); });
         document.addEventListener('keydown', (e) => { if (e.code === 'Escape' && !pop.hidden) close(); });
 
-        $('#btnSignIn').addEventListener('click', () => toast('Google ログイン（準備中）🔑'));
+        // ログイン中はログアウト、未ログインはログインを実行する
+        $('#btnSignIn').addEventListener('click', () => {
+            if (currentUser) signOut();
+            else startGoogleLogin();
+        });
     }
 
     // ======================================================
