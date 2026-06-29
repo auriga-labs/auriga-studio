@@ -5,23 +5,22 @@
       "id": "file",
       "label": "ファイル",
       "mnemonic": "F",
-      "icon": "file",
       "items": [
-        { "type": "action", "id": "new-window", "label": "新しいウインドウを開く", "shortcut": "Ctrl+N", "icon": "app-window" },
+        { "type": "action", "id": "new-window", "label": "新しいウインドウを開く", "shortcut": "Ctrl+N" },
         { "type": "separator" },
         {
-          "type": "submenu", "id": "add-item", "label": "アイテムを追加", "mnemonic": "A", "icon": "plus",
+          "type": "submenu", "id": "add-item", "label": "アイテムを追加", "mnemonic": "A",
           "items": [
             { "type": "action", "id": "add-voice-item", "label": "ボイスアイテム", "mnemonic": "Y", "icon": "microphone" },
             { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" }
           ]
         },
         {
-          "type": "submenu", "id": "add-from-template", "label": "テンプレートからアイテムを追加", "mnemonic": "T", "icon": "template",
+          "type": "submenu", "id": "add-from-template", "label": "テンプレートからアイテムを追加", "mnemonic": "T", "icon": "bookmark",
           "items": []
         },
         {
-          "type": "submenu", "id": "add-recent-file", "label": "最近使ったファイルを追加", "mnemonic": "F", "icon": "clock-plus",
+          "type": "submenu", "id": "add-recent-file", "label": "最近使ったファイルを追加", "mnemonic": "F", "icon": "clock-hour-4",
           "items": [
             {
               "type": "dynamic", "id": "recent-files-list", "source": "recentFiles",
@@ -30,7 +29,7 @@
           ]
         },
         {
-          "type": "submenu", "id": "import", "label": "インポート", "icon": "file-import",
+          "type": "submenu", "id": "import", "label": "インポート",
           "items": [
             { "type": "action", "id": "import-subtitle-as-text",  "label": "字幕ファイルをテキストアイテムとしてインポート", "icon": "text-size" },
             { "type": "action", "id": "import-subtitle-as-voice", "label": "字幕ファイルをボイスアイテムとしてインポート", "icon": "microphone" }
@@ -38,9 +37,9 @@
         },
         { "type": "separator" },
         { "type": "action", "id": "new-project",   "label": "プロジェクトを新規作成", "icon": "file-plus" },
-        { "type": "action", "id": "close-project", "label": "プロジェクトを閉じる", "icon": "file-x" },
+        { "type": "action", "id": "close-project", "label": "プロジェクトを閉じる" },
         { "type": "separator" },
-        { "type": "action", "id": "open-project", "label": "プロジェクトを開く", "icon": "folder-open" },
+        { "type": "action", "id": "open-project", "label": "プロジェクトを開く", "icon": "folder" },
         {
           "type": "submenu", "id": "recent-projects", "label": "最近のプロジェクト", "mnemonic": "P", "icon": "clock-hour-4",
           "items": [{ "type": "dynamic", "id": "recent-projects-list", "source": "recentProjects" }]
@@ -49,23 +48,23 @@
           "type": "submenu", "id": "restore-backup", "label": "バックアップから復元", "mnemonic": "B", "icon": "history",
           "items": [{ "type": "dynamic", "id": "backup-list", "source": "backups" }]
         },
-        { "type": "action", "id": "open-script", "label": "台本ファイルを開く", "icon": "script" },
+        { "type": "action", "id": "open-script", "label": "台本ファイルを開く", "icon": "message" },
         { "type": "separator" },
         { "type": "action", "id": "save-project",    "label": "プロジェクトを保存",       "mnemonic": "S", "shortcut": "Ctrl+S",       "icon": "device-floppy" },
-        { "type": "action", "id": "save-project-as", "label": "プロジェクトを別名で保存", "shortcut": "Ctrl+Shift+S", "icon": "file-export" },
+        { "type": "action", "id": "save-project-as", "label": "プロジェクトを別名で保存", "shortcut": "Ctrl+Shift+S" },
         { "type": "separator" },
-        { "type": "action", "id": "export-exo",   "label": "Exo出力", "icon": "file-code" },
-        { "type": "action", "id": "export-video", "label": "動画出力", "icon": "movie" },
+        { "type": "action", "id": "export-exo",   "label": "Exo出力", "icon": "movie" },
+        { "type": "action", "id": "export-video", "label": "動画出力", "icon": "video" },
         { "type": "separator" },
         { "type": "action", "id": "export-thumbnail",           "label": "サムネイル画像を出力", "icon": "photo" },
         { "type": "action", "id": "export-thumbnail-clipboard", "label": "サムネイル画像をクリップボードに出力", "icon": "clipboard-copy" },
         { "type": "separator" },
-        { "type": "action", "id": "edit-characters", "label": "キャラクターの編集", "icon": "users" },
-        { "type": "action", "id": "video-settings",  "label": "動画の設定", "icon": "adjustments" },
-        { "type": "action", "id": "grid-settings",   "label": "グリッド設定", "icon": "grid-dots" },
+        { "type": "action", "id": "edit-characters", "label": "キャラクターの編集", "icon": "user-edit" },
+        { "type": "action", "id": "video-settings",  "label": "動画の設定", "icon": "adjustments-horizontal" },
+        { "type": "action", "id": "grid-settings",   "label": "グリッド設定", "icon": "grid-4x4" },
         { "type": "action", "id": "settings",        "label": "設定", "icon": "settings" },
         { "type": "separator" },
-        { "type": "action", "id": "exit", "label": "終了", "mnemonic": "X", "shortcut": "Alt+F4", "icon": "logout" }
+        { "type": "action", "id": "exit", "label": "終了", "mnemonic": "X", "shortcut": "Alt+F4" }
       ]
     },
     {
