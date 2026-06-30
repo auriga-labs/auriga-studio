@@ -53,14 +53,7 @@
             </div>
         </div>
         <div class="menubar__right">
-            <select class="theme-select" id="themeSelect" title="テーマを切り替え">
-                <option value="tokikun">ときくん</option>
-                <option value="ymm4" selected>YMM4</option>
-                <option value="davinci">DaVinci</option>
-                <option value="premiere">Premiere</option>
-            </select>
-            <button class="btn btn--ghost" id="btnSave" title="保存 (Ctrl+S)">保存</button>
-            <button class="btn btn--primary" id="btnExport">書き出し</button>
+            <!-- テーマ切り替えはロゴメニュー内（表示 > テーマ）へ移動した -->
             <!-- アカウント。未ログインは Unknown ユーザーアイコン。クリックでアカウント情報を開く -->
             <div class="account">
                 <button class="avatar" id="avatarBtn" type="button" title="アカウント" aria-haspopup="true" aria-expanded="false">
@@ -103,7 +96,7 @@
         </div>
     </header>
 
-    <!-- スマホ幅で、ヘッダーの操作（アプリメニュー/ワークスペース/テーマ/保存/書き出し）を
+    <!-- スマホ幅で、ヘッダーの操作（アプリメニュー/ワークスペース）を
          まとめてネストするパネル。中身は JS でヘッダーから移設する -->
     <nav class="mobile-panel" id="mobilePanel" hidden></nav>
 

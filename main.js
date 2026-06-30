@@ -1094,9 +1094,13 @@
         // 配色 CSS と対になるテーマ別 JavaScript も切り替える
         applyThemeScript(theme, !!silent);
         try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* 保存不可でも継続 */ }
-        const sel = $('#themeSelect');
-        if (sel) sel.value = theme;
+        syncThemeMenuChecks();
         if (!silent) toast(`テーマ：${THEME_LABELS[theme]}`);
+    }
+
+    // ロゴメニューのテーマ項目のチェック状態を現在のテーマに同期する
+    function syncThemeMenuChecks() {
+        THEME_MENU_ITEMS.forEach((it) => { it.checked = (it.id === `theme-${currentTheme}`); });
     }
 
     // 配色モード（ライト / ダーク / システムに準ずる）を設定し、現在のテーマを再適用する
@@ -1238,9 +1242,6 @@
         bindMobileMenu();   // スマホ幅でヘッダー操作をネストする
         bindTimelineResizer();   // タイムラインの高さをドラッグで調整
 
-        // テーマ切り替え
-        $('#themeSelect').addEventListener('change', (e) => applyTheme(e.target.value));
-
         // ファイルがトラック外に落ちてもブラウザがファイルを開かないようにする
         ['dragover', 'drop'].forEach((evt) => {
             window.addEventListener(evt, (e) => {
@@ -1341,8 +1342,6 @@
         // ヘッダーボタン
         $('#btnImport').addEventListener('click', () => $('#fileInput').click());
         $('#fileInput').addEventListener('change', handleFileImport);
-        $('#btnSave').addEventListener('click', () => toast('プロジェクトを保存しました 💾'));
-        $('#btnExport').addEventListener('click', () => toast('書き出しを開始しました… 🎞️'));
 
         // 解像度切替
         $('#resSelect').addEventListener('change', (e) => {
@@ -1642,6 +1641,13 @@
         label: MODE_LABELS[m], checked: false,
     }));
 
+    // テーマ（対応ソフト風の配色セット）のラジオ項目。
+    // チェック状態は syncThemeMenuChecks() が現在のテーマに同期する。
+    const THEME_MENU_ITEMS = THEMES.map((t) => ({
+        id: `theme-${t}`, type: 'radio', group: 'app-theme',
+        label: THEME_LABELS[t], checked: false,
+    }));
+
     // ロゴ文字のメニュー（全テーマ共通のアプリメニュー）。
     // メニューバーは対応ソフトごとに切り替わるが、これはテーマに依存せず常に同じ内容。
     const LOGO_MENU = {
@@ -1650,6 +1656,7 @@
             { id: 'about',             label: 'Auriga Studio について', icon: 'info-circle' },
             { id: 'whats-new',         label: '新着情報',               icon: 'sparkles' },
             { type: 'separator' },
+            { id: 'theme',             label: 'テーマ',                 icon: 'palette',  type: 'submenu', items: THEME_MENU_ITEMS },
             { id: 'display-mode',      label: '表示モード',             icon: 'sun-moon', type: 'submenu', items: MODE_MENU_ITEMS },
             { id: 'preferences',       label: '環境設定…',             icon: 'settings',  shortcut: 'Ctrl+,' },
             { id: 'keyboard-shortcuts', label: 'キーボードショートカット', icon: 'keyboard' },
@@ -1863,6 +1870,10 @@
             case 'timeline-zoom-out': setZoom(state.zoom - 20); return;
             case 'add-text-item':   addClip('text', 'テキスト', DEFAULT_TRACK, state.playhead, 3); return;
             // ---- ロゴ文字のメニュー（全テーマ共通） ----
+            case 'theme-tokikun':   applyTheme('tokikun');  return;
+            case 'theme-ymm4':      applyTheme('ymm4');     return;
+            case 'theme-davinci':   applyTheme('davinci');  return;
+            case 'theme-premiere':  applyTheme('premiere'); return;
             case 'mode-light':      applyMode('light');  return;
             case 'mode-dark':       applyMode('dark');   return;
             case 'mode-system':     applyMode('system'); return;
@@ -2356,7 +2367,7 @@
     // ======================================================
     // スマホ幅メニュー（ヘッダー操作をネスト）
     // ======================================================
-    // 狭い画面では、アプリメニュー・ワークスペース・テーマ・保存・書き出しを
+    // 狭い画面では、アプリメニュー・ワークスペースを
     // ハンバーガーのパネルへ実体ごと移設する（イベントを保ったまま移動）。
     function bindMobileMenu() {
         const burger = $('#menuBurger');
@@ -2366,20 +2377,15 @@
         // 移設対象と、デスクトップ復帰時の戻し先
         const left = $('.menubar__left');
         const center = $('.menubar__center');
-        const right = $('.menubar__right');
-        const account = $('.account');
         const appMenu = $('#appMenu');
         const wsTabs = $('.workspace-tabs');
-        const themeSel = $('#themeSelect');
-        const btnSave = $('#btnSave');
-        const btnExport = $('#btnExport');
 
         const mq = window.matchMedia('(max-width: 720px)');
         let mobile = false;
 
         // パネルへ集約する（DOM ノードごと移動するのでイベントは維持される）
         function toMobile() {
-            panel.append(appMenu, wsTabs, themeSel, btnSave, btnExport);
+            panel.append(appMenu, wsTabs);
             mobile = true;
         }
         // ヘッダーの元の位置・順序へ戻す
@@ -2387,9 +2393,6 @@
             closePanel();
             left.append(appMenu);               // ロゴの直後
             center.append(wsTabs);
-            right.insertBefore(themeSel, account);
-            right.insertBefore(btnSave, account);
-            right.insertBefore(btnExport, account);
             mobile = false;
         }
         function apply(e) {
@@ -2403,10 +2406,6 @@
         burger.addEventListener('click', (e) => {
             e.stopPropagation();
             panel.hidden ? openPanel() : closePanel();
-        });
-        // パネル内のボタン操作後は閉じる（メニュー以外）
-        panel.addEventListener('click', (e) => {
-            if (e.target.closest('#btnSave, #btnExport')) closePanel();
         });
         document.addEventListener('click', (e) => {
             if (!panel.hidden && !e.target.closest('#mobilePanel, #menuBurger')) closePanel();
