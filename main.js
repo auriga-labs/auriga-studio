@@ -33,11 +33,15 @@
     const DEFAULT_MODE = 'dark';      // 既定はダーク
 
     // ---- メニューレイアウト ----
-    // 対応ソフトごとのメニュー定義ファイル。今は YMM4 のみ。
+    // テーマ（対応ソフト風の配色セット）ごとのメニュー定義ファイル。
+    // キーは THEMES と対応させ、テーマ切替に追従してメニューバーを差し替える。
     const MENU_LAYOUTS = {
-        ymm4: 'menu_layout/ymm4.json',
+        auriga:   'menu_layout/auriga.json',
+        ymm4:     'menu_layout/ymm4.json',
+        davinci:  'menu_layout/davinci.json',
+        premiere: 'menu_layout/premiere.json',
     };
-    const DEFAULT_MENU_LAYOUT = 'ymm4';   // 暫定の既定値（YMM4）
+    const DEFAULT_MENU_LAYOUT = 'ymm4';   // 未対応テーマ時のフォールバック（YMM4）
     const PX_PER_SEC_BASE = 1;        // ズーム値(px)がそのまま1秒あたりのpx
     const TIMELINE_SECONDS = 60;      // タイムライン全体の長さ(秒)
 
@@ -57,7 +61,7 @@
         tool: 'select',
         clips: [],                    // {id,type,name,track,start,dur,props}
         nextId: 1,
-        menuLayoutKey: DEFAULT_MENU_LAYOUT,   // 現在のメニュー定義
+        menuLayoutKey: null,   // 現在のメニュー定義（初回 applyTheme で確定）
     };
 
     // ---- トラック定義（上から） ----
@@ -127,8 +131,7 @@
     // 初期化
     // ======================================================
     function init() {
-        applyStoredTheme();   // 保存済みテーマを最初に適用
-        loadMenuBar(DEFAULT_MENU_LAYOUT);   // メニューバーを動的生成（既定は YMM4）
+        applyStoredTheme();   // 保存済みテーマを最初に適用（対応するメニューバーも生成される）
         renderMedia();
         renderEffects();
         renderTextPresets();
@@ -1093,6 +1096,10 @@
         document.documentElement.dataset.mode = dark ? 'dark' : 'light';
         // 配色 CSS と対になるテーマ別 JavaScript も切り替える
         applyThemeScript(theme, !!silent);
+        // テーマに対応するメニューバーへ差し替える（定義が変わるときだけ再生成）。
+        // 配色モードの切替など、メニューキーが変わらない再適用では再読込しない。
+        const menuKey = MENU_LAYOUTS[theme] ? theme : DEFAULT_MENU_LAYOUT;
+        if (menuKey !== state.menuLayoutKey) loadMenuBar(menuKey);
         try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* 保存不可でも継続 */ }
         syncThemeMenuChecks();
         if (!silent) toast(`テーマ：${THEME_LABELS[theme]}`);
@@ -1690,7 +1697,8 @@
 
     // トップレベルのメニューボタンを生成する
     function renderMenuBar(layout) {
-        const menus = (layout && layout.menus) || [];
+        // id を持つ項目だけを描画対象にする（未整備テーマの空スタブで壊れたボタンを出さない）
+        const menus = (((layout && layout.menus) || []).filter((m) => m && m.id));
         closeMenuBar();
         els.appMenu.innerHTML = menus.map((m) =>
             `<button class="menu__item" data-menu="${m.id}">${iconHtml(m.icon)}<span>${labelHtml(m)}</span></button>`
