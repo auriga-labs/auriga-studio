@@ -25,6 +25,13 @@
     const THEMES = ['tokikun', 'ymm4', 'davinci', 'premiere'];
     const THEME_LABELS = { tokikun: 'ときくん', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
 
+    // ---- 配色モード（ライト / ダーク / システムに準ずる）----
+    // テーマ（対応ソフト風の配色セット）とは独立した軸。ダーク時は themes/<name>-dark.css を読み込む。
+    const MODE_KEY = 'auriga.mode';   // 配色モードの保存キー
+    const MODES = ['light', 'dark', 'system'];
+    const MODE_LABELS = { light: 'ライト', dark: 'ダーク', system: 'システムに準ずる' };
+    const DEFAULT_MODE = 'dark';      // 既定はダーク
+
     // ---- メニューレイアウト ----
     // 対応ソフトごとのメニュー定義ファイル。今は YMM4 のみ。
     const MENU_LAYOUTS = {
@@ -1059,20 +1066,51 @@
     // ======================================================
     // テーマ切り替え
     // ======================================================
+    // 現在のテーマ・配色モードを保持する（モード切替時に同じテーマを再適用するため）
+    let currentTheme = 'ymm4';
+    let currentMode = DEFAULT_MODE;
+    // OS の配色設定（モード=システムに準ずる のときに参照する）
+    const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
+
+    // 実際にダーク配色を使うかどうかを解決する（system は OS 設定に従う）
+    function isDarkMode() {
+        if (currentMode === 'dark') return true;
+        if (currentMode === 'light') return false;
+        return darkMq.matches;   // system
+    }
+
     // テーマを適用して保存する（themes/*.css を差し替えて配色を切り替える）
     function applyTheme(name, silent) {
         const theme = THEMES.includes(name) ? name : 'tokikun';
-        // テーマごとの配色 CSS を読み込む link を差し替える
+        currentTheme = theme;
+        // テーマごとの配色 CSS を読み込む link を差し替える。
+        // ダークモード時のみ themes/<name>-dark.css を、それ以外は themes/<name>.css を読み込む。
         const link = $('#themeLink');
-        if (link) link.href = `themes/${theme}.css`;
-        // 構造的なテーマ判定が必要な箇所のために属性も維持する
+        const dark = isDarkMode();
+        if (link) link.href = `themes/${theme}${dark ? '-dark' : ''}.css`;
+        // 構造的なテーマ／モード判定が必要な箇所のために属性も維持する
         document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.mode = dark ? 'dark' : 'light';
         // 配色 CSS と対になるテーマ別 JavaScript も切り替える
         applyThemeScript(theme, !!silent);
         try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* 保存不可でも継続 */ }
         const sel = $('#themeSelect');
         if (sel) sel.value = theme;
         if (!silent) toast(`テーマ：${THEME_LABELS[theme]}`);
+    }
+
+    // 配色モード（ライト / ダーク / システムに準ずる）を設定し、現在のテーマを再適用する
+    function applyMode(mode, silent) {
+        currentMode = MODES.includes(mode) ? mode : DEFAULT_MODE;
+        try { localStorage.setItem(MODE_KEY, currentMode); } catch (e) { /* 保存不可でも継続 */ }
+        syncModeMenuChecks();
+        applyTheme(currentTheme, true);   // 配色 CSS の -dark 切替を反映（トーストは抑制）
+        if (!silent) toast(`表示モード：${MODE_LABELS[currentMode]}`);
+    }
+
+    // ロゴメニューの配色モード項目のチェック状態を現在のモードに同期する
+    function syncModeMenuChecks() {
+        MODE_MENU_ITEMS.forEach((it) => { it.checked = (it.id === `mode-${currentMode}`); });
     }
 
     // ======================================================
@@ -1128,8 +1166,18 @@
         activeThemeName = name;
     }
 
-    // 起動時に保存済みテーマを復元する（未保存なら既定は YMM4）
+    // 起動時に保存済みテーマ・配色モードを復元する（未保存ならテーマ=YMM4 / モード=ダーク）
     function applyStoredTheme() {
+        // 配色モード（テーマより先に決める。applyTheme が -dark 切替を参照するため）
+        let savedMode = DEFAULT_MODE;
+        try { savedMode = localStorage.getItem(MODE_KEY) || DEFAULT_MODE; } catch (e) {}
+        currentMode = MODES.includes(savedMode) ? savedMode : DEFAULT_MODE;
+        syncModeMenuChecks();
+        // OS の配色変更に追従する（モード=システムに準ずる のときだけ再適用）
+        darkMq.addEventListener('change', () => {
+            if (currentMode === 'system') applyTheme(currentTheme, true);
+        });
+        // テーマ
         let saved = 'ymm4';
         try { saved = localStorage.getItem(THEME_KEY) || 'ymm4'; } catch (e) {}
         applyTheme(saved, true);
@@ -1587,6 +1635,13 @@
 
     let activeMenuId = null;   // 現在開いているトップメニューの id
 
+    // 配色モード（ライト / ダーク / システムに準ずる）のラジオ項目。
+    // チェック状態は syncModeMenuChecks() が現在のモードに同期する。
+    const MODE_MENU_ITEMS = MODES.map((m) => ({
+        id: `mode-${m}`, type: 'radio', group: 'display-mode',
+        label: MODE_LABELS[m], checked: false,
+    }));
+
     // ロゴ文字のメニュー（全テーマ共通のアプリメニュー）。
     // メニューバーは対応ソフトごとに切り替わるが、これはテーマに依存せず常に同じ内容。
     const LOGO_MENU = {
@@ -1595,6 +1650,7 @@
             { id: 'about',             label: 'Auriga Studio について', icon: 'info-circle' },
             { id: 'whats-new',         label: '新着情報',               icon: 'sparkles' },
             { type: 'separator' },
+            { id: 'display-mode',      label: '表示モード',             icon: 'sun-moon', type: 'submenu', items: MODE_MENU_ITEMS },
             { id: 'preferences',       label: '環境設定…',             icon: 'settings',  shortcut: 'Ctrl+,' },
             { id: 'keyboard-shortcuts', label: 'キーボードショートカット', icon: 'keyboard' },
             { type: 'separator' },
@@ -1807,6 +1863,9 @@
             case 'timeline-zoom-out': setZoom(state.zoom - 20); return;
             case 'add-text-item':   addClip('text', 'テキスト', DEFAULT_TRACK, state.playhead, 3); return;
             // ---- ロゴ文字のメニュー（全テーマ共通） ----
+            case 'mode-light':      applyMode('light');  return;
+            case 'mode-dark':       applyMode('dark');   return;
+            case 'mode-system':     applyMode('system'); return;
             case 'about':           showAboutModal(); return;
             case 'whats-new':       toast('新着情報（準備中）'); return;
             case 'preferences':     toast('環境設定（準備中）⚙️'); return;
