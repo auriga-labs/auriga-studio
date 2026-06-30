@@ -1,0 +1,17 @@
+/* ときくんオリジナル テーマ（既定）：ダーク＋パープル系アクセント */
+:root {
+    --bg-0: #0d0e12;
+    --bg-1: #14161c;
+    --bg-2: #1b1e26;
+    --bg-3: #242832;
+    --bg-hover: #2d323e;
+    --line: #2e3340;
+    --text: #e6e8ee;
+    --text-dim: #9aa0ad;
+    --text-mute: #646b78;
+    --accent: #6c5ce7;
+    --accent-2: #00cec9;
+    --accent-glow: rgba(108, 92, 231, 0.4);
+    --danger: #ff5b6e;
+    --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}

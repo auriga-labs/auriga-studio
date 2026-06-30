@@ -1059,14 +1059,14 @@
     // ======================================================
     // テーマ切り替え
     // ======================================================
-    // テーマを適用して保存する（ときくんは既定なので data-theme を外す）
+    // テーマを適用して保存する（themes/*.css を差し替えて配色を切り替える）
     function applyTheme(name, silent) {
         const theme = THEMES.includes(name) ? name : 'tokikun';
-        if (theme === 'tokikun') {
-            delete document.documentElement.dataset.theme;
-        } else {
-            document.documentElement.dataset.theme = theme;
-        }
+        // テーマごとの配色 CSS を読み込む link を差し替える
+        const link = $('#themeLink');
+        if (link) link.href = `themes/${theme}.css`;
+        // 構造的なテーマ判定が必要な箇所のために属性も維持する
+        document.documentElement.dataset.theme = theme;
         try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* 保存不可でも継続 */ }
         const sel = $('#themeSelect');
         if (sel) sel.value = theme;

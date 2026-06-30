@@ -1,0 +1,20 @@
+/* YMM4 風：明るいライトテーマ＋グリーン系アクセント */
+:root {
+    --bg-0: #e9ebf0;
+    --bg-1: #f4f5f8;
+    --bg-2: #ffffff;
+    --bg-3: #e3e6ec;
+    --bg-hover: #d6dae3;
+    --line: #ccd2dc;
+    --text: #1c2330;
+    --text-dim: #5a6373;
+    --text-mute: #8a93a3;
+    --accent: #2bae8f;
+    --accent-2: #f0a020;
+    --accent-glow: rgba(43, 174, 143, 0.35);
+    --danger: #e0506a;
+    --shadow: 0 8px 30px rgba(40, 50, 70, 0.18);
+}
+
+/* YMM4 は DaVinci ライクなワークスペースタブ（編集/カラー/オーディオ/書き出し）を持たないため隠す */
+.workspace-tabs { display: none; }

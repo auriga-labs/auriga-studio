@@ -1,0 +1,17 @@
+/* Adobe Premiere Pro 風：ダークパープル系 */
+:root {
+    --bg-0: #16151a;
+    --bg-1: #1d1c24;
+    --bg-2: #25232e;
+    --bg-3: #322f3e;
+    --bg-hover: #3e3a4d;
+    --line: #38354a;
+    --text: #ececf2;
+    --text-dim: #9c98ac;
+    --text-mute: #686477;
+    --accent: #9a7cf7;
+    --accent-2: #d36cf0;
+    --accent-glow: rgba(154, 124, 247, 0.45);
+    --danger: #ff5b6e;
+    --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}

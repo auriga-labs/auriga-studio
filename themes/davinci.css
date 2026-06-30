@@ -1,0 +1,17 @@
+/* DaVinci Resolve 風：ニュートラルなダークグレー＋ブルー系アクセント */
+:root {
+    --bg-0: #1a1a1a;
+    --bg-1: #232323;
+    --bg-2: #2b2b2b;
+    --bg-3: #383838;
+    --bg-hover: #454545;
+    --line: #3d3d3d;
+    --text: #e8e8e8;
+    --text-dim: #a0a0a0;
+    --text-mute: #6b6b6b;
+    --accent: #4a90d9;
+    --accent-2: #e6953c;
+    --accent-glow: rgba(74, 144, 217, 0.4);
+    --danger: #d9534f;
+    --shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+}
