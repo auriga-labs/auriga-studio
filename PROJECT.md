@@ -38,7 +38,7 @@
 │   ├── ymm4.css / ymm4.js          （既定）
 │   ├── davinci.css / davinci.js
 │   ├── premiere.css / premiere.js
-│   └── tokikun.css / tokikun.js
+│   └── auriga.css / auriga.js
 │
 ├── menu_layout/            # 対応ソフトのメニューバー定義
 │   ├── ymm4_4.53.0.9.json          （YMM4 実機メニューを再現）
@@ -128,7 +128,7 @@ applyTheme(name)
 テーマ別のワークスペースタブ:
 | テーマ | タブ構成 |
 |--------|---------|
-| ときくん | 編集 / カラー / オーディオ / 書き出し |
+| Aurigaオリジナル | 編集 / カラー / オーディオ / 書き出し |
 | YMM4 | （CSS で非表示・DaVinciライク） |
 | DaVinci | カット / 編集 / カラー / デリバー |
 | Premiere | （premiere.js による） |
@@ -205,7 +205,7 @@ applyTheme(name)
 
 ### 3-9. テーマ
 
-- ときくん / YMM4 / DaVinci / Premiere の **4 テーマ切替**（配色 + 挙動 + ワークスペースタブ + タイトル）。
+- Aurigaオリジナル / YMM4 / DaVinci / Premiere の **4 テーマ切替**（配色 + 挙動 + ワークスペースタブ + タイトル）。
 
 ---
 

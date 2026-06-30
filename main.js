@@ -22,8 +22,8 @@
     // ⚠ oauth/config.php の GOOGLE_SCOPES と一致させること
     const OAUTH_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive'];
     const OAUTH_LOGOUT_URL = OAUTH_ORIGIN + '/oauth/logout.php?app=1'; // ログアウトURL
-    const THEMES = ['tokikun', 'ymm4', 'davinci', 'premiere'];
-    const THEME_LABELS = { tokikun: 'Aurigaオリジナル', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
+    const THEMES = ['auriga', 'ymm4', 'davinci', 'premiere'];
+    const THEME_LABELS = { auriga: 'Aurigaオリジナル', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
 
     // ---- 配色モード（ライト / ダーク / システムに準ずる）----
     // テーマ（対応ソフト風の配色セット）とは独立した軸。ダーク時は themes/<name>-dark.css を読み込む。
@@ -1081,7 +1081,7 @@
 
     // テーマを適用して保存する（themes/*.css を差し替えて配色を切り替える）
     function applyTheme(name, silent) {
-        const theme = THEMES.includes(name) ? name : 'tokikun';
+        const theme = THEMES.includes(name) ? name : 'auriga';
         currentTheme = theme;
         // テーマごとの配色 CSS を読み込む link を差し替える。
         // ダークモード時のみ themes/<name>-dark.css を、それ以外は themes/<name>.css を読み込む。
@@ -1870,7 +1870,7 @@
             case 'timeline-zoom-out': setZoom(state.zoom - 20); return;
             case 'add-text-item':   addClip('text', 'テキスト', DEFAULT_TRACK, state.playhead, 3); return;
             // ---- ロゴ文字のメニュー（全テーマ共通） ----
-            case 'theme-tokikun':   applyTheme('tokikun');  return;
+            case 'theme-auriga':    applyTheme('auriga');   return;
             case 'theme-ymm4':      applyTheme('ymm4');     return;
             case 'theme-davinci':   applyTheme('davinci');  return;
             case 'theme-premiere':  applyTheme('premiere'); return;
