@@ -1264,13 +1264,11 @@
 
         // 左パネルのタブ切替
         $$('.panel--media .ptab').forEach((tab) => {
-            tab.addEventListener('click', () => {
-                $$('.panel--media .ptab').forEach((t) => t.classList.remove('is-active'));
-                tab.classList.add('is-active');
-                $$('.ptab-content').forEach((c) =>
-                    c.classList.toggle('is-active', c.dataset.content === tab.dataset.tab));
-            });
+            tab.addEventListener('click', () => activateMediaTab(tab.dataset.tab));
         });
+
+        // クラウドの「更新」ボタン
+        $('#btnCloudRefresh').addEventListener('click', () => fetchCloudFiles(false));
 
         // ワークスペースタブ
         $$('.ws-tab').forEach((t) => t.addEventListener('click', () => {
@@ -2187,6 +2185,160 @@
         }
     }
 
+    // ======================================================
+    // Auriga Cloud パネル（クラウド内のファイル一覧）
+    // ======================================================
+    // バックエンド（app.auriga.studio/cloud/*.php）が Google ドライブの
+    // 「Auriga Cloud」フォルダを橋渡しする。アクセストークンを Bearer で送る。
+    const CLOUD_LIST_URL = OAUTH_ORIGIN + '/cloud/list.php';
+    const CLOUD_DOWNLOAD_URL = OAUTH_ORIGIN + '/cloud/download.php';
+    let cloudFiles = [];           // 取得済みのクラウドファイル一覧
+    let cloudFilesLoaded = false;  // 一度でも取得に成功したか
+    let cloudLoading = false;      // 取得中フラグ（多重取得の抑制）
+
+    // MIME タイプからファイル種別アイコン（Tabler）を選ぶ
+    function cloudFileIcon(mime) {
+        const m = String(mime || '');
+        if (m === 'application/vnd.google-apps.folder') return 'ti-folder';
+        if (m.startsWith('video/')) return 'ti-movie';
+        if (m.startsWith('image/')) return 'ti-photo';
+        if (m.startsWith('audio/')) return 'ti-music';
+        return 'ti-file';
+    }
+
+    // ISO 日時を「YYYY/MM/DD」へ整形する（取得できなければ空文字）
+    function formatCloudDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
+    }
+
+    // クラウドファイル一覧（または各状態のメッセージ）を描画する
+    function renderCloudList() {
+        const list = $('#cloudList');
+        if (!list) return;
+
+        // 未ログイン：ログインを促す
+        if (!currentUser) {
+            list.innerHTML = `
+                <div class="media-empty">
+                    <p>未ログインです</p>
+                    <p class="media-empty__sub">ログインすると Auriga Cloud の<br>ファイルが表示されます</p>
+                </div>`;
+            return;
+        }
+        // トークンが無い（再起動後など短命トークンが切れた状態）
+        if (!accessToken) {
+            list.innerHTML = `
+                <div class="media-empty">
+                    <p>セッションが切れています</p>
+                    <p class="media-empty__sub">アカウントから再度<br>ログインしてください</p>
+                </div>`;
+            return;
+        }
+        // 読み込み中
+        if (cloudLoading) {
+            list.innerHTML = `<div class="media-empty"><p>読み込み中…</p></div>`;
+            return;
+        }
+        // 取得済みだが空
+        if (!cloudFiles.length) {
+            list.innerHTML = `
+                <div class="media-empty">
+                    <p>ファイルがありません</p>
+                    <p class="media-empty__sub">Auriga Cloud にアップロードした<br>ファイルがここに表示されます</p>
+                </div>`;
+            return;
+        }
+
+        // 一覧。各行はテーマ済みの .effect-item を再利用して配色を揃える
+        list.innerHTML = cloudFiles.map((f) => `
+            <div class="effect-item cloud-file" data-id="${f.id}" title="${f.name}">
+                <span class="effect-item__icon"><i class="ti ${cloudFileIcon(f.mimeType)}"></i></span>
+                <div class="cloud-file__info">
+                    <div class="effect-item__name">${f.name}</div>
+                    <div class="effect-item__desc">${formatBytes(Number(f.size) || 0)} · ${formatCloudDate(f.modifiedTime)}</div>
+                </div>
+            </div>
+        `).join('');
+
+        // クリックでメディアプールに読み込む
+        $$('#cloudList .cloud-file').forEach((el) => {
+            const f = cloudFiles.find((x) => x.id === el.dataset.id);
+            if (f) el.addEventListener('click', () => importCloudFile(f));
+        });
+    }
+
+    // Auriga Cloud のファイル一覧を取得して描画する
+    async function fetchCloudFiles(silent) {
+        if (!currentUser || !accessToken) { renderCloudList(); return; }
+        if (cloudLoading) return;
+        cloudLoading = true;
+        renderCloudList();
+        try {
+            const res = await fetch(CLOUD_LIST_URL, {
+                headers: { Authorization: 'Bearer ' + accessToken },
+            });
+            if (!res.ok) {
+                if (res.status === 401) accessToken = null;   // トークン失効
+                throw new Error('status ' + res.status);
+            }
+            const data = await res.json();
+            cloudFiles = Array.isArray(data.files) ? data.files : [];
+            cloudFilesLoaded = true;
+            cloudLoading = false;
+            renderCloudList();
+            if (!silent) toast(`クラウド：${cloudFiles.length} 件のファイル`);
+        } catch (e) {
+            cloudLoading = false;
+            renderCloudList();   // accessToken=null になっていれば再ログイン案内になる
+            const list = $('#cloudList');
+            if (accessToken && list) {
+                list.innerHTML = `
+                    <div class="media-empty">
+                        <p>読み込みに失敗しました</p>
+                        <p class="media-empty__sub">時間をおいて「更新」を<br>お試しください</p>
+                    </div>`;
+            }
+            if (!silent) toast('クラウドの読み込みに失敗しました');
+        }
+    }
+
+    // クラウドのファイルをダウンロードしてメディアプールへ読み込む
+    async function importCloudFile(file) {
+        if (!accessToken) { toast('再度ログインしてください'); return; }
+        toast(`「${file.name}」を読み込み中…`);
+        try {
+            const res = await fetch(CLOUD_DOWNLOAD_URL + '?id=' + encodeURIComponent(file.id), {
+                headers: { Authorization: 'Bearer ' + accessToken },
+            });
+            if (!res.ok) throw new Error('status ' + res.status);
+            const blob = await res.blob();
+            // registerMedia は File の type/name を参照するので File に包む
+            const f = new File([blob], file.name, { type: file.mimeType || blob.type });
+            registerMedia(f);
+            renderMedia();
+            activateMediaTab('media');   // 読み込んだファイルが見えるメディアタブへ
+            toast(`「${file.name}」を読み込みました`);
+        } catch (e) {
+            toast('読み込みに失敗しました');
+        }
+    }
+
+    // 左パネルのタブを切り替える（クラウドタブを開いたら必要に応じて取得）
+    function activateMediaTab(name) {
+        $$('.panel--media .ptab').forEach((t) =>
+            t.classList.toggle('is-active', t.dataset.tab === name));
+        $$('.ptab-content').forEach((c) =>
+            c.classList.toggle('is-active', c.dataset.content === name));
+        // クラウドタブを初めて開いたときに一覧を取得する
+        if (name === 'cloud' && currentUser && accessToken && !cloudFilesLoaded && !cloudLoading) {
+            fetchCloudFiles(true);
+        }
+    }
+
     // ---- ユーザー情報の永続化（localStorage） ----
     // 保存済みユーザーを読み込む（壊れていたら null）
     function loadStoredUser() {
@@ -2239,6 +2391,7 @@
             </svg> Google でログイン`;
         }
         updateCloudGauge();
+        renderCloudList();   // ログイン状態に応じてクラウドパネルも更新する
     }
 
     // ログインに成功した（または復元した）ユーザーを反映する
@@ -2292,6 +2445,11 @@
         cloudLimitBytes = CLOUD_FALLBACK_TOTAL_GB * 1024 * 1024 * 1024;
         saveStoredQuota(null);
         updateCloudGauge();
+        // クラウドパネルの一覧も破棄して未ログイン表示へ戻す
+        cloudFiles = [];
+        cloudFilesLoaded = false;
+        cloudLoading = false;
+        renderCloudList();
         // サーバー側セッションも破棄（自動で閉じるポップアップ）
         const out = window.open(OAUTH_LOGOUT_URL, 'auriga-oauth-out', 'width=420,height=520');
         if (out) setTimeout(() => { try { out.close(); } catch (e) {} }, 1500);
@@ -2322,6 +2480,7 @@
                 if (data.access_token) {
                     accessToken = data.access_token;
                     fetchDriveStorage();
+                    fetchCloudFiles(true);   // クラウドパネルの一覧も取得
                 }
                 toast(`ようこそ、${data.user.name || 'ユーザー'} さん 🎉`);
             } else if (data.error) {

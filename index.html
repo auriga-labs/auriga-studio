@@ -109,6 +109,7 @@
                     <button class="ptab is-active" data-tab="media">メディア</button>
                     <button class="ptab" data-tab="effects">エフェクト</button>
                     <button class="ptab" data-tab="text">テキスト</button>
+                    <button class="ptab" data-tab="cloud">クラウド</button>
                 </div>
             </div>
 
@@ -132,6 +133,18 @@
                 <!-- テキストタブ -->
                 <section class="ptab-content" data-content="text">
                     <div class="text-presets" id="textPresets"></div>
+                </section>
+
+                <!-- クラウドタブ（Auriga Cloud 内のファイル一覧） -->
+                <section class="ptab-content" data-content="cloud">
+                    <div class="media-toolbar cloud-toolbar">
+                        <button class="btn btn--block" id="btnCloudRefresh">
+                            <i class="ti ti-refresh"></i> 更新
+                        </button>
+                    </div>
+                    <div class="cloud-list" id="cloudList">
+                        <!-- JSで生成 -->
+                    </div>
                 </section>
             </div>
         </aside>
