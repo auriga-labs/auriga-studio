@@ -22,10 +22,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* テーマ未適用時でも見栄えするよう、暗色のベース背景に発光を重ねる */
-    background:
-        radial-gradient(circle at 50% 38%, rgba(43, 174, 143, 0.35), transparent 60%),
-        #e9ebf0;
+    /* スプラッシュ背景はモード（テーマ）を問わず固定。
+       各テーマが .splash の背景を上書きするため !important で勝たせる */
+    background: #131521 !important;
     transition: opacity .5s ease, visibility .5s ease;
 }
 /* フェードアウト用クラス。付与後にトランジション終了で要素を取り除く */
@@ -49,12 +48,13 @@
     font-size: 28px;
     font-weight: 400;
     letter-spacing: .5px;
-    color: #1c2330;
+    /* 背景固定に合わせて文字色もモード非依存にする */
+    color: #e7eaf0 !important;
 }
 .splash__title b { font-weight: 800; }
 .splash__tagline {
     font-size: 12.5px;
-    color: #5a6373;
+    color: #aab2bf !important;
     letter-spacing: 1px;
 }
 /* ロード中を示すスピナー（8 本のバーが放射状に並び、順に光る） */
