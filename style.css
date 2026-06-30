@@ -57,7 +57,7 @@
     color: #5a6373;
     letter-spacing: 1px;
 }
-/* ロード中を示すスピナー（12 本のバーが放射状に並び、順に光る） */
+/* ロード中を示すスピナー（8 本のバーが放射状に並び、順に光る） */
 .splash__spinner {
     position: relative;
     margin-top: 16px;
@@ -69,25 +69,21 @@
     top: 0;
     left: 50%;
     width: 3px;
-    height: 9px;
+    height: 10px;
     margin-left: -1.5px;
     border-radius: 2px;
-    background: #2bae8f;
+    background: #fff;
     transform-origin: 1.5px 20px;   /* バーの上端を中心（半径 20px）へ向けて回転 */
-    animation: splash-fade 1.2s linear infinite;
+    animation: splash-fade 1s linear infinite;
 }
-.splash__spinner span:nth-child(1)  { transform: rotate(0deg);   animation-delay: -1.1s; }
-.splash__spinner span:nth-child(2)  { transform: rotate(30deg);  animation-delay: -1.0s; }
-.splash__spinner span:nth-child(3)  { transform: rotate(60deg);  animation-delay: -.9s; }
-.splash__spinner span:nth-child(4)  { transform: rotate(90deg);  animation-delay: -.8s; }
-.splash__spinner span:nth-child(5)  { transform: rotate(120deg); animation-delay: -.7s; }
-.splash__spinner span:nth-child(6)  { transform: rotate(150deg); animation-delay: -.6s; }
-.splash__spinner span:nth-child(7)  { transform: rotate(180deg); animation-delay: -.5s; }
-.splash__spinner span:nth-child(8)  { transform: rotate(210deg); animation-delay: -.4s; }
-.splash__spinner span:nth-child(9)  { transform: rotate(240deg); animation-delay: -.3s; }
-.splash__spinner span:nth-child(10) { transform: rotate(270deg); animation-delay: -.2s; }
-.splash__spinner span:nth-child(11) { transform: rotate(300deg); animation-delay: -.1s; }
-.splash__spinner span:nth-child(12) { transform: rotate(330deg); animation-delay: 0s; }
+.splash__spinner span:nth-child(1) { transform: rotate(0deg);   animation-delay: -.875s; }
+.splash__spinner span:nth-child(2) { transform: rotate(45deg);  animation-delay: -.75s; }
+.splash__spinner span:nth-child(3) { transform: rotate(90deg);  animation-delay: -.625s; }
+.splash__spinner span:nth-child(4) { transform: rotate(135deg); animation-delay: -.5s; }
+.splash__spinner span:nth-child(5) { transform: rotate(180deg); animation-delay: -.375s; }
+.splash__spinner span:nth-child(6) { transform: rotate(225deg); animation-delay: -.25s; }
+.splash__spinner span:nth-child(7) { transform: rotate(270deg); animation-delay: -.125s; }
+.splash__spinner span:nth-child(8) { transform: rotate(315deg); animation-delay: 0s; }
 @keyframes splash-pop {
     from { opacity: 0; transform: translateY(12px) scale(.96); }
     to   { opacity: 1; transform: none; }
