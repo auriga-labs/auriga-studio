@@ -55,9 +55,9 @@ body { background: #e9ebf0; color: #1c2330; }
 /* ===== メニューバー ===== */
 
 /* 画面最上部のメニューバー */
-.menubar { background: #f4f5f8; border-bottom: 1px solid #ccd2dc; }
+.menubar { background: #1c1c1c; border-bottom: 1px solid #ccd2dc; }
 /* ロゴボタン：ホバー/展開中の背景 */
-.logo:hover, .logo.is-active { background: #e3e6ec; }
+.logo:hover, .logo.is-active { background: none; }
 /* ロゴマークの影 */
 .logo__mark { box-shadow: 0 2px 10px rgba(43, 174, 143, .35); }
 /* ロゴ文字内の太字部分（「Studio」） */
@@ -152,7 +152,7 @@ body { background: #e9ebf0; color: #1c2330; }
 /* 3カラムの土台（隙間に地色がのぞく） */
 .layout { background: #e9ebf0; }
 /* 左右のパネル背景 */
-.panel { background: #f4f5f8; }
+.panel { background: #1c1c1c; }
 /* パネル見出し帯の下線 */
 .panel__head { border-bottom: 1px solid #ccd2dc; }
 /* パネル内タブ（メディア/エフェクト/テキスト） */
@@ -197,7 +197,7 @@ body { background: #e9ebf0; color: #1c2330; }
 /* ===== ステージ（プレビュー） ===== */
 
 /* プレビュー領域の枠 */
-.stage { background: #f4f5f8; }
+.stage { background: #1c1c1c; }
 /* プレビュー上部の見出し帯 */
 .stage__head { border-bottom: 1px solid #ccd2dc; }
 /* 「プログラムモニター」ラベル */
@@ -221,7 +221,7 @@ body { background: #e9ebf0; color: #1c2330; }
 /* ===== トランスポート（再生コントロール） ===== */
 
 /* 再生バー全体 */
-.transport { border-top: 1px solid #ccd2dc; background: #f4f5f8; }
+.transport { border-top: 1px solid #ccd2dc; background: #1c1c1c; }
 /* 現在位置のタイムコード（副アクセント） */
 .transport__time #curTime { color: #f0a020; }
 /* タイムコードの区切り「/」 */
@@ -262,14 +262,14 @@ input[type="range"]::-webkit-slider-thumb { background: #2bae8f; border: 2px sol
 /* ===== タイムライン ===== */
 
 /* プレビューとの境界リサイザー */
-.tl-resizer { background: #f4f5f8; border-top: 1px solid #ccd2dc; }
+.tl-resizer { background: #1c1c1c; border-top: 1px solid #ccd2dc; }
 /* リサイザー中央のつまみ */
 .tl-resizer::after { background: #ccd2dc; }
 /* リサイザー：ホバー/ドラッグ中 */
 .tl-resizer:hover::after, .tl-resizer.is-dragging::after { background: #2bae8f; }
 
 /* タイムライン全体の背景 */
-.timeline { background: #f4f5f8; }
+.timeline { background: #1c1c1c; }
 /* タイムライン上部ツールバーの下線 */
 .timeline__toolbar { border-bottom: 1px solid #ccd2dc; }
 /* 選択/カット/ハンドのツールボタン */
@@ -376,7 +376,7 @@ input[type="range"]::-webkit-slider-thumb { background: #2bae8f; border: 2px sol
 .menu-burger { background: #ffffff; border: 1px solid #ccd2dc; color: #1c2330; }
 .menu-burger:hover { background: #e3e6ec; border-color: #2bae8f; }
 /* ヘッダー操作を縦に積むパネル */
-.mobile-panel { background: #f4f5f8; border-bottom: 1px solid #ccd2dc; box-shadow: 0 8px 30px rgba(40, 50, 70, .18); }
+.mobile-panel { background: #1c1c1c; border-bottom: 1px solid #ccd2dc; box-shadow: 0 8px 30px rgba(40, 50, 70, .18); }
 
 
 /* ===== バージョン情報モーダル ===== */
@@ -398,3 +398,44 @@ input[type="range"]::-webkit-slider-thumb { background: #2bae8f; border: 2px sol
 .about__info dd { color: #1c2330; }
 
 /* ときくんによる 追加のカスタマイズ */
+
+.menubar { height: 32px !important; }
+.logo__text { color: #fff !important; }
+
+.logo__text b { color: #fff !important; }
+
+.menubar__center {display: none !important;}
+
+
+
+/* tabler icons is disabled i { display: none !important;} */
+
+#tracksArea { background-color: #212121 !important; }
+.track { border-bottom: 1px solid #616161 !important; }
+.track-header__icon { display: none !important; }
+.track-header__ctrl { display: none !important; }
+/* .panel--media { display: none !important; } */
+/* .layout { grid-template-columns: 1fr 280px !important;} */
+.transport {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background-color: #424242 !important;
+    border-top: 1px solid #696969 !important;
+    height: 32px !important;
+}
+
+.transport__time #curTime { color: #000 !important; } /* これはタイムコードの色 */
+.viewer { background-color: #212121 !important; } /* これはプレビューの背景 */
+.panel { background-color: #212121 !important; } /* これは右側のパネルの背景 */
+
+#appMenu::hover { background-color: #3f4b53 !important; } /* これはメニューの背景 */
+
+.stage__res { display: none; }
+
+.timeline__toolbar {display: none;}
+
+.transport__controls { display: none;}
+.transport__right {display: none;}
