@@ -284,7 +284,7 @@ body {
 }
 .cloud__bar {
     display: block; height: 100%; width: 0;
-    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    background: var(--accent);
     border-radius: 4px; transition: width .4s ease;
 }
 .cloud__note { font-size: 10.5px; color: var(--text-mute); line-height: 1.4; }
