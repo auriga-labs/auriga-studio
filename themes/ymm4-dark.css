@@ -406,8 +406,8 @@ input[type="range"]::-webkit-slider-thumb { background: #2bae8f; border: 2px sol
 .track { border-bottom: 1px solid #616161 !important; }
 .track-header__icon { display: none !important; }
 .track-header__ctrl { display: none !important; }
-.panel--media { display: none !important; }
-.layout { grid-template-columns: 1fr 280px !important;}
+/* .panel--media { display: none !important; } */
+/* .layout { grid-template-columns: 1fr 280px !important;} */
 .transport {
     position: fixed;
     bottom: 0;
