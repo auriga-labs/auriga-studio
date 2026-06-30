@@ -35,7 +35,7 @@
     // ---- メニューレイアウト ----
     // 対応ソフトごとのメニュー定義ファイル。今は YMM4 のみ。
     const MENU_LAYOUTS = {
-        ymm4: 'menu_layout/ymm4_4.53.0.9.json',
+        ymm4: 'menu_layout/ymm4.json',
     };
     const DEFAULT_MENU_LAYOUT = 'ymm4';   // 暫定の既定値（YMM4）
     const PX_PER_SEC_BASE = 1;        // ズーム値(px)がそのまま1秒あたりのpx
