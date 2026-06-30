@@ -89,6 +89,7 @@
       "items": [
         { "type": "action", "id": "undo", "label": "元に戻す", "mnemonic": "U", "shortcut": "Ctrl+Z", "icon": "arrow-back-up" },
         { "type": "action", "id": "redo", "label": "やり直し", "mnemonic": "R", "shortcut": "Ctrl+Shift+Z", "icon": "arrow-forward-up" },
+        { "type": "separator" },
         {
           "type": "submenu", "id": "preview-ops", "label": "プレビュー操作", "mnemonic": "P",
           "items": [
@@ -107,6 +108,7 @@
                 { "type": "radio", "id": "cp-hidden",    "label": "表示しない",             "group": "controlPointVisibility" }
               ]
             },
+            { "type": "separator" },
             { "type": "action", "id": "go-to-start",    "label": "動画の先頭に移動", "icon": "player-skip-back-filled" },
             { "type": "action", "id": "go-to-end",      "label": "動画の末尾に移動", "icon": "player-skip-forward-filled" },
             { "type": "action", "id": "next-edit-point", "label": "次の編集点へ移動", "icon": "chevrons-right" },
