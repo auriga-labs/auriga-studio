@@ -886,3 +886,21 @@ body.is-scrubbing { cursor: ew-resize; user-select: none; }
     font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
     word-break: break-all;
 }
+
+        .btn-google {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 6px 20px;
+            /* background: #fff; */
+            /* border: 1.5px solid #d1d5db; */
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 500;
+            color: #374151;
+            text-decoration: none;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+        .btn-google svg { flex-shrink: 0; }
