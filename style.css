@@ -57,22 +57,15 @@
     color: #5a6373;
     letter-spacing: 1px;
 }
-/* ロード進捗を示す不確定バー（左右に流れる） */
-.splash__bar {
+/* ロード中を示す回転スピナー */
+.splash__spinner {
     margin-top: 10px;
-    width: 180px;
-    height: 4px;
-    border-radius: 4px;
-    background: #e3e6ec;
-    overflow: hidden;
-}
-.splash__bar-fill {
-    display: block;
-    width: 40%;
-    height: 100%;
-    border-radius: 4px;
-    background: linear-gradient(90deg, #2bae8f, #f0a020);
-    animation: splash-slide 1.2s ease-in-out infinite;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 3px solid #e3e6ec;
+    border-top-color: #2bae8f;
+    animation: splash-spin .8s linear infinite;
 }
 @keyframes splash-pop {
     from { opacity: 0; transform: translateY(12px) scale(.96); }
@@ -82,13 +75,12 @@
     0%, 100% { transform: translateY(0); }
     50%      { transform: translateY(-8px); }
 }
-@keyframes splash-slide {
-    0%   { transform: translateX(-110%); }
-    100% { transform: translateX(360%); }
+@keyframes splash-spin {
+    to { transform: rotate(360deg); }
 }
 /* アニメーション抑制設定を尊重する */
 @media (prefers-reduced-motion: reduce) {
-    .splash__inner, .splash__mark, .splash__bar-fill { animation: none; }
+    .splash__inner, .splash__mark, .splash__spinner { animation: none; }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
