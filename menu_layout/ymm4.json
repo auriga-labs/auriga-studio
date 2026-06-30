@@ -121,7 +121,110 @@
         },
         {
           "type": "submenu", "id": "item-ops", "label": "アイテム操作", "mnemonic": "I",
-          "items": []
+          "items": [
+            { "type": "action", "id": "cut", "label": "切り取り", "shortcut": "Ctrl+X", "icon": "cut" },
+            { "type": "action", "id": "copy", "label": "コピー", "shortcut": "Ctrl+C", "icon": "copy" },
+            { "type": "action", "id": "paste", "label": "貼り付け", "shortcut": "Ctrl+V", "icon": "clipboard" },
+            { "type": "separator" },
+
+            { "type": "action", "id": "voice-to-text", "label": "ボイスアイテムの字幕をテキストアイテムとして分離", "icon": "letter-t" },
+            { "type": "action", "id": "voice-to-text-with-expression", "label": "ボイスアイテムの表情を元に表情アイテムを作成", "icon": "mood-smile" },
+            { "type": "separator" },
+
+            { "type": "action", "id": "delete", "label": "削除", "shortcut": "Delete", "icon": "trash" },
+            { "type": "action", "id": "delete-left", "label": "削除して左寄せ", "shortcut": "Shift+Delete", "icon": "backspace" },
+            { "type": "action", "id": "delete-layer-left", "label": "削除してレイヤーを左寄せ", "shortcut": "Ctrl+Shift+Delete", "icon": "layout-columns" },
+            { "type": "action", "id": "delete-gap", "label": "他にアイテムが存在しない区間を削除", "icon": "timeline" },
+            { "type": "separator" },
+
+            { "type": "action", "id": "change-length", "label": "アイテムの長さを変更", "icon": "resize" },
+            { "type": "action", "id": "reset-length", "label": "アイテムの長さをリセット", "icon": "restore" },
+            { "type": "separator" },
+
+            {
+              "type": "submenu",
+              "id": "sort-items",
+              "label": "選択中のアイテムを整列",
+              "icon": "align-box-left"
+            },
+            {
+              "type": "submenu",
+              "id": "move-items",
+              "label": "選択中のアイテムを移動",
+              "icon": "arrows-move"
+            },
+            { "type": "separator" },
+
+            { "type": "action", "id": "insert-gap", "label": "空白を追加", "icon": "space" },
+            { "type": "action", "id": "remove-gap", "label": "隙間を削除", "icon": "spacing-horizontal" },
+            { "type": "action", "id": "remove-all-gaps", "label": "タイムラインの隙間をすべて削除", "icon": "layout-distribute-horizontal" },
+            { "type": "separator" },
+
+            { "type": "action", "id": "select-left", "label": "左のアイテムをすべて選択", "shortcut": "Ctrl+Shift+Left", "icon": "arrow-left" },
+            { "type": "action", "id": "select-right", "label": "右のアイテムをすべて選択", "shortcut": "Ctrl+Shift+Right", "icon": "arrow-right" },
+
+            { "type": "action", "id": "select-layer-items", "label": "選択中のアイテムの左のアイテムを選択", "icon": "stack-2" },
+            { "type": "action", "id": "select-right-layer-items", "label": "選択中のアイテムの右のアイテムを選択", "icon": "stack-3" },
+
+            {
+              "type": "submenu",
+              "id": "select-neighbor",
+              "label": "隣のアイテムを選択",
+              "icon": "arrows-horizontal"
+            },
+
+            { "type": "action", "id": "select-all", "label": "すべて選択", "shortcut": "Ctrl+A", "icon": "select-all" },
+            { "type": "separator" },
+
+            { "type": "action", "id": "split-at-playhead", "label": "再生位置で分割", "shortcut": "Ctrl+B", "icon": "cut" },
+
+            {
+              "type": "submenu",
+              "id": "playhead-item-ops",
+              "label": "再生位置のアイテムを操作",
+              "icon": "player-track-next"
+            },
+
+            { "type": "action", "id": "add-midpoint-current", "label": "現在の再生位置に中間点を追加", "icon": "point" },
+            { "type": "action", "id": "add-midpoint-relative", "label": "対称位置に中間点を追加", "icon": "point-filled" },
+            { "type": "action", "id": "remove-midpoint-current", "label": "現在の再生位置の中間点を削除", "icon": "point-off" },
+            { "type": "action", "id": "remove-all-midpoints", "label": "全ての中間点を削除", "icon": "clear-all" },
+            { "type": "action", "id": "distribute-midpoints", "label": "中間点を均等配置", "icon": "layout-distribute-horizontal" },
+            { "type": "action", "id": "split-midpoint", "label": "中間点で分割", "icon": "scissors" },
+            { "type": "action", "id": "split-all-midpoints", "label": "全ての中間点で分割", "icon": "cut" },
+            { "type": "separator" },
+
+            { "type": "action", "id": "group", "label": "グループ化", "shortcut": "Ctrl+G", "icon": "box-multiple" },
+            { "type": "action", "id": "ungroup", "label": "グループを解除", "shortcut": "Ctrl+Shift+G", "icon": "box-multiple-0" },
+            { "type": "separator" },
+
+            { "type": "action", "id": "toggle-clipping-top", "label": "上のアイテムでクリッピングを有効化/無効化", "icon": "crop" },
+            { "type": "action", "id": "enable-clipping-top", "label": "上のアイテムでクリッピングを有効化", "icon": "crop" },
+            { "type": "action", "id": "disable-clipping-top", "label": "上のアイテムでクリッピングを無効化", "icon": "crop-off" },
+            { "type": "separator" },
+
+            { "type": "action", "id": "toggle-preview-lock", "label": "プレビューエリアでの操作を有効化/無効化", "icon": "lock" },
+            { "type": "action", "id": "disable-preview-lock", "label": "プレビューエリアでの操作を無効化", "icon": "lock" },
+            { "type": "action", "id": "enable-preview-lock", "label": "プレビューエリアでの操作を有効化", "icon": "lock-open" },
+            { "type": "separator" },
+
+            { "type": "action", "id": "show-items", "label": "アイテムを表示", "icon": "eye" },
+            { "type": "action", "id": "hide-items", "label": "アイテムを非表示", "icon": "eye-off" },
+            { "type": "action", "id": "toggle-items", "label": "アイテムを表示/非表示", "icon": "eye" },
+            { "type": "separator" },
+
+            { "type": "action", "id": "toggle-waveform", "label": "波形を表示/非表示", "icon": "wave-sine" },
+            { "type": "action", "id": "show-waveform", "label": "波形を表示", "shortcut": "Ctrl+W", "icon": "wave-sine" },
+            { "type": "action", "id": "hide-waveform", "label": "波形を非表示", "shortcut": "Ctrl+Shift+W", "icon": "wave-sine-off" },
+            { "type": "separator" },
+
+            {
+              "type": "submenu",
+              "id": "set-default",
+              "label": "デフォルトに設定",
+              "icon": "settings"
+            }
+          ]
         },
         {
           "type": "submenu", "id": "voice-ops", "label": "ボイス操作", "mnemonic": "V",
