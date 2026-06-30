@@ -289,15 +289,13 @@
           "type": "checkbox",
           "id": "show-toolbar-title",
           "label": "ツールのタイトルを表示",
-          "checked": true,
-          "icon": "layout-navbar"
+          "checked": true
         },
         {
           "type": "checkbox",
           "id": "show-scene-tabs",
           "label": "シーンタブを常に表示",
-          "checked": true,
-          "icon": "layout-tabs"
+          "checked": true
         },
 
         { "type": "separator" },
