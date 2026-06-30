@@ -1067,10 +1067,65 @@
         if (link) link.href = `themes/${theme}.css`;
         // 構造的なテーマ判定が必要な箇所のために属性も維持する
         document.documentElement.dataset.theme = theme;
+        // 配色 CSS と対になるテーマ別 JavaScript も切り替える
+        applyThemeScript(theme, !!silent);
         try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* 保存不可でも継続 */ }
         const sel = $('#themeSelect');
         if (sel) sel.value = theme;
         if (!silent) toast(`テーマ：${THEME_LABELS[theme]}`);
+    }
+
+    // ======================================================
+    // テーマ別 JavaScript（themes/<name>.js）の読み込みと切り替え
+    // ======================================================
+    // 配色は themes/<name>.css、振る舞い（DOM 操作など）は themes/<name>.js に分離する。
+    // 各テーマ JS は window.registerTheme(name, { apply, cleanup }) で自身を登録する。
+    const themeHooks = {};          // name -> { apply, cleanup }
+    const themeScriptLoad = {};     // name -> Promise（スクリプトの多重読込を防ぐ）
+    let activeThemeName = null;     // 現在 apply 済みのテーマ名
+
+    // テーマ JS が apply/cleanup から使う共通 API。DOM 操作はここに集約する
+    const themeCtx = {
+        $, $$, toast,
+        // ワークスペースタブのラベルを書き換える（ボタンの数は変えない）
+        setWorkspaceTabs(labels) {
+            $$('.ws-tab').forEach((t, i) => {
+                if (labels[i] != null) t.textContent = labels[i];
+            });
+        },
+        // ドキュメントタイトルの末尾（対応ソフト名）を設定する
+        setTitleSuffix(suffix) {
+            document.title = suffix ? `Auriga Studio — ${suffix}` : 'Auriga Studio — 動画編集';
+        },
+    };
+
+    // テーマ JS からの登録窓口（テーマ JS は main.js より後に読み込まれる）
+    window.registerTheme = (name, hooks) => { themeHooks[name] = hooks || {}; };
+
+    // themes/<name>.js を一度だけ動的に読み込む
+    function loadThemeScript(name) {
+        if (themeScriptLoad[name]) return themeScriptLoad[name];
+        themeScriptLoad[name] = new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = `themes/${name}.js`;
+            s.onload = () => resolve(true);
+            s.onerror = () => { console.warn(`テーマJSの読み込みに失敗: ${name}`); resolve(false); };
+            document.head.appendChild(s);
+        });
+        return themeScriptLoad[name];
+    }
+
+    // 直前テーマの cleanup → 対象テーマの apply、の順で振る舞いを切り替える
+    async function applyThemeScript(name, silent) {
+        // 直前テーマの後始末（テーマ固有の DOM 状態を元に戻す）
+        if (activeThemeName && activeThemeName !== name) {
+            const prev = themeHooks[activeThemeName];
+            try { prev && prev.cleanup && prev.cleanup(themeCtx); } catch (e) { console.warn(e); }
+        }
+        await loadThemeScript(name);
+        const hooks = themeHooks[name];
+        try { hooks && hooks.apply && hooks.apply(themeCtx, { silent }); } catch (e) { console.warn(e); }
+        activeThemeName = name;
     }
 
     // 起動時に保存済みテーマを復元する（未保存なら既定は YMM4）

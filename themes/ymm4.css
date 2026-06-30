@@ -41,3 +41,6 @@
 }
 
 .transport__time #curTime { color: #000 !important; }
+
+.viewer { background-color: #ffffff !important; }
+.panel { background-color: #ffffff !important; }
