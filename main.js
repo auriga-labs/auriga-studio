@@ -1755,19 +1755,42 @@
         });
     }
 
+    // dynamic ソースの実エントリ（将来データを差し込む。未対応ソースは空配列）
+    const DYNAMIC_MENU_DATA = {};
+    function dynamicItems(source) {
+        return DYNAMIC_MENU_DATA[source] || [];
+    }
+
+    // dynamic 項目を実エントリへ展開する（中身が無い dynamic は消える）
+    function expandItems(items) {
+        const out = [];
+        (items || []).forEach((it) => {
+            if (it.type === 'dynamic') out.push(...dynamicItems(it.source));
+            else out.push(it);
+        });
+        return out;
+    }
+
+    // サブメニューに表示できる中身があるか（区切り線だけ・空の dynamic だけは「なし」とみなす）
+    function hasMenuContent(items) {
+        return expandItems(items).some((it) => it.type !== 'separator');
+    }
+
     // 1 枚のパネル（メニュー/サブメニュー）を組み立てる
     function buildPanel(items, level) {
         const panel = document.createElement('div');
         panel.className = 'appmenu' + (level > 0 ? ' appmenu--sub' : '');
         panel.dataset.level = level;
-        if (!items.length) {
+        // dynamic を実データへ展開してから描画する（空の dynamic はここで消える）
+        const expanded = expandItems(items);
+        if (!expanded.length) {
             const empty = document.createElement('div');
             empty.className = 'appmenu__empty';
             empty.textContent = '（項目がありません）';
             panel.appendChild(empty);
             return panel;
         }
-        items.forEach((it) => panel.appendChild(buildMenuItem(it, level, items)));
+        expanded.forEach((it) => panel.appendChild(buildMenuItem(it, level, expanded)));
         return panel;
     }
 
@@ -1778,15 +1801,10 @@
             sep.className = 'appmenu__sep';
             return sep;
         }
-        if (it.type === 'dynamic') {
-            const ph = document.createElement('div');
-            ph.className = 'appmenu__dynamic';
-            ph.textContent = it.placeholder || dynamicLabel(it.source);
-            return ph;
-        }
-
         const el = document.createElement('div');
-        const hasSub = it.type === 'submenu';
+        // サブメニューでも、表示できる中身が無ければネストせず普通の項目として描く
+        // （＞矢印を出さず、子パネルも開かず、「～ありません」も表示しない）
+        const hasSub = it.type === 'submenu' && hasMenuContent(it.items || []);
         const checked = (it.type === 'radio' || it.type === 'checkbox') && !!it.checked;
         el.className = 'appmenu__item'
             + (hasSub ? ' has-sub' : '')
@@ -1848,16 +1866,6 @@
         const py = Math.max(4, Math.min(y, window.innerHeight - r.height - 6));
         panel.style.left = px + 'px';
         panel.style.top = py + 'px';
-    }
-
-    // dynamic 項目のフォールバック文言
-    function dynamicLabel(source) {
-        const map = {
-            recentFiles: '最近使ったファイルはありません',
-            recentProjects: '最近のプロジェクトはありません',
-            backups: 'バックアップはありません',
-        };
-        return map[source] || '（項目がありません）';
     }
 
     // メニュー項目のアクションを実行する

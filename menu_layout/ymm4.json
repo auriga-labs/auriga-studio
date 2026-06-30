@@ -12,6 +12,17 @@
           "type": "submenu", "id": "add-item", "label": "アイテムを追加", "mnemonic": "A",
           "items": [
             { "type": "action", "id": "add-voice-item", "label": "ボイスアイテム", "mnemonic": "Y", "icon": "microphone" },
+            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" },
+            { "type": "action", "id": "add-text-item",  "label": "動画アイテム", "icon": "text-size" },
+            { "type": "action", "id": "add-text-item",  "label": "音声アイテム", "icon": "text-size" },
+            { "type": "action", "id": "add-text-item",  "label": "画像アイテム", "icon": "text-size" },
+            { "type": "action", "id": "add-text-item",  "label": "図形アイテム", "icon": "text-size" },
+            { "type": "action", "id": "add-text-item",  "label": "立ち絵アイテム", "icon": "text-size" },
+            { "type": "action", "id": "add-text-item",  "label": "表情アイテム", "icon": "text-size" },
+            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" },
+            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" },
+            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" },
+            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" },
             { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" }
           ]
         },
