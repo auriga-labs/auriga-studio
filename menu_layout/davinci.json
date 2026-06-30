@@ -95,7 +95,84 @@
     {
         "id": "edit",
         "label": "編集",
-        "items": []
+        "items": [
+  { "type": "action", "id": "undo", "label": "取り消し", "shortcut": "Ctrl+Z" },
+  { "type": "action", "id": "redo", "label": "やり直し", "shortcut": "Ctrl+Shift+Z" },
+
+  {
+    "type": "submenu",
+    "id": "history",
+    "label": "履歴",
+    "items": []
+  },
+
+  { "type": "separator" },
+
+  { "type": "action", "id": "cut", "label": "カット", "shortcut": "Ctrl+X" },
+  { "type": "action", "id": "ripple-cut", "label": "リップルカット", "shortcut": "Ctrl+Shift+X", "disabled": true },
+  { "type": "action", "id": "cut-head", "label": "先頭をカット", "disabled": true },
+  { "type": "action", "id": "cut-tail", "label": "末尾をカット", "disabled": true },
+
+  { "type": "action", "id": "copy", "label": "コピー", "shortcut": "Ctrl+C" },
+  { "type": "action", "id": "copy-head", "label": "先頭をコピー", "disabled": true },
+  { "type": "action", "id": "copy-tail", "label": "末尾をコピー", "disabled": true },
+
+  { "type": "action", "id": "paste", "label": "ペースト", "shortcut": "Ctrl+V" },
+  { "type": "action", "id": "paste-insert", "label": "ペースト挿入", "shortcut": "Ctrl+Shift+V", "disabled": true },
+  { "type": "action", "id": "paste-attributes", "label": "属性をペースト...", "shortcut": "Alt+V" },
+  { "type": "action", "id": "paste-values", "label": "値をペースト", "shortcut": "Alt+Shift+V", "disabled": true },
+  { "type": "action", "id": "delete-attributes", "label": "属性を削除...", "disabled": true },
+
+  { "type": "separator" },
+
+  { "type": "action", "id": "duplicate-clip", "label": "クリップを複製" },
+  { "type": "action", "id": "duplicate-selection", "label": "選択を複製", "disabled": true },
+
+  { "type": "action", "id": "delete-selection", "label": "選択を削除", "shortcut": "Backspace" },
+  { "type": "action", "id": "ripple-delete", "label": "リップル削除", "shortcut": "Shift+Backspace" },
+  { "type": "action", "id": "delete-gap", "label": "ギャップを削除" },
+
+  { "type": "separator" },
+
+  { "type": "action", "id": "select-all", "label": "すべて選択", "shortcut": "Ctrl+A" },
+  { "type": "action", "id": "deselect-all", "label": "すべて選択解除", "shortcut": "Ctrl+Shift+A" },
+
+  {
+    "type": "submenu",
+    "id": "select",
+    "label": "選択",
+    "items": []
+  },
+
+  { "type": "separator" },
+
+  { "type": "action", "id": "insert", "label": "挿入", "shortcut": "F9" },
+  { "type": "action", "id": "overwrite", "label": "上書き", "shortcut": "F10" },
+  { "type": "action", "id": "replace", "label": "置き換え", "shortcut": "F11" },
+  { "type": "action", "id": "place-on-top-track", "label": "最上位トラックに配置", "shortcut": "F12" },
+  { "type": "action", "id": "ripple-overwrite", "label": "リップル上書き", "shortcut": "Shift+F10" },
+  { "type": "action", "id": "fit-to-fill", "label": "フィットトゥフィル", "shortcut": "Shift+F11" },
+  { "type": "action", "id": "append-to-end", "label": "タイムラインの末尾に追加", "shortcut": "Shift+F12" },
+
+  {
+    "type": "submenu",
+    "id": "multicam",
+    "label": "マルチカム",
+    "items": []
+  },
+
+  { "type": "action", "id": "insert-gap", "label": "ギャップを挿入" },
+
+  { "type": "action", "id": "swap-with-previous", "label": "前のクリップと置き換え", "shortcut": "Ctrl+Shift+,", "disabled": true },
+  { "type": "action", "id": "swap-with-next", "label": "次のクリップと置き換え", "shortcut": "Ctrl+Shift+.", "disabled": true },
+
+  {
+    "type": "submenu",
+    "id": "editing-options",
+    "label": "編集オプション",
+    "items": []
+  }
+]
     },
     {
         "id": "trim",
