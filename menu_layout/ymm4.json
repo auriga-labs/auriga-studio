@@ -159,7 +159,28 @@
       ]
     },
     { "id": "layout", "label": "レイアウト", "mnemonic": "L", "items": [] },
-    { "id": "tools",  "label": "ツール",     "mnemonic": "T", "items": [] },
-    { "id": "help",   "label": "ヘルプ",     "mnemonic": "H", "items": [] }
+    { "id": "tools",  "label": "ツール",     "mnemonic": "T", "items": [
+      { "type": "radio", "id": "explorer",                  "label": "エクスプローラー" },
+      { "type": "radio", "id": "psd-character-manager",     "label": "Psd立ち絵素材マネージャー" },
+      { "type": "radio", "id": "items",                     "label": "アイテム", "checked": true },
+      { "type": "radio", "id": "character-settings",        "label": "キャラクター設定" },
+      { "type": "radio", "id": "templates",                 "label": "テンプレート" },
+      { "type": "radio", "id": "browser",                   "label": "ブラウザ" },
+      { "type": "radio", "id": "plugin-portal",             "label": "プラグインポータル" },
+      { "type": "radio", "id": "preview",                   "label": "プレビュー", "checked": true },
+      { "type": "radio", "id": "notepad",                   "label": "メモ帳" },
+      { "type": "radio", "id": "used-assets",               "label": "使用素材一覧" },
+      { "type": "radio", "id": "live2d-character-manager",  "label": "動く立ち絵素材マネージャー" },
+      { "type": "radio", "id": "pronunciation-dictionary",  "label": "単語・発音辞書" },
+      { "type": "radio", "id": "script-editor",             "label": "台本編集" },
+      { "type": "radio", "id": "transcription",             "label": "文字起こし" },
+      { "type": "radio", "id": "search",                    "label": "検索" },
+      { "type": "radio", "id": "settings",                  "label": "設定" },
+      { "type": "radio", "id": "recording",                 "label": "録音" },
+      { "type": "radio", "id": "audio-analysis",            "label": "音量解析" }
+    ] },
+    { "id": "help",   "label": "ヘルプ",     "mnemonic": "H", "items": [
+      { "type": "action", "id": "send-feedback", "label": "フィードバックを送信", "icon": "message-exclamation" }
+    ] }
   ]
 }
