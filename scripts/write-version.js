@@ -22,8 +22,9 @@ const version = {
 //   node: process.versions.node || process.version.replace(/^v/, ''),
 //   v8: process.versions.v8 || ''
 };
-
+/*
 fs.writeFileSync(
   path.join(__dirname, '..', 'version.json'),
   JSON.stringify(version, null, 2) + '\n'
 );
+*/
