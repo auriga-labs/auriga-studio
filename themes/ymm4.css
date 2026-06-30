@@ -16,5 +16,28 @@
     --shadow: 0 8px 30px rgba(40, 50, 70, 0.18);
 }
 
+
+/* ときくんによる YMM4 風テーマのカスタマイズ */
+
 /* YMM4 は DaVinci ライクなワークスペースタブ（編集/カラー/オーディオ/書き出し）を持たないため隠す */
 .workspace-tabs { display: none; }
+
+
+#tracksArea { background-color: #f0f0f0 !important; }
+.track { border-bottom: 1px solid #696969 !important; }
+.track-header__icon { display: none !important; }
+.track-header__ctrl { display: none !important; }
+.panel--media { display: none !important; }
+.layout { grid-template-columns: 1fr 280px !important;}
+.transport {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background-color: #f1eded !important;
+    border-top: 1px solid #696969 !important;
+    height: 32px !important;
+}
+
+.transport__time #curTime { color: #000 !important; }
