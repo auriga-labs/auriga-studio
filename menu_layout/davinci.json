@@ -4,7 +4,93 @@
     {
         "id": "file",
         "label": "ファイル",
-        "items": []
+        "items": [
+  { "type": "action", "id": "new-project", "label": "新規プロジェクト..." },
+
+  {
+    "type": "submenu",
+    "id": "recent-projects",
+    "label": "最近のプロジェクトを開く",
+    "items": []
+  },
+
+  { "type": "action", "id": "new-bin", "label": "新規ビン", "shortcut": "Ctrl+Shift+N" },
+  { "type": "action", "id": "new-smart-bin", "label": "新規スマートビン..." },
+  { "type": "action", "id": "new-timeline", "label": "新規タイムライン...", "shortcut": "Ctrl+N" },
+  { "type": "action", "id": "close-timeline", "label": "Close Timeline" },
+  { "type": "action", "id": "close-project", "label": "プロジェクトを閉じる" },
+
+  { "type": "separator" },
+
+  { "type": "action", "id": "save-project", "label": "プロジェクトを保存", "shortcut": "Ctrl+S" },
+  { "type": "action", "id": "save-project-as", "label": "プロジェクトを別名で保存...", "shortcut": "Ctrl+Shift+S" },
+  { "type": "action", "id": "create-timeline-backup", "label": "タイムラインバックアップを作成...", "shortcut": "Ctrl+Alt+S" },
+  { "type": "action", "id": "restore-last-saved-version", "label": "最後に保存したバージョンに戻す...", "disabled": true },
+
+  { "type": "separator" },
+
+  {
+    "type": "submenu",
+    "id": "import",
+    "label": "読み込み",
+    "items": []
+  },
+  { "type": "action", "id": "import-project", "label": "プロジェクトの読み込み..." },
+  {
+    "type": "submenu",
+    "id": "import-metadata",
+    "label": "メタデータの読み込み",
+    "items": []
+  },
+
+  { "type": "separator" },
+
+  {
+    "type": "submenu",
+    "id": "export",
+    "label": "書き出し",
+    "items": []
+  },
+  { "type": "action", "id": "export-project", "label": "プロジェクトの書き出し...", "shortcut": "Ctrl+E" },
+  {
+    "type": "submenu",
+    "id": "export-metadata",
+    "label": "メタデータの書き出し",
+    "items": []
+  },
+  { "type": "action", "id": "quick-export", "label": "クイックエクスポート..." },
+
+  { "type": "separator" },
+
+  { "type": "action", "id": "project-manager", "label": "プロジェクトマネージャー...", "shortcut": "Shift+1" },
+  { "type": "action", "id": "project-settings", "label": "プロジェクト設定...", "shortcut": "Shift+9" },
+  { "type": "action", "id": "project-notes", "label": "プロジェクトメモ..." },
+
+  { "type": "separator" },
+
+  { "type": "checkbox", "id": "single-user-project", "label": "単一ユーザープロジェクト", "checked": true, "disabled": true },
+  { "type": "checkbox", "id": "multi-user-collaboration", "label": "複数ユーザーコラボレーション", "disabled": true },
+
+  { "type": "separator" },
+
+  { "type": "action", "id": "media-management", "label": "メディア管理..." },
+  { "type": "action", "id": "relink-clips", "label": "ビンから再コンフォーム..." },
+  { "type": "action", "id": "relink-media-storage", "label": "メディアストレージから再コンフォーム..." },
+
+  {
+    "type": "submenu",
+    "id": "easydcp",
+    "label": "easyDCP",
+    "items": []
+  },
+
+  {
+    "type": "submenu",
+    "id": "blackmagic-cloud",
+    "label": "Blackmagic Cloudアカウント",
+    "items": []
+  }
+]
     },
     {
         "id": "edit",
