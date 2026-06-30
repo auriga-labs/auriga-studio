@@ -1805,18 +1805,26 @@
         // サブメニューでも、表示できる中身が無ければネストせず普通の項目として描く
         // （＞矢印を出さず、子パネルも開かず、「～ありません」も表示しない）
         const hasSub = it.type === 'submenu' && hasMenuContent(it.items || []);
-        const checked = (it.type === 'radio' || it.type === 'checkbox') && !!it.checked;
+        const isToggle = it.type === 'radio' || it.type === 'checkbox';
+        const checked = isToggle && !!it.checked;
         el.className = 'appmenu__item'
             + (hasSub ? ' has-sub' : '')
             + (checked ? ' is-checked' : '');
 
-        // 右側：ショートカット優先、なければチェック中のみチェックアイコン
-        let keyHtml = '';
-        if (it.shortcut) keyHtml = escapeHtml(it.shortcut);
-        else if (checked) keyHtml = '<i class="ti ti-check"></i>';
+        // 左側のアイコン枠：checkbox / radio はアイコンを出さず、
+        // チェック中ならチェックアイコンをここ（左端）に置く。
+        let iconSlot;
+        if (isToggle) {
+            iconSlot = checked ? '<i class="ti ti-check"></i>' : '';
+        } else {
+            iconSlot = iconHtml(it.icon);
+        }
+
+        // 右側：ショートカットのみ（チェックは左へ移動した）
+        const keyHtml = it.shortcut ? escapeHtml(it.shortcut) : '';
 
         el.innerHTML = `
-            <span class="appmenu__icon">${iconHtml(it.icon)}</span>
+            <span class="appmenu__icon">${iconSlot}</span>
             <span class="appmenu__label">${labelHtml(it)}</span>
             <span class="appmenu__key">${keyHtml}</span>
             <span class="appmenu__arrow">${hasSub ? '<i class="ti ti-chevron-right"></i>' : ''}</span>`;
