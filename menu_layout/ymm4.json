@@ -11,19 +11,19 @@
         {
           "type": "submenu", "id": "add-item", "label": "アイテムを追加", "mnemonic": "A",
           "items": [
-            { "type": "action", "id": "add-voice-item", "label": "ボイスアイテム", "mnemonic": "Y", "icon": "microphone" },
-            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "動画アイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "音声アイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "画像アイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "図形アイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "立ち絵アイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "表情アイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" },
-            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "text-size" }
+            { "type": "action", "id": "add-voice-item", "label": "ボイスアイテム", "mnemonic": "Y", "icon": "message" },
+            { "type": "action", "id": "add-text-item",  "label": "テキストアイテム", "icon": "letter-t" },
+            { "type": "action", "id": "add-video-item",  "label": "動画アイテム", "icon": "video-filled" },
+            { "type": "action", "id": "add-voice-item",  "label": "音声アイテム", "icon": "music" },
+            { "type": "action", "id": "add-image-item",  "label": "画像アイテム", "icon": "graph" },
+            { "type": "action", "id": "add-shapes-item",  "label": "図形アイテム", "icon": "polygon" },
+            { "type": "action", "id": "add-ymm-char-item",  "label": "立ち絵アイテム", "icon": "user-filled" },
+            { "type": "action", "id": "add-face-item",  "label": "表情アイテム", "icon": "mood-happy" },
+            { "type": "action", "id": "add-effect-item",  "label": "エフェクトアイテム", "icon": "sparkles-2" },
+            { "type": "action", "id": "add-occasion-chg-item",  "label": "場面切り替えアイテム", "icon": "square-half" },
+            { "type": "action", "id": "add-scene-item",  "label": "シーンアイテム", "icon": "chart-column" },
+            { "type": "action", "id": "add-scp-item",  "label": "画面の複製", "icon": "box-multiple-filled" },
+            { "type": "action", "id": "add-group-item",  "label": "グループ制御", "icon": "text-size" }
           ]
         },
         {
