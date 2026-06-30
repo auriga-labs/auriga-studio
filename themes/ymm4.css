@@ -285,7 +285,7 @@ input[type="range"]::-webkit-slider-thumb { background: #2bae8f; border: 2px sol
 /* ルーラーと高さを合わせるスペーサー */
 .track-headers__spacer { background: #ffffff; border-bottom: 1px solid #ccd2dc; }
 /* 1トラックのヘッダー行 */
-.track-header { border-bottom: 1px solid #ccd2dc; }
+.track-header { border-bottom: 1px solid #616161; }
 /* トラック番号の四角アイコン */
 .track-header__icon { background: #e3e6ec; color: #5a6373; }
 /* トラックの表示/ミュート等の小ボタン */
@@ -425,3 +425,10 @@ input[type="range"]::-webkit-slider-thumb { background: #2bae8f; border: 2px sol
 .viewer { background-color: #ffffff !important; } /* これはプレビューの背景 */
 .panel { background-color: #ffffff !important; } /* これは右側のパネルの背景 */
 
+.stage__res { display: none; }
+.timeline__toolbar {display: none;}
+
+
+.transport__controls { display: none;}
+
+.transport__right {display: none;}
