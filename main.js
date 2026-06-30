@@ -92,6 +92,7 @@
     const $$ = (s) => Array.from(document.querySelectorAll(s));
 
     const els = {
+        splash: $('#splash'),
         appMenu: $('#appMenu'),
         mediaGrid: $('#mediaGrid'),
         effectList: $('#effectList'),
@@ -133,7 +134,28 @@
         updatePlayhead();
         els.viewerCanvas.classList.add('program');   // 既定はプログラム（合成）モニター
         composite(state.playhead, false);
+        hideSplash();   // 初期化が終わったのでスプラッシュを閉じる
         toast('Auriga Studio へようこそ 🎬');
+    }
+
+    // ======================================================
+    // スプラッシュ画面
+    // ======================================================
+    // 初期化完了後にスプラッシュをフェードアウトさせて DOM から取り除く。
+    // 一瞬で消えると味気ないので最低表示時間（700ms）を確保する。
+    const SPLASH_MIN_MS = 700;            // スプラッシュの最低表示時間(ms)
+    const splashShownAt = performance.now();   // スクリプト読み込み時刻を起点にする
+    function hideSplash() {
+        const el = els.splash;
+        if (!el) return;
+        const wait = Math.max(0, SPLASH_MIN_MS - (performance.now() - splashShownAt));
+        setTimeout(() => {
+            el.classList.add('is-hide');
+            // フェードアウト後に要素を取り除く（保険でタイマーも併用）
+            const remove = () => el.remove();
+            el.addEventListener('transitionend', remove, { once: true });
+            setTimeout(remove, 800);
+        }, wait);
     }
 
     // ======================================================
