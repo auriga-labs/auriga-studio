@@ -265,7 +265,63 @@
         }
       ]
     },
-    { "id": "layout", "label": "レイアウト", "mnemonic": "L", "items": [] },
+    { "id": "layout", "label": "レイアウト", "mnemonic": "L", "items": 
+      [
+        {
+          "type": "submenu",
+          "id": "preset",
+          "label": "プリセット",
+          "mnemonic": "P",
+          "icon": "bookmark",
+          "items": []
+        },
+
+        {
+          "type": "action",
+          "id": "save-layout-preset",
+          "label": "プリセットを保存",
+          "icon": "device-floppy"
+        },
+
+        { "type": "separator" },
+
+        {
+          "type": "checkbox",
+          "id": "show-toolbar-title",
+          "label": "ツールのタイトルを表示",
+          "checked": true,
+          "icon": "layout-navbar"
+        },
+        {
+          "type": "checkbox",
+          "id": "show-scene-tabs",
+          "label": "シーンタブを常に表示",
+          "checked": true,
+          "icon": "layout-tabs"
+        },
+
+        { "type": "separator" },
+
+        {
+          "type": "action",
+          "id": "reset-ui-scale",
+          "label": "UIの拡大率を100%にリセット",
+          "icon": "zoom-reset"
+        },
+        {
+          "type": "action",
+          "id": "reset-layout",
+          "label": "レイアウトをリセット",
+          "icon": "layout"
+        },
+        {
+          "type": "action",
+          "id": "reset-window-positions",
+          "label": "すべてのウィンドウの位置とサイズをリセット",
+          "icon": "window-maximize"
+        }
+      ]
+    },
     { "id": "tools",  "label": "ツール",     "mnemonic": "T", "items": [
       { "type": "radio", "id": "explorer",                  "label": "エクスプローラー" },
       { "type": "radio", "id": "psd-character-manager",     "label": "Psd立ち絵素材マネージャー" },
