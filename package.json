@@ -1,11 +1,65 @@
 {
   "name": "auriga-studio",
   "version": "0.0.1",
-  "main": "main.js",
+  "description": "ブラウザ(Electron)で動作する統合型動画編集ソフト",
+  "main": "electron-main.js",
+  "author": "Auriga Labs",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "studio.auriga.app",
+    "productName": "Auriga Studio",
+    "copyright": "Copyright © 2026 Auriga Labs",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron-main.js",
+      "main.js",
+      "index.html",
+      "privacy.html",
+      "style.css",
+      "version.json",
+      "themes/**/*",
+      "assets/**/*",
+      "menu_layout/**/*",
+      "favicon.ico",
+      "favicon.svg",
+      "favicon-dark.ico",
+      "favicon-dark.svg",
+      "favicon-symbol.png",
+      "favicon-symbol.svg",
+      "icon.svg",
+      "!**/*.md",
+      "!oauth/**/*",
+      "!cloud/**/*",
+      "!scripts/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Auriga Studio"
+    }
   },
   "devDependencies": {
-    "electron": "^42.2.0"
+    "electron": "^42.2.0",
+    "electron-builder": "^26.15.3"
   }
 }
