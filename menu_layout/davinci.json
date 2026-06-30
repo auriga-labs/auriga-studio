@@ -1,7 +1,70 @@
 {
   "version": "21.0.1",
   "menus": [
-        {
-        }
+    {
+        "id": "file",
+        "label": "ファイル",
+        "items": []
+    },
+    {
+        "id": "edit",
+        "label": "編集",
+        "items": []
+    },
+    {
+        "id": "trim",
+        "label": "トリム",
+        "items": []
+    },
+    {
+        "id": "timeline",
+        "label": "タイムライン",
+        "items": []
+    },
+    {
+        "id": "clip",
+        "label": "クリップ",
+        "items": []
+    },
+    {
+        "id": "marker",
+        "label": "マーカー",
+        "items": []
+    },
+    {
+        "id": "view",
+        "label": "表示",
+        "items": []
+    },
+    {
+        "id": "playback",
+        "label": "再生",
+        "items": []
+    },
+    {
+        "id": "fusion",
+        "label": "Fusion",
+        "items": []
+    },
+    {
+        "id": "color",
+        "label": "カラー",
+        "items": []
+    },
+    {
+        "id": "fairlight",
+        "label": "Fairlight",
+        "items": []
+    },
+    {
+        "id": "workspace",
+        "label": "ワークスペース",
+        "items": []
+    },
+    {
+        "id": "help",
+        "label": "ヘルプ",
+        "items": []
+    }
     ]
 }

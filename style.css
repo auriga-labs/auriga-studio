@@ -7,7 +7,7 @@
     --radius-sm: 5px;
     font-size: 13px;
 }
-
+.menubar__center { display: none !important; } /* いったんけす */
 /* テーマ切替時の色変化を滑らかに */
 .menubar, .panel, .stage, .timeline, .btn, .menu__item, .ws-tab {
     transition: background-color .25s ease, color .25s ease, border-color .25s ease;
