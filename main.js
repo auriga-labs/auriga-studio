@@ -23,7 +23,7 @@
     const OAUTH_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive'];
     const OAUTH_LOGOUT_URL = OAUTH_ORIGIN + '/oauth/logout.php?app=1'; // ログアウトURL
     const THEMES = ['tokikun', 'ymm4', 'davinci', 'premiere'];
-    const THEME_LABELS = { tokikun: 'ときくん', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
+    const THEME_LABELS = { tokikun: 'Aurigaオリジナル', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
 
     // ---- 配色モード（ライト / ダーク / システムに準ずる）----
     // テーマ（対応ソフト風の配色セット）とは独立した軸。ダーク時は themes/<name>-dark.css を読み込む。
