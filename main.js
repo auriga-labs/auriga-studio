@@ -26,7 +26,8 @@
     const THEME_LABELS = { auriga: 'Aurigaオリジナル', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
 
     // ---- 配色モード（ライト / ダーク / システムに準ずる）----
-    // テーマ（対応ソフト風の配色セット）とは独立した軸。ダーク時は themes/<name>-dark.css を読み込む。
+    // テーマ（対応ソフト風の配色セット）とは独立した軸。共通の themes/<name>.css に
+    // ライト時は themes/<name>-light.css、ダーク時は themes/<name>-dark.css を重ねて読み込む。
     const MODE_KEY = 'auriga.mode';   // 配色モードの保存キー
     const MODES = ['light', 'dark', 'system'];
     const MODE_LABELS = { light: 'ライト', dark: 'ダーク', system: 'システムに準ずる' };
@@ -1087,10 +1088,13 @@
         const theme = THEMES.includes(name) ? name : 'auriga';
         currentTheme = theme;
         // テーマごとの配色 CSS を読み込む link を差し替える。
-        // ダークモード時のみ themes/<name>-dark.css を、それ以外は themes/<name>.css を読み込む。
+        // 共通（モード非依存）の themes/<name>.css を先に、その上に
+        // 配色モードに応じた themes/<name>-light.css または -dark.css を重ねる。
         const link = $('#themeLink');
+        const variant = $('#themeVariantLink');
         const dark = isDarkMode();
-        if (link) link.href = `themes/${theme}${dark ? '-dark' : ''}.css`;
+        if (link) link.href = `themes/${theme}.css`;
+        if (variant) variant.href = `themes/${theme}${dark ? '-dark' : '-light'}.css`;
         // 構造的なテーマ／モード判定が必要な箇所のために属性も維持する
         document.documentElement.dataset.theme = theme;
         document.documentElement.dataset.mode = dark ? 'dark' : 'light';

@@ -13,8 +13,10 @@
     <!-- ファビコン -->
     <link rel="icon" type="image/x-icon" href="favicon.ico?symbol">
     <link rel="stylesheet" href="style.css">
-    <!-- テーマ配色（パレット）。既定は YMM4。main.js の applyTheme が href を差し替える -->
+    <!-- テーマ配色（パレット）。既定は YMM4。main.js の applyTheme が href を差し替える。
+         共通（モード非依存）を先に読み込み、その上にライト/ダーク差分を重ねる -->
     <link rel="stylesheet" id="themeLink" href="themes/ymm4.css">
+    <link rel="stylesheet" id="themeVariantLink" href="themes/ymm4-light.css">
 </head>
 <body>
     <!-- ===== スプラッシュ画面 ===== -->

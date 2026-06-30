@@ -2,8 +2,8 @@
    Auriga Studio テーマ: Auriga（紫）（ダーク）
 
    themes/auriga-dark.css
-   各要素に色値を直接指定した、独立した完全なスタイルシートです。
-   アクセント色を中心に、暗い地色で配色しています。
+   ダーク配色モード用のスタイルです。配色モード非依存の共通部分は
+   themes/auriga.css にあり、その上にこのファイルを重ねて使います。
    ============================================================= */
 
 /* ===== スプラッシュ画面 ===== */
@@ -44,8 +44,6 @@ body { background: #15171c; color: #e7eaf0; }
 .btn:hover { background: #353b46; border-color: #6b7484; }
 /* 主要ボタン（「書き出し」など）。アクセント単色 */
 .btn--primary { background: #9d7bff; border-color: transparent; color: #fff; }
-/* ゴーストボタン（背景なしの控えめなボタン） */
-.btn--ghost { background: transparent; }
 
 
 /* ===== メニューバー ===== */
@@ -87,18 +85,12 @@ body { background: #15171c; color: #e7eaf0; }
 .appmenu__icon { color: #aab2bf; }
 /* チェック済み項目のアイコン */
 .appmenu__item.is-checked .appmenu__icon { color: #b79bff; }
-/* 項目アイコン：ホバー/展開中 */
-.appmenu__item:hover .appmenu__icon, .appmenu__item.is-open .appmenu__icon { color: #fff; }
 /* 右側のショートカット表示 */
 .appmenu__key { color: #717a89; }
 /* ショートカット内アイコン */
 .appmenu__key .ti { color: #b79bff; }
-/* ショートカット：ホバー/展開中 */
-.appmenu__item:hover .appmenu__key, .appmenu__item.is-open .appmenu__key { color: rgba(255, 255, 255, .8); }
-.appmenu__item:hover .appmenu__key .ti, .appmenu__item.is-open .appmenu__key .ti { color: #fff; }
 /* サブメニューを示す右矢印 */
 .appmenu__arrow { color: #717a89; }
-.appmenu__item:hover .appmenu__arrow, .appmenu__item.is-open .appmenu__arrow { color: #fff; }
 /* 項目どうしを分ける区切り線 */
 .appmenu__sep { background: #343a45; }
 /* 「項目なし」「読込中」などの補助テキスト */
@@ -169,16 +161,12 @@ body { background: #15171c; color: #e7eaf0; }
 .media-item.is-active .media-item__name { color: #e7eaf0; }
 /* サムネのプレースホルダ地（グラデ） */
 .media-item__thumb { background: linear-gradient(135deg, #2a2e37, #1d2026); }
-/* 音声メディアのサムネ地（暗い青緑グラデ） */
-.media-item__thumb--audio { background: linear-gradient(135deg, #0a3d3b, #0e5a57); }
 /* サムネ中央の種別アイコン */
 .media-item__glyph { color: #b79bff; }
 /* 読込中アイコン */
 .media-item__glyph--load { color: #717a89; }
 /* メディア未読込み時の空表示 */
 .media-empty { color: #717a89; border: 1px dashed #343a45; }
-/* サムネ右下の長さバッジ */
-.media-item__badge { background: rgba(0, 0, 0, .7); color: #fff; }
 /* ファイル名ラベル */
 .media-item__name { color: #aab2bf; }
 
@@ -206,12 +194,10 @@ body { background: #15171c; color: #e7eaf0; }
     radial-gradient(circle at 50% 40%, rgba(157, 123, 255, .14), transparent 60%),
     #15171c;
 }
-/* 映像の表示面（黒地） */
-.viewer__canvas { background: #000; box-shadow: 0 8px 30px rgba(0, 0, 0, .45), 0 0 0 1px #343a45; }
+/* 映像の表示面の影（黒地は共通） */
+.viewer__canvas { box-shadow: 0 8px 30px rgba(0, 0, 0, .45), 0 0 0 1px #343a45; }
 /* 映像未読込み時の中央メッセージ */
 .viewer__placeholder { color: #717a89; }
-/* オーバーレイのテキスト（字幕など） */
-.viewer__text { color: #fff; text-shadow: 0 2px 12px rgba(0, 0, 0, .7); }
 
 
 /* ===== トランスポート（再生コントロール） ===== */
@@ -296,39 +282,13 @@ input[type="range"]::-webkit-slider-thumb { background: #9d7bff; border: 2px sol
 .ruler__tick { border-left: 1px solid #343a45; color: #717a89; }
 .ruler__tick::after { background: #343a45; }
 
-/* 各トラックの行（薄い縦じまの目安線つき） */
-.track {
-  border-bottom: 1px solid #343a45;
-  background:
-    repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(255, 255, 255, .02) 49px, rgba(255, 255, 255, .02) 50px);
-}
+/* 各トラックの行の下線（縦じまは共通） */
+.track { border-bottom: 1px solid #343a45; }
 /* ドラッグでクリップを落とせるトラック（アクセント枠） */
 .track--drop { background: rgba(157, 123, 255, .14); box-shadow: inset 0 0 0 2px #9d7bff; }
 
-/* タイムライン上のクリップ（共通の枠・影） */
-.clip { border: 1.5px solid rgba(255, 255, 255, .15); box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
-.clip:hover { border-color: rgba(255, 255, 255, .4); }
 /* 選択中のクリップ（白枠＋アクセントの光） */
 .clip.is-selected { border-color: #fff; box-shadow: 0 0 0 2px #9d7bff, 0 2px 12px rgba(0, 0, 0, .5); }
-/* 種別ごとのクリップ色：映像 */
-.clip--video { background: linear-gradient(135deg, #2f5fd6, #3a6df0); }
-/* 種別ごとのクリップ色：音声 */
-.clip--audio { background: linear-gradient(135deg, #00a8a4, #00cec9); }
-/* 種別ごとのクリップ色：テキスト */
-.clip--text  { background: linear-gradient(135deg, #c93dbb, #f368e0); }
-/* 種別ごとのクリップ色：画像 */
-.clip--image { background: linear-gradient(135deg, #d68b1e, #f0a93a); }
-/* クリップ名ラベル */
-.clip__label { color: #fff; background: rgba(0, 0, 0, .18); }
-/* 音声波形の各バー */
-.clip__wave span { background: rgba(255, 255, 255, .45); }
-/* 端のトリムハンドル：ホバー */
-.clip__handle:hover { background: rgba(255, 255, 255, .3); }
-
-/* 再生ヘッド（赤い縦線） */
-.playhead { background: #e0506a; }
-/* 再生ヘッドの三角つまみ */
-.playhead__head { background: #e0506a; }
 
 
 /* ===== トースト通知 ===== */
@@ -347,9 +307,6 @@ input[type="range"]::-webkit-slider-thumb { background: #9d7bff; border: 2px sol
 .ctxmenu__item { color: #e7eaf0; }
 /* 項目：ホバー（アクセントで反転） */
 .ctxmenu__item:hover { background: #9d7bff; color: #fff; }
-.ctxmenu__item:hover .ctxmenu__key { color: rgba(255, 255, 255, .8); }
-/* 「削除」など危険項目のホバー */
-.ctxmenu__item--danger:hover { background: #e0506a; }
 /* 無効化された項目 */
 .ctxmenu__item.is-disabled { color: #717a89; }
 /* 右側のショートカット表示 */
@@ -377,8 +334,6 @@ input[type="range"]::-webkit-slider-thumb { background: #9d7bff; border: 2px sol
 
 /* ===== バージョン情報モーダル ===== */
 
-/* 背景の暗幕 */
-.modal__backdrop { background: rgba(0, 0, 0, .5); }
 /* モーダル本体 */
 .modal__dialog { background: #23272f; border: 1px solid #343a45; box-shadow: 0 8px 30px rgba(0, 0, 0, .45); }
 /* 閉じるボタン */

@@ -17,22 +17,24 @@
         },
         {
           "type": "submenu", "id": "add-from-template", "label": "テンプレートからアイテムを追加", "mnemonic": "T", "icon": "bookmark",
-          "items": []
+          "items": [
+            { "type": "action", "id": "selected-item-register-as-template",  "label": "選択中のアイテムを登録" , "icon": "bookmark-plus"},
+            { "type": "action", "id": "template-editing",  "label": "テンプレートを編集" , "icon": "bookmark-edit"}
+          ]
         },
         {
           "type": "submenu", "id": "add-recent-file", "label": "最近使ったファイルを追加", "mnemonic": "F", "icon": "clock-hour-4",
           "items": [
             {
-              "type": "dynamic", "id": "recent-files-list", "source": "recentFiles",
-              "placeholder": "ファイル一覧をここに表示します（保存しておきましょう）"
+              "type": "dynamic", "id": "recent-files-list", "source": "recentFiles"
             }
           ]
         },
         {
           "type": "submenu", "id": "import", "label": "インポート",
           "items": [
-            { "type": "action", "id": "import-subtitle-as-text",  "label": "字幕ファイルをテキストアイテムとしてインポート", "icon": "text-size" },
-            { "type": "action", "id": "import-subtitle-as-voice", "label": "字幕ファイルをボイスアイテムとしてインポート", "icon": "microphone" }
+            { "type": "action", "id": "import-subtitle-as-text",  "label": "字幕ファイルをテキストアイテムとしてインポート" },
+            { "type": "action", "id": "import-subtitle-as-voice", "label": "字幕ファイルをボイスアイテムとしてインポート" }
           ]
         },
         { "type": "separator" },
