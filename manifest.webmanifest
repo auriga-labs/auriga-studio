@@ -1,0 +1,35 @@
+{
+  "name": "Auriga Studio — 統合型動画編集",
+  "short_name": "Auriga Studio",
+  "description": "YMM4・DaVinci Resolve・Adobe Premiere を橋渡しする統合型動画編集ソフト。",
+  "lang": "ja",
+  "dir": "ltr",
+  "id": "/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#131521",
+  "theme_color": "#131521",
+  "categories": ["video", "productivity", "graphics"],
+  "icons": [
+    {
+      "src": "favicon-symbol.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "favicon-symbol.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 680 680" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Auriga Studio マスカブルアイコン</title>
+<desc>安全領域を確保するため背景を全面塗りにしたマスカブル版アイコン</desc>
+<defs>
+  <radialGradient id="bgGrad" cx="50%" cy="50%" r="60%">
+    <stop offset="0%" stop-color="#241456"/>
+    <stop offset="100%" stop-color="#0B0620"/>
+  </radialGradient>
+</defs>
+
+<!-- 背景（マスク時に角が欠けても隙間が出ないよう全面を塗る） -->
+<rect x="0" y="0" width="680" height="680" fill="url(#bgGrad)"/>
+
+<!-- 御者座の五角形（安全領域＝中央80%内に収める） -->
+<polygon points="340,200 500,315 442,500 238,500 180,315"
+  fill="none" stroke="#F0EBFF" stroke-width="42" stroke-linejoin="round"/>
+
+<!-- 頂点の星 -->
+<circle cx="340" cy="200" r="50" fill="#FFE566" opacity="0.22"/>
+<circle cx="340" cy="200" r="40" fill="#FFD93B"/>
+<circle cx="500" cy="315" r="30" fill="#FFA53D"/>
+<circle cx="442" cy="500" r="30" fill="#FF6B93"/>
+<circle cx="238" cy="500" r="30" fill="#A98BFF"/>
+<circle cx="180" cy="315" r="30" fill="#56C4EC"/>
+</svg>
