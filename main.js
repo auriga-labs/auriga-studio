@@ -22,8 +22,8 @@
     // ⚠ oauth/config.php の GOOGLE_SCOPES と一致させること
     const OAUTH_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive'];
     const OAUTH_LOGOUT_URL = OAUTH_ORIGIN + '/oauth/logout.php?app=1'; // ログアウトURL
-    const THEMES = ['auriga', 'ymm4', 'davinci', 'premiere'];
-    const THEME_LABELS = { auriga: 'Aurigaオリジナル', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere' };
+    const THEMES = ['auriga', 'ymm4', 'davinci', 'premiere', 'capcut', 'alightmotion'];
+    const THEME_LABELS = { auriga: 'Aurigaオリジナル', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere', capcut: 'CapCut', alightmotion: 'Alight Motion' };
 
     // ---- 配色モード（ライト / ダーク / システムに準ずる）----
     // テーマ（対応ソフト風の配色セット）とは独立した軸。共通の themes/<name>.css に
@@ -1900,6 +1900,8 @@
             case 'theme-ymm4':      applyTheme('ymm4');     return;
             case 'theme-davinci':   applyTheme('davinci');  return;
             case 'theme-premiere':  applyTheme('premiere'); return;
+            case 'theme-capcut':    applyTheme('capcut');   return;
+            case 'theme-alightmotion': applyTheme('alightmotion'); return;
             case 'mode-light':      applyMode('light');  return;
             case 'mode-dark':       applyMode('dark');   return;
             case 'mode-system':     applyMode('system'); return;

@@ -1,0 +1,349 @@
+/* =============================================================
+   Auriga Studio テーマ: CapCut（シアン）（ライト）
+
+   themes/capcut-light.css
+   ライト配色モード用のスタイルです。配色モード非依存の共通部分は
+   themes/capcut.css にあり、その上にこのファイルを重ねて使います。
+   ============================================================= */
+
+/* ===== スプラッシュ画面 ===== */
+
+/* 起動直後の全画面オーバーレイ。地色にアクセントの発光を重ねる */
+.splash {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(0, 151, 160, .35), transparent 60%),
+    #e9ebf0;
+}
+/* アプリ名（「Auriga Studio」の文字） */
+.splash__title { color: #1c2330; }
+/* アプリ名下のキャッチコピー */
+.splash__tagline { color: #5a6373; }
+/* ロード進捗バーの溝（背景レール） */
+.splash__bar { background: #e3e6ec; }
+/* ロード進捗バーの動く帯（アクセント→副アクセントのグラデ） */
+.splash__bar-fill { background: linear-gradient(90deg, #0097a0, #00b3bd); }
+/* ロゴマークの落とす光彩 */
+.splash__mark { filter: drop-shadow(0 6px 24px rgba(0, 151, 160, .35)); }
+
+
+/* ===== 全体・スクロールバー ===== */
+
+/* ページ全体の地色と既定の文字色 */
+body { background: #e9ebf0; color: #1c2330; }
+/* スクロールバーのつまみ */
+::-webkit-scrollbar-thumb { background: #e3e6ec; }
+/* スクロールバーのつまみ（ホバー時） */
+::-webkit-scrollbar-thumb:hover { background: #d6dae3; }
+
+
+/* ===== ボタン共通 ===== */
+
+/* 標準ボタン（枠線・背景・文字） */
+.btn { border: 1px solid #ccd2dc; background: #e3e6ec; color: #1c2330; }
+/* 標準ボタン：ホバー */
+.btn:hover { background: #d6dae3; border-color: #3a4150; }
+/* 主要ボタン（「書き出し」など）。アクセント単色 */
+.btn--primary { background: #0097a0; border-color: transparent; color: #fff; }
+
+
+/* ===== メニューバー ===== */
+
+/* 画面最上部のメニューバー */
+.menubar { background: #f4f5f8; border-bottom: 1px solid #ccd2dc; }
+/* ロゴボタン：ホバー/展開中の背景 */
+.logo:hover, .logo.is-active { background: #e3e6ec; }
+/* ロゴマークの影 */
+.logo__mark { box-shadow: 0 2px 10px rgba(0, 151, 160, .35); }
+/* ロゴ文字内の太字部分（「Studio」） */
+.logo__text b { color: #00b3bd; }
+/* ロゴ右の開閉キャレット（▼） */
+.logo__caret { color: #8a93a3; }
+/* キャレット：ホバー/展開中 */
+.logo:hover .logo__caret, .logo.is-active .logo__caret { color: #0097a0; }
+
+/* メニュー項目（ファイル・編集 などの見出し） */
+.menu__item { color: #5a6373; }
+/* メニュー項目：ホバー/選択中 */
+.menu__item:hover, .menu__item.is-active { background: #e3e6ec; color: #1c2330; }
+/* メニュー項目内のアイコン */
+.menu__item .ti { color: #8a93a3; }
+/* メニュー項目内アイコン：ホバー/選択中 */
+.menu__item:hover .ti, .menu__item.is-active .ti { color: #0097a0; }
+
+
+/* ===== アプリメニュー（ドロップダウン） ===== */
+
+/* ドロップダウン本体（面・枠・影） */
+.appmenu { background: #ffffff; border: 1px solid #ccd2dc; box-shadow: 0 8px 30px rgba(40, 50, 70, .18); }
+/* アイコン列と名前列を仕切る縦線 */
+.appmenu::before { background: #ccd2dc; }
+/* ドロップダウン項目の文字色 */
+.appmenu__item { color: #1c2330; }
+/* 項目：ホバー/展開中（アクセントで反転） */
+.appmenu__item:hover, .appmenu__item.is-open { background: #0097a0; color: #fff; }
+/* 項目左のアイコン */
+.appmenu__icon { color: #5a6373; }
+/* チェック済み項目のアイコン */
+.appmenu__item.is-checked .appmenu__icon { color: #00b3bd; }
+/* 右側のショートカット表示 */
+.appmenu__key { color: #8a93a3; }
+/* ショートカット内アイコン */
+.appmenu__key .ti { color: #00b3bd; }
+/* サブメニューを示す右矢印 */
+.appmenu__arrow { color: #8a93a3; }
+/* 項目どうしを分ける区切り線 */
+.appmenu__sep { background: #ccd2dc; }
+/* 「項目なし」「読込中」などの補助テキスト */
+.appmenu__empty, .appmenu__dynamic { color: #8a93a3; }
+
+
+/* ===== ワークスペースタブ（編集/カラー/…） ===== */
+
+/* タブの入れ物 */
+.workspace-tabs { background: #ffffff; }
+/* タブ文字 */
+.ws-tab { color: #5a6373; }
+/* タブ：ホバー */
+.ws-tab:hover { color: #1c2330; }
+/* 選択中のタブ */
+.ws-tab.is-active { background: #e3e6ec; color: #1c2330; box-shadow: 0 1px 4px rgba(0, 0, 0, .3); }
+
+
+/* ===== アカウント（アバター・ポップオーバー） ===== */
+
+/* 右上のアバター丸ボタン */
+.avatar { background: #e3e6ec; color: #5a6373; border: 1px solid #ccd2dc; }
+/* アバター：ホバー */
+.avatar:hover { color: #1c2330; border-color: #0097a0; }
+/* アカウント情報ポップオーバー本体 */
+.account-pop { background: #ffffff; border: 1px solid #ccd2dc; box-shadow: 0 8px 30px rgba(40, 50, 70, .18); }
+/* ポップ内のメールアドレス表示 */
+.account-pop__mail { color: #5a6373; }
+/* 規約・プライバシーへのリンク */
+.account-pop__legal a { color: #8a93a3; }
+.account-pop__legal a:hover { color: #5a6373; }
+
+/* クラウド見出し横のクラウドアイコン */
+.cloud__title .ti { color: #00b3bd; }
+/* 使用容量テキスト */
+.cloud__usage { color: #5a6373; }
+/* 容量ゲージの溝 */
+.cloud__gauge { background: #e9ebf0; border: 1px solid #ccd2dc; }
+/* 容量ゲージの使用バー */
+.cloud__bar { background: #0097a0; }
+/* 容量に関する注記テキスト */
+.cloud__note { color: #8a93a3; }
+
+
+/* ===== レイアウト・パネル ===== */
+
+/* 3カラムの土台（隙間に地色がのぞく） */
+.layout { background: #e9ebf0; }
+/* 左右のパネル背景 */
+.panel { background: #f4f5f8; }
+/* パネル見出し帯の下線 */
+.panel__head { border-bottom: 1px solid #ccd2dc; }
+/* パネル内タブ（メディア/エフェクト/テキスト） */
+.ptab { color: #5a6373; }
+.ptab:hover { color: #1c2330; }
+/* 選択中のパネルタブ（下線がアクセント） */
+.ptab.is-active { color: #1c2330; border-bottom-color: #0097a0; }
+
+
+/* ===== メディアブラウザ ===== */
+
+/* メディアのサムネカード */
+.media-item { background: #ffffff; border: 1px solid #ccd2dc; }
+/* カード：ホバー */
+.media-item:hover { border-color: #0097a0; box-shadow: 0 8px 30px rgba(40, 50, 70, .18); }
+/* 選択中のカード（副アクセントで縁取り） */
+.media-item.is-active { border-color: #00b3bd; box-shadow: 0 0 0 1px #00b3bd; }
+.media-item.is-active .media-item__name { color: #1c2330; }
+/* サムネのプレースホルダ地（グラデ） */
+.media-item__thumb { background: linear-gradient(135deg, #e3e6ec, #ffffff); }
+/* サムネ中央の種別アイコン */
+.media-item__glyph { color: #00b3bd; }
+/* 読込中アイコン */
+.media-item__glyph--load { color: #8a93a3; }
+/* メディア未読込み時の空表示 */
+.media-empty { color: #8a93a3; border: 1px dashed #ccd2dc; }
+/* ファイル名ラベル */
+.media-item__name { color: #5a6373; }
+
+/* エフェクト/テキストプリセット項目 */
+.effect-item, .text-preset { background: #ffffff; border: 1px solid #ccd2dc; }
+/* 項目：ホバー */
+.effect-item:hover, .text-preset:hover { border-color: #0097a0; background: #e3e6ec; }
+/* 項目の説明テキスト */
+.effect-item__desc { color: #8a93a3; }
+
+
+/* ===== ステージ（プレビュー） ===== */
+
+/* プレビュー領域の枠 */
+.stage { background: #f4f5f8; }
+/* プレビュー上部の見出し帯 */
+.stage__head { border-bottom: 1px solid #ccd2dc; }
+/* 「プログラムモニター」ラベル */
+.stage__label { color: #5a6373; }
+/* 解像度セレクト */
+.stage__res select { background: #e3e6ec; color: #1c2330; border: 1px solid #ccd2dc; }
+/* プレビュー外周の余白地（中央が発光） */
+.viewer {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(0, 151, 160, .14), transparent 60%),
+    #e9ebf0;
+}
+/* 映像の表示面の影（黒地は共通） */
+.viewer__canvas { box-shadow: 0 8px 30px rgba(40, 50, 70, .18), 0 0 0 1px #ccd2dc; }
+/* 映像未読込み時の中央メッセージ */
+.viewer__placeholder { color: #8a93a3; }
+
+
+/* ===== トランスポート（再生コントロール） ===== */
+
+/* 再生バー全体 */
+.transport { border-top: 1px solid #ccd2dc; background: #f4f5f8; }
+/* 現在位置のタイムコード（副アクセント） */
+.transport__time #curTime { color: #00b3bd; }
+/* タイムコードの区切り「/」 */
+.transport__sep { color: #8a93a3; }
+/* 総尺のタイムコード */
+.transport__time #durTime { color: #5a6373; }
+/* 送り戻しなどの操作ボタン */
+.tbtn { background: #e3e6ec; border: 1px solid #ccd2dc; color: #1c2330; }
+.tbtn:hover { background: #d6dae3; }
+/* 再生ボタン（アクセントのグラデ） */
+.tbtn--play { background: linear-gradient(135deg, #0097a0, #00b3bd); border-color: transparent; box-shadow: 0 2px 10px rgba(0, 151, 160, .35); }
+/* 有効中のトグルボタン（ループ等） */
+.tbtn.is-active { background: #0097a0; border-color: transparent; color: #fff; }
+/* 音量アイコン */
+.volume__icon { color: #5a6373; }
+
+
+/* ===== レンジ入力（スライダー） ===== */
+
+/* スライダーのレール */
+input[type="range"] { background: #e3e6ec; }
+/* スライダーのつまみ */
+input[type="range"]::-webkit-slider-thumb { background: #0097a0; border: 2px solid #e9ebf0; box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+
+
+/* ===== プロパティパネル ===== */
+
+/* クリップ未選択時の案内文 */
+.props-empty { color: #8a93a3; }
+/* プロパティ群の見出し（変形・速度 など） */
+.prop-group__title { color: #8a93a3; border-bottom: 1px solid #ccd2dc; }
+/* 各行のラベル */
+.prop-row label { color: #5a6373; }
+/* 各行の数値表示 */
+.prop-row output { color: #1c2330; background: #ffffff; }
+
+
+/* ===== タイムライン ===== */
+
+/* プレビューとの境界リサイザー */
+.tl-resizer { background: #f4f5f8; border-top: 1px solid #ccd2dc; }
+/* リサイザー中央のつまみ */
+.tl-resizer::after { background: #ccd2dc; }
+/* リサイザー：ホバー/ドラッグ中 */
+.tl-resizer:hover::after, .tl-resizer.is-dragging::after { background: #0097a0; }
+
+/* タイムライン全体の背景 */
+.timeline { background: #f4f5f8; }
+/* タイムライン上部ツールバーの下線 */
+.timeline__toolbar { border-bottom: 1px solid #ccd2dc; }
+/* 選択/カット/ハンドのツールボタン */
+.tl-tool { background: #e3e6ec; border: 1px solid #ccd2dc; color: #5a6373; }
+.tl-tool:hover { color: #1c2330; background: #d6dae3; }
+/* 有効中のツール */
+.tl-tool.is-active { background: #0097a0; color: #fff; border-color: transparent; }
+/* ズーム周りのラベル */
+.tl-zoom { color: #5a6373; }
+
+/* トラックヘッダー列の背景 */
+.track-headers { background: #ffffff; border-right: 1px solid #ccd2dc; }
+/* ルーラーと高さを合わせるスペーサー */
+.track-headers__spacer { background: #ffffff; border-bottom: 1px solid #ccd2dc; }
+/* 1トラックのヘッダー行 */
+.track-header { border-bottom: 1px solid #ccd2dc; }
+/* トラック番号の四角アイコン */
+.track-header__icon { background: #e3e6ec; color: #5a6373; }
+/* トラックの表示/ミュート等の小ボタン */
+.track-header__btn { background: #e3e6ec; color: #5a6373; }
+.track-header__btn:hover { color: #1c2330; }
+
+/* トラックを並べる本体領域 */
+.tracks-area { background: #e9ebf0; }
+/* 上部の目盛り（ルーラー） */
+.ruler { background: #ffffff; border-bottom: 1px solid #ccd2dc; }
+/* 目盛りの数値・区切り */
+.ruler__tick { border-left: 1px solid #ccd2dc; color: #8a93a3; }
+.ruler__tick::after { background: #ccd2dc; }
+
+/* 各トラックの行の下線（縦じまは共通） */
+.track { border-bottom: 1px solid #ccd2dc; }
+/* ドラッグでクリップを落とせるトラック（アクセント枠） */
+.track--drop { background: rgba(0, 151, 160, .14); box-shadow: inset 0 0 0 2px #0097a0; }
+
+/* 選択中のクリップ（白枠＋アクセントの光） */
+.clip.is-selected { border-color: #fff; box-shadow: 0 0 0 2px #0097a0, 0 2px 12px rgba(0, 0, 0, .5); }
+
+
+/* ===== トースト通知 ===== */
+
+/* 画面下に出る通知 */
+.toast { background: #e3e6ec; color: #1c2330; border: 1px solid #ccd2dc; box-shadow: 0 8px 30px rgba(40, 50, 70, .18); }
+
+
+/* ===== コンテキストメニュー（右クリック） ===== */
+
+/* メニュー本体 */
+.ctxmenu { background: #ffffff; border: 1px solid #ccd2dc; box-shadow: 0 8px 30px rgba(40, 50, 70, .18); }
+/* メニュー見出し */
+.ctxmenu__header { color: #8a93a3; border-bottom: 1px solid #ccd2dc; }
+/* 項目の文字色 */
+.ctxmenu__item { color: #1c2330; }
+/* 項目：ホバー（アクセントで反転） */
+.ctxmenu__item:hover { background: #0097a0; color: #fff; }
+/* 無効化された項目 */
+.ctxmenu__item.is-disabled { color: #8a93a3; }
+/* 右側のショートカット表示 */
+.ctxmenu__key { color: #8a93a3; }
+/* 区切り線 */
+.ctxmenu__sep { background: #ccd2dc; }
+
+
+/* ===== テーマ選択セレクト ===== */
+
+/* 右上のテーマ切替プルダウン */
+.theme-select { background: #ffffff; color: #1c2330; border: 1px solid #ccd2dc; }
+.theme-select:hover { background: #e3e6ec; border-color: #3a4150; }
+.theme-select:focus { border-color: #0097a0; }
+
+
+/* ===== スマホ幅メニュー（ハンバーガー） ===== */
+
+/* ハンバーガーボタン */
+.menu-burger { background: #ffffff; border: 1px solid #ccd2dc; color: #1c2330; }
+.menu-burger:hover { background: #e3e6ec; border-color: #0097a0; }
+/* ヘッダー操作を縦に積むパネル */
+.mobile-panel { background: #f4f5f8; border-bottom: 1px solid #ccd2dc; box-shadow: 0 8px 30px rgba(40, 50, 70, .18); }
+
+
+/* ===== バージョン情報モーダル ===== */
+
+/* モーダル本体 */
+.modal__dialog { background: #ffffff; border: 1px solid #ccd2dc; box-shadow: 0 8px 30px rgba(40, 50, 70, .18); }
+/* 閉じるボタン */
+.modal__close { color: #8a93a3; }
+.modal__close:hover { background: #e3e6ec; color: #1c2330; }
+/* ロゴマークの影 */
+.about__mark { box-shadow: 0 4px 18px rgba(0, 151, 160, .35); }
+/* キャッチコピー */
+.about__tagline { color: #5a6373; }
+/* 情報リストの見出し列 */
+.about__info dt { color: #8a93a3; }
+/* 情報リストの値列 */
+.about__info dd { color: #1c2330; }
