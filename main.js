@@ -1287,9 +1287,9 @@
     }
 
     function updatePlayhead() {
-        const headerW = els.trackHeaders.offsetWidth;
-        const x = headerW + state.playhead * state.zoom - els.tracksArea.scrollLeft;
-        els.playhead.style.left = x + 'px';
+        // 再生ヘッドは tracksArea 内の absolute 要素なので、
+        // クリップやルーラーと同じコンテンツ座標（秒 × ズーム）をそのまま使う
+        els.playhead.style.left = (state.playhead * state.zoom) + 'px';
     }
 
     function updateTimeDisplay() {
@@ -1573,10 +1573,8 @@
             e.preventDefault();
             startScrub(e);
         });
-        // タイムラインのスクロールに合わせて再生ヘッドとレイヤーヘッダーを連動させる
+        // 縦スクロールをレイヤーヘッダー側にも反映する（再生ヘッドはコンテンツと一緒にスクロールする）
         els.tracksArea.addEventListener('scroll', () => {
-            updatePlayhead();
-            // 縦スクロールをレイヤーヘッダー側にも反映する
             els.trackHeaders.scrollTop = els.tracksArea.scrollTop;
         });
 
