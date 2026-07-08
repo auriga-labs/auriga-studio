@@ -719,6 +719,10 @@ body.is-scrubbing { cursor: ew-resize; user-select: none; }
 .clip--audio { background: linear-gradient(135deg, #00a8a4, #00cec9); }
 .clip--text  { background: linear-gradient(135deg, #c93dbb, #f368e0); }
 .clip--image { background: linear-gradient(135deg, #d68b1e, #f0a93a); }
+/* YMM4 プロジェクト読み込みで使う種別（図形 / エフェクト / その他） */
+.clip--shape  { background: linear-gradient(135deg, #1f9d55, #2ecc71); }
+.clip--effect { background: linear-gradient(135deg, #6c3fd1, #8e5cf7); }
+.clip--other  { background: linear-gradient(135deg, #5a6472, #7a8494); }
 .clip__label {
     font-size: 11px; color: #fff; padding: 4px 8px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

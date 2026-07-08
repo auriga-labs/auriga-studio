@@ -44,7 +44,7 @@
     };
     const DEFAULT_MENU_LAYOUT = 'ymm4';   // 未対応テーマ時のフォールバック（YMM4）
     const PX_PER_SEC_BASE = 1;        // ズーム値(px)がそのまま1秒あたりのpx
-    const TIMELINE_SECONDS = 60;      // タイムライン全体の長さ(秒)
+    let TIMELINE_SECONDS = 60;        // タイムライン全体の長さ(秒)。プロジェクト読み込みで延長される
 
     // ---- 状態 ----
     const state = {
@@ -366,6 +366,10 @@
 
     // ---- OSからドロップされた実ファイルをトラックに追加 ----
     function dropFilesOnTrack(fileList, track, start) {
+        // .ymmp が含まれていればメディアではなく YMM4 プロジェクトとして開く
+        const ymmp = Array.from(fileList).find((f) => /\.ymmp$/i.test(f.name));
+        if (ymmp) { openYmmpFile(ymmp); return; }
+
         const files = Array.from(fileList).filter((f) =>
             /^(video|audio|image)\//.test(f.type) || /\.(mp4|mov|webm|mkv|mp3|wav|m4a|png|jpe?g|gif|webp)$/i.test(f.name));
 
@@ -508,7 +512,7 @@
                 ? `<div class="clip__wave">${waveBars(clip.dur)}</div>` : '';
             el.innerHTML = `
                 <div class="clip__handle clip__handle--l"></div>
-                <div class="clip__label">${clip.name}</div>
+                <div class="clip__label">${escapeHtml(clip.name)}</div>
                 ${inner}
                 <div class="clip__handle clip__handle--r"></div>`;
 
@@ -639,6 +643,245 @@
     }
 
     // ======================================================
+    // YMM4 (.ymmp) プロジェクトの読み込み
+    // ======================================================
+    // .ymmp は YMM4 が書き出す単一の JSON ファイル（UTF-8、BOM 付きの場合あり）。
+    // Timelines[n].Items にアイテムが並び、時間は「フレーム数」で持つ。
+    // 素材のパスは作者マシンの絶対パスなので、ここでは配置情報のみ取り込み、
+    // 実ファイルの解決（再リンク）は行わない。
+
+    // YMM4 のアイテム型（$type の短い名前）→ Auriga のクリップ種別
+    const YMMP_TYPE_MAP = {
+        VideoItem: 'video',
+        AudioItem: 'audio',
+        VoiceItem: 'audio',       // ボイス（合成音声）は音声として扱う
+        ImageItem: 'image',
+        TachieItem: 'image',      // 立ち絵は画像として扱う
+        TachieFaceItem: 'image',
+        TextItem: 'text',
+        ShapeItem: 'shape',
+        EffectItem: 'effect',
+    };
+
+    // クリップ種別ごとの表示名（名前が決められない場合のフォールバック）
+    const YMMP_TYPE_LABELS = {
+        video: '動画', audio: '音声', image: '画像',
+        text: 'テキスト', shape: '図形', effect: 'エフェクト', other: 'アイテム',
+    };
+
+    // 値を範囲内に収める
+    function clampNum(v, lo, hi) {
+        return Math.min(hi, Math.max(lo, v));
+    }
+
+    // ファイルパスからファイル名部分を取り出す（Windows / POSIX 両対応）
+    function pathBaseName(p) {
+        return String(p).split(/[\\/]/).pop() || '';
+    }
+
+    // YMM4 のアニメ可能パラメータから値を取り出す。
+    // 形式は {"Values":[{"Value":n}], "AnimationType":…} または素の数値。
+    // アニメーション付きでも先頭キーフレームの値のみ採用する。
+    function ymmpAnimValue(v, fallback) {
+        if (typeof v === 'number' && isFinite(v)) return v;
+        if (v && Array.isArray(v.Values) && v.Values.length) {
+            const n = v.Values[0] && v.Values[0].Value;
+            if (typeof n === 'number' && isFinite(n)) return n;
+        }
+        return fallback;
+    }
+
+    // $type のフルネーム（例: "YukkuriMovieMaker.Project.Items.TextItem, YukkuriMovieMaker"）
+    // から短い型名（例: "TextItem"）を取り出す
+    function ymmpShortType(t) {
+        return String(t || '').split(',')[0].split('.').pop().trim();
+    }
+
+    // タイムラインに表示するアイテム名を決める
+    function ymmpItemName(raw, type) {
+        // テキストは本文の1行目をそのまま名前にする
+        if (type === 'text') {
+            const line = String(raw.Text || '').split(/\r?\n/)[0].trim();
+            if (line) return line;
+        }
+        // ボイスアイテムはセリフを表示する
+        if (typeof raw.Serif === 'string' && raw.Serif.trim()) {
+            return raw.Serif.split(/\r?\n/)[0].trim();
+        }
+        // ユーザーが備考を付けていればそれを優先する
+        if (typeof raw.Remark === 'string' && raw.Remark.trim()) {
+            return raw.Remark.trim();
+        }
+        if (typeof raw.FilePath === 'string' && raw.FilePath) {
+            return pathBaseName(raw.FilePath);
+        }
+        return YMMP_TYPE_LABELS[type] || 'アイテム';
+    }
+
+    // YMM4 アイテム1件を Auriga のクリップ相当の形に正規化する。
+    // 対象外・不正なアイテムは null を返して読み飛ばす。
+    function ymmpNormalizeItem(raw, fps, width, height) {
+        if (!raw || typeof raw !== 'object') return null;
+        const type = YMMP_TYPE_MAP[ymmpShortType(raw['$type'])] || 'other';
+        const lengthFrames = Number(raw.Length) || 0;
+        if (lengthFrames <= 0) return null;
+
+        // 変形プロパティ。座標は YMM4 の中心原点 px を、スライダーの -500〜500 に射影する
+        const props = { ...DEFAULT_PROPS };
+        props.x = clampNum(Math.round(ymmpAnimValue(raw.X, 0) / (width / 2) * 500), -500, 500);
+        props.y = clampNum(Math.round(ymmpAnimValue(raw.Y, 0) / (height / 2) * 500), -500, 500);
+        props.scale = clampNum(Math.round(ymmpAnimValue(raw.Zoom, 100)), 10, 300);
+        props.rotate = clampNum(Math.round(ymmpAnimValue(raw.Rotation, 0)), -180, 180);
+        props.opacity = clampNum(Math.round(ymmpAnimValue(raw.Opacity, 100)), 0, 100);
+        props.speed = clampNum(Math.round(Number(raw.PlaybackRate) || 100), 25, 200);
+
+        return {
+            type,
+            name: ymmpItemName(raw, type),
+            layer: Math.max(0, Math.floor(Number(raw.Layer) || 0)),
+            start: (Number(raw.Frame) || 0) / fps,
+            dur: lengthFrames / fps,
+            filePath: typeof raw.FilePath === 'string' ? raw.FilePath : null,
+            hidden: raw.IsHidden === true,
+            props,
+        };
+    }
+
+    // .ymmp のテキストをパースし、正規化したプロジェクトを返す。
+    // 構造が想定外の場合は Error を投げる（呼び出し側でトースト表示する）。
+    function parseYmmp(text) {
+        let t = String(text);
+        if (t.charCodeAt(0) === 0xFEFF) t = t.slice(1);   // BOM 除去
+        let data;
+        try {
+            data = JSON.parse(t);
+        } catch (e) {
+            throw new Error('JSON として解釈できません');
+        }
+        const timelines = Array.isArray(data.Timelines) ? data.Timelines : null;
+        if (!timelines || !timelines.length) throw new Error('タイムラインが見つかりません');
+
+        // 選択中のタイムラインを対象にする（範囲外なら先頭）
+        let idx = Math.floor(Number(data.SelectedTimelineIndex) || 0);
+        if (idx < 0 || idx >= timelines.length) idx = 0;
+        const tl = timelines[idx] || {};
+
+        const info = tl.VideoInfo || {};
+        const fps = Number(info.FPS) > 0 ? Number(info.FPS) : 60;
+        const width = Number(info.Width) > 0 ? Number(info.Width) : 1920;
+        const height = Number(info.Height) > 0 ? Number(info.Height) : 1080;
+
+        const items = (Array.isArray(tl.Items) ? tl.Items : [])
+            .map((raw) => ymmpNormalizeItem(raw, fps, width, height))
+            .filter(Boolean);
+
+        return {
+            name: pathBaseName(data.FilePath || '').replace(/\.ymmp$/i, '')
+                || String(tl.Name || '').trim()
+                || 'YMM4 プロジェクト',
+            fps, width, height,
+            layerSettings: (tl.LayerSettings && Array.isArray(tl.LayerSettings.Items))
+                ? tl.LayerSettings.Items : [],
+            items,
+        };
+    }
+
+    // レイヤー数を count 以上に拡張する（既存の5本より多いプロジェクト用）
+    function ensureLayerCount(count) {
+        while (TRACKS.length < count) {
+            const n = TRACKS.length + 1;
+            TRACKS.push({ id: 'L' + n, label: 'レイヤー ' + n });
+        }
+    }
+
+    // タイムラインの全長（秒）を seconds 以上に拡張する
+    function ensureTimelineCapacity(seconds) {
+        TIMELINE_SECONDS = Math.max(TIMELINE_SECONDS, Math.ceil(seconds));
+    }
+
+    // パース済みプロジェクトをタイムラインへ展開する（既存クリップは破棄）
+    function loadYmmpProject(project, fileName) {
+        pauseAllMedia();
+        state.clips = [];
+        state.selectedClipId = null;
+
+        // 必要なレイヤー数とタイムライン長を確保する
+        const maxLayer = project.items.reduce((m, it) => Math.max(m, it.layer), 0);
+        ensureLayerCount(maxLayer + 1);
+        const endSec = project.items.reduce((m, it) => Math.max(m, it.start + it.dur), 0);
+        ensureTimelineCapacity(endSec + 5);   // 末尾に少し余白を持たせる
+
+        // レイヤーラベルを既定に戻してから、YMM4 の LayerSettings を反映する
+        TRACKS.forEach((t, i) => { t.label = 'レイヤー ' + (i + 1); });
+        project.layerSettings.forEach((ls) => {
+            const t = TRACKS[Number(ls.Layer)];
+            if (t && typeof ls.Label === 'string' && ls.Label.trim()) t.label = ls.Label.trim();
+        });
+
+        // アイテムをクリップとして展開する
+        project.items.forEach((it) => {
+            state.clips.push({
+                id: 'c' + (state.nextId++),
+                type: it.type,
+                name: it.name,
+                track: 'L' + (it.layer + 1),
+                start: Math.round(it.start * 10) / 10,
+                dur: Math.max(0.1, Math.round(it.dur * 10) / 10),
+                src: null,               // 素材は作者マシンのパスのため未解決
+                filePath: it.filePath,   // 参照元パス（将来の再リンク用に保持）
+                hidden: it.hidden,
+                props: it.props,
+            });
+        });
+
+        // タイムライン全体を再構築する
+        renderTrackHeaders();
+        renderTracks();
+        renderRuler();
+        renderClips();
+
+        // YMM4 側のレイヤー表示状態（IsHidden）をトラックに反映する
+        project.layerSettings.forEach((ls) => {
+            const t = TRACKS[Number(ls.Layer)];
+            if (t) setTrackVisible(t.id, ls.IsHidden !== true);
+        });
+
+        updateProps();
+        recomputeDuration();
+        seek(0);
+
+        const displayName = String(fileName || '').replace(/\.ymmp$/i, '') || project.name;
+        toast(`YMM4 プロジェクト「${displayName}」を読み込みました（${project.items.length} アイテム）`);
+    }
+
+    // .ymmp の File オブジェクトを読み込んでタイムラインに展開する
+    function openYmmpFile(file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                loadYmmpProject(parseYmmp(reader.result), file.name);
+            } catch (err) {
+                console.error('YMMP 読み込みエラー:', err);
+                toast(`YMM4 プロジェクトを読み込めませんでした（${err.message}）`);
+            }
+        };
+        reader.onerror = () => toast('ファイルを読み込めませんでした');
+        reader.readAsText(file);
+    }
+
+    // 「プロジェクトを開く」のファイル選択ダイアログ
+    function openProjectDialog() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.ymmp,application/json';
+        input.addEventListener('change', () => {
+            const f = input.files && input.files[0];
+            if (f) openYmmpFile(f);
+        });
+        input.click();
+    }
+
+    // ======================================================
     // プロパティパネル
     // ======================================================
     function updateProps() {
@@ -761,7 +1004,8 @@
             if (!clip) continue;
             active.add(clip.id);
             // クリップ自身の種類で映像か音声かを判定（レイヤーは種類を持たない）
-            if (clip.type !== 'audio' && trackVisible(tr.id)) {
+            // YMM4 側で非表示（IsHidden）だったアイテムは描画しない
+            if (clip.type !== 'audio' && !clip.hidden && trackVisible(tr.id)) {
                 drawVisualClip(clip);
             }
             // 動画の音声・オーディオクリップを同期再生
@@ -791,14 +1035,16 @@
         let media, mw, mh, ready = false;
         if (clip.type === 'video') {
             media = getMediaEl(clip);
+            if (!media) return;   // ソース未解決（YMM4 読み込み直後など）
             mw = media.videoWidth; mh = media.videoHeight;
             ready = media.readyState >= 2 && mw > 0;
         } else if (clip.type === 'image') {
             media = getImg(clip);
+            if (!media) return;   // ソース未解決（YMM4 読み込み直後など）
             mw = media.naturalWidth; mh = media.naturalHeight;
             ready = media.complete && mw > 0;
         } else {
-            return; // 音声は描画なし
+            return; // 音声・図形・エフェクトなどは描画なし
         }
         if (!ready) return;
 
@@ -839,6 +1085,7 @@
     // ---- クリップ用メディア要素（遅延生成・クリップに紐付け） ----
     function getMediaEl(clip) {
         if (clip._el) return clip._el;
+        if (!clip.src) return null;   // ソースが無いクリップは要素を作らない
         if (clip.type === 'video') {
             const v = document.createElement('video');
             v.src = clip.src; v.preload = 'auto'; v.playsInline = true;
@@ -858,6 +1105,7 @@
 
     function getImg(clip) {
         if (clip._img) return clip._img;
+        if (!clip.src) return null;   // ソースが無いクリップは要素を作らない
         const i = new Image();
         i.addEventListener('load', onMediaSettled);
         i.src = clip.src;
@@ -1879,6 +2127,7 @@
     // メニュー項目のアクションを実行する
     function handleMenuAction(it) {
         switch (it.id) {
+            case 'open-project':    openProjectDialog(); return;
             case 'save-project':    toast('プロジェクトを保存しました 💾'); return;
             case 'save-project-as': toast('別名で保存しました 💾'); return;
             case 'undo':            toast('元に戻す（デモ）'); return;
