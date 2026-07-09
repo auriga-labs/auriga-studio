@@ -1213,7 +1213,9 @@
             const newName = found ? pendingRelinkFiles.get(g.filePath).name : '';
             return `
                 <tr data-filepath="${escapeHtml(g.filePath)}">
-                    <td class="relink-table__source"><i class="ti ${missingItemIcon(g.type)}"></i>${escapeHtml(g.name)}</td>
+                    <td class="relink-table__source" title="${escapeHtml(g.name)}">
+                        <i class="ti ${missingItemIcon(g.type)}"></i><span class="relink-table__sourcename">${escapeHtml(g.name)}</span>
+                    </td>
                     <td class="relink-table__missing" title="${escapeHtml(g.filePath)}">${escapeHtml(pathBaseName(g.filePath))}</td>
                     <td class="relink-table__new">
                         <span class="relink-table__newname">${escapeHtml(newName)}</span>

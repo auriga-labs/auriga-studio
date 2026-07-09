@@ -7,7 +7,7 @@
   font-family: "tabler-icons-filled";
   font-style: normal;
   font-weight: 400;
-  src: url("./fonts/tabler-icons-filled.woff2?v3.44.0") format("woff2"), url("./fonts/tabler-icons-filled.woff?") format("woff"), url("./fonts/tabler-icons-filled.ttf?v3.44.0") format("truetype");
+  src: url("./fonts/tabler-icons-filled.woff2") format("woff2"), url("./fonts/tabler-icons-filled.woff?") format("woff"), url("./fonts/tabler-icons-filled.ttf") format("truetype");
 }
 .ti.ti-fi {
   font-family: "tabler-icons-filled" !important;
