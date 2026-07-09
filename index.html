@@ -344,12 +344,40 @@
         </div>
     </div>
 
-    <!-- YMM4 プロジェクト読み込み後、見つからない素材の再リンクを促すバー -->
-    <div class="relink-bar" id="relinkBar" hidden>
-        <i class="ti ti-alert-triangle"></i>
-        <span id="relinkMsg">素材ファイルが見つかりません</span>
-        <button class="btn btn--sm" id="btnRelink" type="button">フォルダを選択して再リンク</button>
-        <button class="relink-bar__close" id="relinkClose" type="button" title="閉じる" aria-label="閉じる"><i class="ti ti-x"></i></button>
+    <!-- YMM4 プロジェクト読み込み後、見つからない素材の再リンクを行うダイアログ -->
+    <div class="modal" id="relinkModal" hidden>
+        <div class="modal__backdrop" data-relink-close></div>
+        <div class="modal__dialog relink-dialog" role="dialog" aria-modal="true" aria-labelledby="relinkTitle">
+            <button class="modal__close" id="relinkClose" type="button" title="閉じる" aria-label="閉じる">
+                <i class="ti ti-x"></i>
+            </button>
+            <div class="relink-dialog__head">
+                <i class="ti ti-alert-triangle relink-dialog__icon"></i>
+                <h2 class="relink-dialog__title" id="relinkTitle">不足しているファイル</h2>
+            </div>
+            <p class="relink-dialog__notice">前回このプロジェクトを開いてからいくつかのファイルが不足しています。</p>
+            <div class="relink-table__wrap">
+                <table class="relink-table">
+                    <thead>
+                        <tr>
+                            <th>ソース</th>
+                            <th>不足ファイル</th>
+                            <th>新規ファイル</th>
+                            <th>状態</th>
+                        </tr>
+                    </thead>
+                    <tbody id="relinkTableBody"></tbody>
+                </table>
+            </div>
+            <div class="relink-dialog__foot">
+                <span class="relink-dialog__status" id="relinkStatus"></span>
+                <div class="relink-dialog__actions">
+                    <button class="btn btn--sm" id="btnRelinkDir" type="button">ディレクトリを検索...</button>
+                    <button class="btn btn--sm btn--primary" id="btnRelinkApply" type="button">適用</button>
+                    <button class="btn btn--sm btn--ghost" id="btnRelinkCancel" type="button">キャンセル</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- トースト通知 -->

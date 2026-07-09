@@ -690,7 +690,7 @@
             renderRuler();
             els.tracks.style.width = (TIMELINE_SECONDS * state.zoom) + 'px';
         }
-        updateRelinkBar();   // クリップ削除などで未解決数が変わったら追従させる
+        updateRelinkModal();   // クリップ削除などで未解決数が変わったら追従させる
         updateTimeDisplay();
         // 編集後、停止中ならプログラムモニターを更新
         if (!state.playing && state.monitorMode === 'program') {
@@ -1096,7 +1096,7 @@
 
         // メディアプールに同名ファイルが読み込み済みなら自動で割り当てる
         resolveClipsFromPool();
-        relinkBarDismissed = false;   // 新しい読み込みでは再リンクバーを出し直す
+        relinkDismissed = false;   // 新しい読み込みでは不足ファイルダイアログを出し直す
 
         // タイムライン全体を再構築する
         renderTrackHeaders();
@@ -1146,11 +1146,13 @@
     }
 
     // ======================================================
-    // YMM4 素材の再リンク
+    // YMM4 素材の再リンク（OBS の「不足しているファイル」ダイアログ相当）
     // ======================================================
     // .ymmp の素材パスは作者マシンの絶対パスなので、ブラウザからは直接読めない。
-    // ユーザーにフォルダを選んでもらい、ファイル名の一致で src を解決する。
-    let relinkBarDismissed = false;   // バーを閉じたら次の読み込みまで出さない
+    // 行ごとの個別ファイル参照、またはフォルダ一括検索で候補を選んでおき、
+    // 「適用」を押すまでは state.clips に反映しない（キャンセルで破棄できるようにする）。
+    let relinkDismissed = false;              // 閉じたら次の読み込みまで出さない
+    const pendingRelinkFiles = new Map();     // filePath → 選択済み File（適用待ち）
 
     // 未解決（src が無く参照パスだけ持つ）クリップの数
     function unresolvedClipCount() {
@@ -1173,46 +1175,134 @@
         return n;
     }
 
-    // フォルダ選択ダイアログを開いて再リンクする
-    function startRelinkDialog() {
+    // 種別ごとの一覧アイコン（Tabler）
+    function missingItemIcon(type) {
+        if (type === 'video') return 'ti-movie';
+        if (type === 'image') return 'ti-photo';
+        if (type === 'audio') return 'ti-music';
+        return 'ti-file';
+    }
+
+    // 未解決クリップを参照パスごとにグループ化する（同じ素材を複数クリップが参照する場合まとめる）
+    function missingFileGroups() {
+        const map = new Map();
+        state.clips.forEach((c) => {
+            if (c.src || !c.filePath) return;
+            if (!map.has(c.filePath)) map.set(c.filePath, { filePath: c.filePath, type: c.type, name: c.name, clips: [] });
+            map.get(c.filePath).clips.push(c);
+        });
+        return Array.from(map.values());
+    }
+
+    // ダイアログを閉じる（適用・キャンセル・✕ 共通）
+    function closeRelinkModal() {
+        const modal = $('#relinkModal');
+        if (modal) modal.hidden = true;
+        pendingRelinkFiles.clear();
+    }
+
+    // 行の一覧・件数表示を今の未解決状況にあわせて描き直す
+    function renderRelinkTable() {
+        const body = $('#relinkTableBody');
+        const status = $('#relinkStatus');
+        if (!body) return;
+        const groups = missingFileGroups();
+        const foundCount = groups.filter((g) => pendingRelinkFiles.has(g.filePath)).length;
+        body.innerHTML = groups.map((g) => {
+            const found = pendingRelinkFiles.has(g.filePath);
+            const newName = found ? pendingRelinkFiles.get(g.filePath).name : '';
+            return `
+                <tr data-filepath="${escapeHtml(g.filePath)}">
+                    <td class="relink-table__source"><i class="ti ${missingItemIcon(g.type)}"></i>${escapeHtml(g.name)}</td>
+                    <td class="relink-table__missing" title="${escapeHtml(g.filePath)}">${escapeHtml(pathBaseName(g.filePath))}</td>
+                    <td class="relink-table__new">
+                        <span class="relink-table__newname">${escapeHtml(newName)}</span>
+                        <button class="relink-table__browse" type="button" data-browse title="ファイルを参照..."><i class="ti ti-dots"></i></button>
+                    </td>
+                    <td class="relink-table__status ${found ? 'is-found' : 'is-missing'}">${found ? '見つかりました' : '行方不明'}</td>
+                </tr>`;
+        }).join('');
+        if (status) status.textContent = `${groups.length}個中${foundCount}個見つかりました`;
+        body.querySelectorAll('[data-browse]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                browseRelinkFile(btn.closest('tr').dataset.filepath);
+            });
+        });
+    }
+
+    // 行の「…」ボタン：その1件だけファイルを選び直す
+    function browseRelinkFile(filePath) {
+        const group = missingFileGroups().find((g) => g.filePath === filePath);
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.addEventListener('change', () => {
+            const f = input.files && input.files[0];
+            if (!f) return;
+            if (group && fileType(f) !== group.type) {
+                toast(`種別が一致しません（${group.type} のクリップに ${fileType(f)} は選べません）`);
+                return;
+            }
+            pendingRelinkFiles.set(filePath, f);
+            renderRelinkTable();
+        });
+        input.click();
+    }
+
+    // 「ディレクトリを検索…」：フォルダ内をファイル名一致で一括候補付けする
+    function startRelinkDirectorySearch() {
         const input = document.createElement('input');
         input.type = 'file';
         input.multiple = true;
         input.webkitdirectory = true;   // フォルダごと選択する（Chromium / Electron）
         input.addEventListener('change', () => {
             const files = Array.from(input.files || []);
-            if (files.length) relinkFromFiles(files);
+            if (files.length) stageRelinkFromFiles(files);
         });
         input.click();
     }
 
-    // 選択されたファイル群から、未解決クリップが参照する名前だけ登録して割り当てる
-    function relinkFromFiles(files) {
-        const wanted = new Set();
-        state.clips.forEach((c) => {
-            if (!c.src && c.filePath) wanted.add(pathBaseName(c.filePath).toLowerCase());
-        });
-        const seen = new Set();
+    // 選択されたファイル群から、未解決の行に名前と種別が一致するものだけ候補として仮登録する
+    function stageRelinkFromFiles(files) {
+        const wanted = new Map(missingFileGroups().map((g) => [pathBaseName(g.filePath).toLowerCase(), g]));
+        let n = 0;
         files.forEach((f) => {
-            const k = f.name.toLowerCase();
-            if (wanted.has(k) && !seen.has(k)) { seen.add(k); registerMedia(f); }
+            const g = wanted.get(f.name.toLowerCase());
+            if (g && fileType(f) === g.type && !pendingRelinkFiles.has(g.filePath)) {
+                pendingRelinkFiles.set(g.filePath, f); n++;
+            }
         });
-        const n = resolveClipsFromPool();
-        renderMedia();
-        renderClips();
-        updateRelinkBar();
-        renderViewer();
-        toast(n ? `${n}件のクリップへ素材を再リンクしました` : '一致する素材が見つかりませんでした');
+        renderRelinkTable();
+        toast(n ? `${n}件の候補が見つかりました（「適用」で反映されます）` : '一致する素材が見つかりませんでした');
     }
 
-    // 再リンクバーの表示を未解決数に合わせて更新する
-    function updateRelinkBar() {
-        const bar = $('#relinkBar');
-        const msg = $('#relinkMsg');
-        if (!bar) return;
+    // 「適用」：候補が付いている行だけ実際にクリップへ反映する
+    function applyRelink() {
+        let n = 0;
+        missingFileGroups().forEach((g) => {
+            const file = pendingRelinkFiles.get(g.filePath);
+            if (!file) return;
+            const m = registerMedia(file);
+            g.clips.forEach((c) => { c.src = m.src; });
+            n += g.clips.length;
+        });
+        pendingRelinkFiles.clear();
+        renderMedia();
+        renderClips();
+        renderViewer();
+        toast(n ? `${n}件のクリップへ素材を再リンクしました` : '再リンクする素材が選択されていません');
+        relinkDismissed = true;   // 残りが未解決でも、次の読み込みまで自動再表示はしない
+        closeRelinkModal();
+    }
+
+    // 未解決件数の変化にあわせてダイアログの自動表示・行内容を更新する
+    function updateRelinkModal() {
+        const modal = $('#relinkModal');
+        if (!modal) return;
         const n = unresolvedClipCount();
-        if (msg && n) msg.textContent = `${n}件の素材ファイルが見つかりません`;
-        bar.hidden = n === 0 || relinkBarDismissed;
+        if (n === 0) { modal.hidden = true; return; }
+        if (relinkDismissed) return;   // 閉じた後は次の読み込みまで再表示しない
+        modal.hidden = false;
+        renderRelinkTable();
     }
 
     // ======================================================
@@ -2208,14 +2298,21 @@
         // クラウドの「更新」ボタン
         $('#btnCloudRefresh').addEventListener('click', () => fetchCloudFiles(false));
 
-        // YMM4 素材の再リンクバー
-        const btnRelink = $('#btnRelink');
-        if (btnRelink) btnRelink.addEventListener('click', startRelinkDialog);
+        // YMM4 素材の不足ファイルダイアログ
+        const dismissRelink = () => {
+            relinkDismissed = true;
+            closeRelinkModal();
+        };
+        const btnRelinkDir = $('#btnRelinkDir');
+        if (btnRelinkDir) btnRelinkDir.addEventListener('click', startRelinkDirectorySearch);
+        const btnRelinkApply = $('#btnRelinkApply');
+        if (btnRelinkApply) btnRelinkApply.addEventListener('click', applyRelink);
+        const btnRelinkCancel = $('#btnRelinkCancel');
+        if (btnRelinkCancel) btnRelinkCancel.addEventListener('click', dismissRelink);
         const relinkClose = $('#relinkClose');
-        if (relinkClose) relinkClose.addEventListener('click', () => {
-            relinkBarDismissed = true;
-            updateRelinkBar();
-        });
+        if (relinkClose) relinkClose.addEventListener('click', dismissRelink);
+        const relinkBackdrop = document.querySelector('#relinkModal [data-relink-close]');
+        if (relinkBackdrop) relinkBackdrop.addEventListener('click', dismissRelink);
 
         // ワークスペースタブ
         $$('.ws-tab').forEach((t) => t.addEventListener('click', () => {

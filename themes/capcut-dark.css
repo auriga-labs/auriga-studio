@@ -347,3 +347,18 @@ input[type="range"]::-webkit-slider-thumb { background: #1ec8cf; border: 2px sol
 .about__info dt { color: #717a89; }
 /* 情報リストの値列 */
 .about__info dd { color: #e7eaf0; }
+
+/* ===== YMM4 素材：不足しているファイル ダイアログ ===== */
+.relink-dialog__icon { color: #f5b13d; }
+.relink-dialog__notice { color: #aab2bf; }
+.relink-table__wrap { border-color: #343a45; }
+.relink-table thead th { background: #1d2026; color: #aab2bf; border-bottom-color: #343a45; }
+.relink-table tbody td { border-bottom-color: #2a2e37; }
+.relink-table__source .ti { color: #717a89; }
+.relink-table__missing { color: #aab2bf; }
+.relink-table__newname { color: #e7eaf0; }
+.relink-table__browse { background: #2a2e37; border-color: #343a45; color: #aab2bf; }
+.relink-table__browse:hover { background: #353b46; border-color: #6b7484; color: #e7eaf0; }
+.relink-table__status.is-missing { color: #e2685a; }
+.relink-table__status.is-found { color: #4fd8ad; }
+.relink-dialog__status { color: #aab2bf; }
