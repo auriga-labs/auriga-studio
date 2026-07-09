@@ -518,6 +518,11 @@
             el.style.left = (clip.start * state.zoom) + 'px';
             el.style.width = (clip.dur * state.zoom) + 'px';
             el.dataset.clip = clip.id;
+            // 素材が未解決のクリップは縞模様で区別し、参照元パスをツールチップで示す
+            if (!clip.src && clip.filePath) {
+                el.classList.add('clip--missing');
+                el.title = '素材ファイルが見つかりません：' + clip.filePath;
+            }
 
             const inner = clip.type === 'audio' || clip.type === 'video'
                 ? `<div class="clip__wave">${waveBars(clip.dur)}</div>` : '';
@@ -662,6 +667,7 @@
             renderRuler();
             els.tracks.style.width = (TIMELINE_SECONDS * state.zoom) + 'px';
         }
+        updateRelinkBar();   // クリップ削除などで未解決数が変わったら追従させる
         updateTimeDisplay();
         // 編集後、停止中ならプログラムモニターを更新
         if (!state.playing && state.monitorMode === 'program') {
@@ -704,6 +710,13 @@
     // ファイルパスからファイル名部分を取り出す（Windows / POSIX 両対応）
     function pathBaseName(p) {
         return String(p).split(/[\\/]/).pop() || '';
+    }
+
+    // "hh:mm:ss(.fffffff)"（日数付きは "d.hh:mm:ss…"）形式の TimeSpan 文字列を秒へ変換する
+    function parseTimeSpan(str) {
+        const m = String(str || '').match(/^(?:(\d+)\.)?(\d+):(\d+):(\d+(?:\.\d+)?)$/);
+        if (!m) return 0;
+        return (Number(m[1]) || 0) * 86400 + Number(m[2]) * 3600 + Number(m[3]) * 60 + parseFloat(m[4]);
     }
 
     // YMM4 のアニメ可能パラメータから値を取り出す。
@@ -768,6 +781,7 @@
             layer: Math.max(0, Math.floor(Number(raw.Layer) || 0)),
             start: (Number(raw.Frame) || 0) / fps,
             dur: lengthFrames / fps,
+            offset: parseTimeSpan(raw.ContentOffset),   // 素材内の再生開始位置(秒)
             filePath: typeof raw.FilePath === 'string' ? raw.FilePath : null,
             hidden: raw.IsHidden === true,
             props,
@@ -854,12 +868,17 @@
                 track: 'L' + (it.layer + 1),
                 start: Math.round(it.start * 10) / 10,
                 dur: Math.max(0.1, Math.round(it.dur * 10) / 10),
+                offset: it.offset || 0,  // 素材内の再生開始位置（ContentOffset）
                 src: null,               // 素材は作者マシンのパスのため未解決
-                filePath: it.filePath,   // 参照元パス（将来の再リンク用に保持）
+                filePath: it.filePath,   // 参照元パス（再リンクで解決する）
                 hidden: it.hidden,
                 props: it.props,
             });
         });
+
+        // メディアプールに同名ファイルが読み込み済みなら自動で割り当てる
+        resolveClipsFromPool();
+        relinkBarDismissed = false;   // 新しい読み込みでは再リンクバーを出し直す
 
         // タイムライン全体を再構築する
         renderTrackHeaders();
@@ -906,6 +925,76 @@
             if (f) openYmmpFile(f);
         });
         input.click();
+    }
+
+    // ======================================================
+    // YMM4 素材の再リンク
+    // ======================================================
+    // .ymmp の素材パスは作者マシンの絶対パスなので、ブラウザからは直接読めない。
+    // ユーザーにフォルダを選んでもらい、ファイル名の一致で src を解決する。
+    let relinkBarDismissed = false;   // バーを閉じたら次の読み込みまで出さない
+
+    // 未解決（src が無く参照パスだけ持つ）クリップの数
+    function unresolvedClipCount() {
+        return state.clips.filter((c) => !c.src && c.filePath).length;
+    }
+
+    // メディアプールの同名ファイルを未解決クリップへ割り当てる
+    function resolveClipsFromPool() {
+        const byName = new Map();
+        MEDIA.forEach((m) => {
+            const k = m.name.toLowerCase();
+            if (!byName.has(k)) byName.set(k, m);
+        });
+        let n = 0;
+        state.clips.forEach((c) => {
+            if (c.src || !c.filePath) return;
+            const m = byName.get(pathBaseName(c.filePath).toLowerCase());
+            if (m && m.type === c.type) { c.src = m.src; n++; }
+        });
+        return n;
+    }
+
+    // フォルダ選択ダイアログを開いて再リンクする
+    function startRelinkDialog() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.webkitdirectory = true;   // フォルダごと選択する（Chromium / Electron）
+        input.addEventListener('change', () => {
+            const files = Array.from(input.files || []);
+            if (files.length) relinkFromFiles(files);
+        });
+        input.click();
+    }
+
+    // 選択されたファイル群から、未解決クリップが参照する名前だけ登録して割り当てる
+    function relinkFromFiles(files) {
+        const wanted = new Set();
+        state.clips.forEach((c) => {
+            if (!c.src && c.filePath) wanted.add(pathBaseName(c.filePath).toLowerCase());
+        });
+        const seen = new Set();
+        files.forEach((f) => {
+            const k = f.name.toLowerCase();
+            if (wanted.has(k) && !seen.has(k)) { seen.add(k); registerMedia(f); }
+        });
+        const n = resolveClipsFromPool();
+        renderMedia();
+        renderClips();
+        updateRelinkBar();
+        renderViewer();
+        toast(n ? `${n}件のクリップへ素材を再リンクしました` : '一致する素材が見つかりませんでした');
+    }
+
+    // 再リンクバーの表示を未解決数に合わせて更新する
+    function updateRelinkBar() {
+        const bar = $('#relinkBar');
+        const msg = $('#relinkMsg');
+        if (!bar) return;
+        const n = unresolvedClipCount();
+        if (msg && n) msg.textContent = `${n}件の素材ファイルが見つかりません`;
+        bar.hidden = n === 0 || relinkBarDismissed;
     }
 
     // ======================================================
@@ -1556,6 +1645,15 @@
 
         // クラウドの「更新」ボタン
         $('#btnCloudRefresh').addEventListener('click', () => fetchCloudFiles(false));
+
+        // YMM4 素材の再リンクバー
+        const btnRelink = $('#btnRelink');
+        if (btnRelink) btnRelink.addEventListener('click', startRelinkDialog);
+        const relinkClose = $('#relinkClose');
+        if (relinkClose) relinkClose.addEventListener('click', () => {
+            relinkBarDismissed = true;
+            updateRelinkBar();
+        });
 
         // ワークスペースタブ
         $$('.ws-tab').forEach((t) => t.addEventListener('click', () => {

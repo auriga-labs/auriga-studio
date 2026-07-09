@@ -336,6 +336,14 @@
         </div>
     </div>
 
+    <!-- YMM4 プロジェクト読み込み後、見つからない素材の再リンクを促すバー -->
+    <div class="relink-bar" id="relinkBar" hidden>
+        <i class="ti ti-alert-triangle"></i>
+        <span id="relinkMsg">素材ファイルが見つかりません</span>
+        <button class="btn btn--sm" id="btnRelink" type="button">フォルダを選択して再リンク</button>
+        <button class="relink-bar__close" id="relinkClose" type="button" title="閉じる" aria-label="閉じる"><i class="ti ti-x"></i></button>
+    </div>
+
     <!-- トースト通知 -->
     <div class="toast" id="toast"></div>
 

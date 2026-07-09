@@ -759,6 +759,29 @@ body.is-scrubbing { cursor: ew-resize; user-select: none; }
     width: 11px; pointer-events: auto; cursor: ew-resize;
 }
 
+/* ===== YMM4 素材の再リンクバー ===== */
+.relink-bar {
+    position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px;
+    background: #fff7e0; color: #6b5310;
+    border: 1px solid #e6cf8a;
+    padding: 8px 12px; border-radius: 8px; font-size: 12.5px;
+    box-shadow: 0 8px 30px rgba(40, 50, 70, 0.18);
+    z-index: 90;
+}
+.relink-bar .ti-alert-triangle { font-size: 16px; }
+.relink-bar__close {
+    border: none; background: transparent; cursor: pointer;
+    color: inherit; padding: 2px; display: grid; place-items: center;
+}
+.relink-bar__close:hover { opacity: .7; }
+
+/* 素材未解決のクリップは縞模様を重ねて区別する */
+.clip--missing::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(45deg, rgba(0,0,0,.28) 0 8px, transparent 8px 16px);
+}
+
 /* ===== トースト ===== */
 .toast {
     position: fixed; bottom: 24px; left: 50%;
