@@ -1,83 +1,228 @@
 /* =============================================================
-   Auriga Studio テーマ: YMM4（青緑）（共通）
+   Auriga Studio テーマ: YMM4（ゆっくりMovieMaker4 風）（共通）
 
    themes/ymm4.css
    ライト（ymm4-light.css）とダーク（ymm4-dark.css）で
-   色が変わらない、配色モード非依存のスタイルだけをまとめたファイルです。
+   色が変わらない、配色モード非依存のスタイルをまとめたファイルです。
    常にこのファイルを先に読み込み、その上にライトかダークを重ねます。
+
+   このテーマは本家 YMM4 (v4.54) の画面を再現するため、
+   配色だけでなく「本家に存在しない要素の非表示」と
+   「要素の寸法・配置の詰め直し」もここで行います。
    ============================================================= */
+
+/* ===== フォント ===== */
+
+/* YMM4 (WPF) の既定フォントに合わせて Yu Gothic UI を優先する */
+body { font-family: "Yu Gothic UI", "Segoe UI", "Hiragino Sans", system-ui, sans-serif; }
+
+
+/* ===== 本家 YMM4 に存在しない要素の非表示 ===== */
+
+/* 左のメディアブラウザ（YMM4 にメディアビンは無い。素材は直接タイムラインへドロップ） */
+.panel--media { display: none; }
+/* プレビュー右上の解像度セレクト（YMM4 は動画設定ダイアログで変更する） */
+.stage__res { display: none; }
+/* 右上のアカウントアバター（YMM4 にアカウント機能は無い） */
+.menubar__right .account { display: none; }
+/* トラック行の番号アイコンとミュート/表示ボタン（YMM4 のレイヤー欄は名前だけ） */
+.track-header__icon, .track-header__ctrl { display: none; }
+/* トランスポートのタイムコード（YMM4 は下部ステータスバーに表示する） */
+.transport__time { display: none; }
+/* メニューバー項目のアイコンとロゴの開閉キャレット（YMM4 のメニューは文字のみ） */
+.menu__item .ti { display: none; }
+.logo__caret { display: none; }
+/* 動画クリップの擬似波形（YMM4 の動画アイテムは無地＋名前だけ） */
+.clip--video .clip__wave { display: none; }
+
+
+/* ===== レイアウト（メディアパネル分を詰めて 2 カラムへ） ===== */
+
+/* 中央プレビュー + 右の「アイテム」パネル。右パネルは本家に合わせて広めにする */
+.layout { grid-template-columns: minmax(0, 1fr) 340px; }
+
+
+/* ===== メニューバー（本家の細いメニュー帯に合わせる） ===== */
+
+.menubar { height: 30px; padding: 0 8px; gap: 8px; }
+.menubar__left { gap: 6px; }
+.logo { padding: 2px 6px; gap: 6px; border-radius: 3px; }
+.logo__mark { width: 16px; height: 16px; border-radius: 3px; box-shadow: none; }
+.logo__text { font-size: 12px; }
+.menu { gap: 0; }
+.menu__item { padding: 4px 9px; border-radius: 3px; font-size: 12px; }
+
+
+/* ===== アプリメニュー / コンテキストメニュー（WPF 風の角の小さいメニュー） ===== */
+
+.appmenu { border-radius: 3px; padding: 3px; }
+.appmenu__item { border-radius: 2px; padding: 5px 10px; }
+.ctxmenu { border-radius: 3px; padding: 3px; }
+.ctxmenu__item { border-radius: 2px; }
+
 
 /* ===== ボタン共通 ===== */
 
-/* ゴーストボタン（背景なしの控えめなボタン） */
+/* WPF 風のフラットで角の小さいボタン */
+.btn { border-radius: 2px; }
 .btn--ghost { background: transparent; }
-
-
-/* ===== アプリメニュー（ドロップダウン） ===== */
-
-/* 項目アイコン：ホバー/展開中（アクセント面の上の白文字） */
-.appmenu__item:hover .appmenu__icon, .appmenu__item.is-open .appmenu__icon { color: #fff; }
-/* ショートカット：ホバー/展開中 */
-.appmenu__item:hover .appmenu__key, .appmenu__item.is-open .appmenu__key { color: rgba(255, 255, 255, .8); }
-.appmenu__item:hover .appmenu__key .ti, .appmenu__item.is-open .appmenu__key .ti { color: #fff; }
-/* サブメニューを示す右矢印：ホバー/展開中 */
-.appmenu__item:hover .appmenu__arrow, .appmenu__item.is-open .appmenu__arrow { color: #fff; }
-
-
-/* ===== メディアブラウザ ===== */
-
-/* 音声メディアのサムネ地（暗い青緑グラデ） */
-.media-item__thumb--audio { background: linear-gradient(135deg, #0a3d3b, #0e5a57); }
-/* サムネ右下の長さバッジ */
-.media-item__badge { background: rgba(0, 0, 0, .7); color: #fff; }
 
 
 /* ===== ステージ（プレビュー） ===== */
 
+/* 「プレビュー」の細い見出し帯 */
+.stage__head { height: 24px; padding: 0 8px; }
+.stage__label { font-size: 11.5px; }
+/* 余白は最小限、モニターは角丸なしのフラット表示 */
+.viewer { padding: 10px; }
+.viewer__canvas { border-radius: 0; }
 /* 映像の表示面（黒地） */
 .viewer__canvas { background: #000; }
 /* オーバーレイのテキスト（字幕など） */
 .viewer__text { color: #fff; text-shadow: 0 2px 12px rgba(0, 0, 0, .7); }
 
 
+/* ===== トランスポート（本家の細い再生コントロール帯） ===== */
+
+/* グリッド中央寄せをやめ、本家同様に左寄せの細い帯にする */
+.transport { display: flex; align-items: center; height: 32px; padding: 0 8px; gap: 8px; }
+.transport__controls { order: -1; gap: 2px; }
+.transport__right { margin-left: auto; }
+/* ボタンは枠なしの小さなフラットアイコン */
+.tbtn { width: 26px; height: 24px; border: none; border-radius: 3px; background: transparent; }
+.tbtn .ti { font-size: 14px; }
+.tbtn--play { width: 30px; height: 24px; box-shadow: none; }
+.tbtn--play .ti { font-size: 15px; }
+.volume input[type="range"] { width: 90px; }
+
+
+/* ===== レンジ入力（WPF 風の細いスライダー） ===== */
+
+input[type="range"] { height: 3px; border-radius: 0; }
+input[type="range"]::-webkit-slider-thumb { width: 11px; height: 11px; }
+
+
+/* ===== プロパティ（アイテム）パネル ===== */
+
+.panel__head { padding: 0 6px; }
+.ptab { padding: 6px 10px 5px; font-size: 11.5px; border-bottom: none; }
+.panel__body { padding: 8px 10px; }
+.prop-group { margin-bottom: 12px; }
+/* 本家のエクスパンダー見出し「＾ 全般」風にする */
+.prop-group__title {
+  display: flex; align-items: center; gap: 7px;
+  text-transform: none; letter-spacing: 0;
+  font-size: 11.5px; font-weight: 600;
+  border-bottom: none; padding-bottom: 4px; margin-bottom: 6px;
+}
+/* 見出し左の「開いている」シェブロン（∧） */
+.prop-group__title::before {
+  content: ""; flex: none;
+  width: 6px; height: 6px; margin-top: 3px;
+  border-left: 1.6px solid currentColor;
+  border-top: 1.6px solid currentColor;
+  transform: rotate(45deg);
+}
+.prop-row { grid-template-columns: 64px 1fr 46px; gap: 6px; margin-bottom: 6px; }
+.prop-row label { font-size: 11px; }
+/* 数値は本家の数値ボックス風（枠付き・右寄せ）。枠色は各モード側で塗る */
+.prop-row output { padding: 2px 5px; font-size: 10.5px; border-radius: 2px; border: 1px solid transparent; }
+
+
 /* ===== タイムライン ===== */
 
-/* 各トラックの行の縦じま（目安線） */
-.track {
-  background:
-    repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(255, 255, 255, .02) 49px, rgba(255, 255, 255, .02) 50px);
+/* タイムライン上端の「メイン」タブ（本家のシーンタブの再現・装飾） */
+.timeline::before {
+  content: "メイン";
+  flex: none; align-self: flex-start;
+  margin: 4px 0 0 6px; padding: 3px 16px 4px;
+  font-size: 11px; line-height: 1;
+  border-radius: 3px 3px 0 0;
 }
 
-/* タイムライン上のクリップ（共通の枠・影） */
-.clip { border: 1.5px solid rgba(255, 255, 255, .15); box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
-.clip:hover { border-color: rgba(255, 255, 255, .4); }
-/* 種別ごとのクリップ色：映像 */
-.clip--video { background: linear-gradient(135deg, #2f5fd6, #3a6df0); }
-/* 種別ごとのクリップ色：音声 */
-.clip--audio { background: linear-gradient(135deg, #00a8a4, #00cec9); }
-/* 種別ごとのクリップ色：テキスト */
-.clip--text  { background: linear-gradient(135deg, #c93dbb, #f368e0); }
-/* 種別ごとのクリップ色：画像 */
-.clip--image { background: linear-gradient(135deg, #d68b1e, #f0a93a); }
-/* クリップ名ラベル */
-.clip__label { color: #fff; background: rgba(0, 0, 0, .18); }
-/* 音声波形の各バー */
-.clip__wave span { background: rgba(255, 255, 255, .45); }
+/* ツールバーは細く、ズームを本家同様に左端へ */
+.timeline__toolbar { height: 30px; gap: 10px; padding: 0 8px; }
+.tl-zoom { order: -1; margin-left: 0; gap: 6px; font-size: 11px; }
+.tl-zoom input { width: 96px; }
+.tl-tool { width: 26px; height: 22px; border: none; border-radius: 3px; font-size: 12px; }
+.tl-tools { gap: 1px; }
+.tl-actions { gap: 2px; }
+/* 分割・削除などは本家ツールバー同様の枠なしフラットボタンにする */
+.tl-actions .btn { padding: 3px 8px; font-size: 11px; border: none; border-radius: 3px; background: transparent; }
+
+/* レイヤー欄は本家の細い行（名前だけ）に合わせる */
+.track-headers { width: 118px; }
+.track-headers__spacer { height: 20px; }
+.track-header { height: 26px; padding: 0 6px; gap: 6px; }
+/* 行頭のドラッグ用グリップ（⋮⋮）。色は各モード側で塗る */
+.track-header::before { content: "⋮⋮"; font-size: 9px; letter-spacing: -2px; line-height: 1; }
+.track-header__label {
+  font-size: 11px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ルーラーも本家の細い目盛りに */
+.ruler { height: 20px; }
+.ruler__tick { font-size: 9.5px; padding: 2px 0 0 3px; }
+
+/* トラック行の縦じま（1 目盛りごとの目安線） */
+.track {
+  height: 26px;
+  background:
+    repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(128, 128, 128, .08) 49px, rgba(128, 128, 128, .08) 50px);
+}
+
+/* クリップ：角丸・影・黒帯をなくした本家のフラットな矩形 */
+.clip {
+  top: 1px; bottom: 1px;
+  border-radius: 0;
+  border: 1px solid rgba(0, 0, 0, .35);
+  box-shadow: none;
+}
+.clip:hover { border-color: rgba(255, 255, 255, .55); }
+/* 選択中は本家の白い破線枠 */
+.clip.is-selected { border: 1px dashed #fff; box-shadow: none; }
+/* クリップ名は青地に直接白文字（黒帯なし） */
+.clip__label { font-size: 10.5px; font-weight: 400; padding: 2px 6px; color: #fff; background: transparent; }
+
+/* アイテムの色は本家の既定色に合わせる：音声のみ赤、それ以外は青 */
+.clip--video, .clip--image, .clip--text,
+.clip--shape, .clip--effect, .clip--other { background: #2b53d6; }
+.clip--audio { background: #a03a3f; }
+/* 音声波形は淡い赤（本家の波形表示） */
+.clip__wave { padding: 0 2px; }
+.clip__wave span { background: rgba(255, 178, 178, .85); }
 /* 端のトリムハンドル：ホバー */
 .clip__handle:hover { background: rgba(255, 255, 255, .3); }
 
 /* 再生ヘッド（赤い縦線） */
-.playhead { background: #e0506a; }
-/* 再生ヘッドの三角つまみ */
-.playhead__head { background: #e0506a; }
+.playhead { background: #e8433e; }
+.playhead__head { background: #e8433e; width: 10px; height: 9px; }
+
+
+/* ===== 下部ステータスバー（ymm4.js が生成する本家風の情報帯） ===== */
+
+.ymm4-statusbar {
+  flex: none; height: 22px;
+  display: flex; align-items: center; gap: 18px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden;
+}
+.ymm4-statusbar__right { margin-left: auto; display: flex; gap: 18px; }
+
+
+/* ===== メディアブラウザ（非表示だが念のため既定を保つ） ===== */
+
+.media-item__thumb--audio { background: linear-gradient(135deg, #4a1d20, #6e2a2e); }
+.media-item__badge { background: rgba(0, 0, 0, .7); color: #fff; }
 
 
 /* ===== コンテキストメニュー（右クリック） ===== */
 
-/* ショートカット：ホバー（アクセント面の上の白文字） */
-.ctxmenu__item:hover .ctxmenu__key { color: rgba(255, 255, 255, .8); }
 /* 「削除」など危険項目のホバー */
-.ctxmenu__item--danger:hover { background: #e0506a; }
+.ctxmenu__item--danger:hover { background: #e0506a; color: #fff; }
 
 
 /* ===== バージョン情報モーダル ===== */
