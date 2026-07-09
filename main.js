@@ -131,12 +131,18 @@
         compositor: $('#compositor'),
     };
 
-    const compCtx = els.compositor.getContext('2d');
+    // 合成の描画基盤。initCompositor が PixiJS（WebGPU 優先 → WebGL）を初期化し、
+    // どちらも使えない場合のみ Canvas 2D（compCtx）へフォールバックする。
+    // ※ 同じキャンバスに 2D コンテキストを先に作ると WebGPU が取れなくなるため、
+    //    compCtx はフォールバック確定時に初めて生成する。
+    let pixi = null;      // { renderer, stage, bg, bgW, bgH } PixiJS 一式（初期化成功時のみ）
+    let compCtx = null;   // Canvas 2D フォールバック用コンテキスト
+    let compositorBackend = '';   // バージョン情報に表示する描画バックエンド名
 
     // ======================================================
     // 初期化
     // ======================================================
-    function init() {
+    async function init() {
         applyStoredTheme();   // 保存済みテーマを最初に適用（対応するメニューバーも生成される）
         renderMedia();
         renderEffects();
@@ -145,6 +151,7 @@
         renderTracks();
         renderRuler();
         bindUI();
+        await initCompositor();    // 描画基盤（WebGPU / WebGL / Canvas 2D）を初期化
         restorePersistedState();   // 保存済みの解像度・再生ヘッド位置を復元
         els.previewVideo.volume = state.volume;   // ソースモニターの初期音量を状態に合わせる
         updateTimeDisplay();
@@ -1431,17 +1438,10 @@
     // コンポジター：タイムライン上の全ソースを合成
     // ======================================================
     function composite(time, playing) {
-        const W = els.compositor.width, H = els.compositor.height;
-        compCtx.setTransform(1, 0, 0, 1, 0, 0);
-        compCtx.filter = 'none';
-        compCtx.globalAlpha = 1;
-        compCtx.globalCompositeOperation = 'source-over';
-        compCtx.fillStyle = '#000';
-        compCtx.fillRect(0, 0, W, H);
-
         const active = new Set();
+        const visuals = [];   // 描画対象のクリップ（奥→手前の順）
 
-        // トラックを上の行から順に（=奥から手前へ）描画する。
+        // トラックを上の行から順に（=奥から手前へ）確認する。
         // YMM4 と同じく、番号が大きい（下の行の）レイヤーほど手前になる。
         for (let i = 0; i < TRACKS.length; i++) {
             const tr = TRACKS[i];
@@ -1450,19 +1450,35 @@
             // YMM4 側で非表示（IsHidden）だったアイテムは描画も再生もしない
             if (clip.hidden) continue;
             active.add(clip.id);
-            if (trackVisible(tr.id)) {
-                if (clip.type === 'effect') {
-                    // エフェクトアイテム：ここまで描画した下位レイヤーへ効果をかける
-                    drawEffectOverlay(clip, time);
-                } else if (clip.type !== 'audio') {
-                    drawVisualClip(clip, time);
-                }
-            }
+            if (trackVisible(tr.id) && clip.type !== 'audio') visuals.push(clip);
             // 動画の音声・オーディオクリップを同期再生
             syncAV(clip, time, playing, tr.id);
         }
 
+        // 描画は PixiJS（WebGPU / WebGL）優先。初期化失敗時のみ Canvas 2D で描く
+        if (pixi) compositePixi(visuals, time);
+        else if (compCtx) composite2d(visuals, time);
+
         pauseInactive(active);
+    }
+
+    // Canvas 2D による合成（PixiJS が初期化できなかった場合のフォールバック）
+    function composite2d(visuals, time) {
+        const W = els.compositor.width, H = els.compositor.height;
+        compCtx.setTransform(1, 0, 0, 1, 0, 0);
+        compCtx.filter = 'none';
+        compCtx.globalAlpha = 1;
+        compCtx.globalCompositeOperation = 'source-over';
+        compCtx.fillStyle = '#000';
+        compCtx.fillRect(0, 0, W, H);
+        for (const clip of visuals) {
+            if (clip.type === 'effect') {
+                // エフェクトアイテム：ここまで描画した下位レイヤーへ効果をかける
+                drawEffectOverlay(clip, time);
+            } else {
+                drawVisualClip(clip, time);
+            }
+        }
     }
 
     // YMM4 のブレンドモード → canvas の合成モード（対応するもののみ）
@@ -1804,6 +1820,422 @@
             compCtx.fillText(clip.name, 0, 0);
         }
         compCtx.restore();
+    }
+
+    // ======================================================
+    // PixiJS コンポジター（WebGPU / WebGL）
+    // ======================================================
+    // Canvas 2D 版（composite2d 系）と同じ見た目になるように、クリップごとの
+    // 表示オブジェクトを毎フレーム組み立てて renderer.render で描画する。
+    // 生成コストの高いオブジェクト（Sprite / Text / Filter / Texture）は
+    // clip._px* にキャッシュして使い回す。
+
+    // コンポジターの描画基盤を初期化する（init から一度だけ呼ぶ）
+    async function initCompositor() {
+        if (window.PIXI) {
+            try {
+                const renderer = await PIXI.autoDetectRenderer({
+                    preference: 'webgpu',              // WebGPU を最優先で試し、非対応なら WebGL へ
+                    canvas: els.compositor,
+                    width: els.compositor.width,
+                    height: els.compositor.height,
+                    background: '#000000',
+                    antialias: true,
+                    // WebGL フォールバック時にも toDataURL（フレーム保存）を使えるようにする
+                    preserveDrawingBuffer: true,
+                });
+                // ブレンドモードの下地とフレーム保存のため、黒背景は図形として毎フレーム敷く
+                pixi = { renderer, stage: new PIXI.Container(), bg: new PIXI.Graphics(), bgW: 0, bgH: 0 };
+                const kind = renderer.type === PIXI.RendererType.WEBGPU ? 'WebGPU' : 'WebGL';
+                compositorBackend = `PixiJS ${PIXI.VERSION} (${kind})`;
+                console.log(`[Auriga] コンポジター: ${compositorBackend}`);
+                return;
+            } catch (e) {
+                console.warn('[Auriga] PixiJS の初期化に失敗したため Canvas 2D で描画します', e);
+            }
+        }
+        compCtx = els.compositor.getContext('2d');
+        compositorBackend = 'Canvas 2D';
+    }
+
+    // コンポジターの出力解像度を変更する（Pixi 使用時はレンダラー経由で変更する）
+    function resizeCompositor(w, h) {
+        if (pixi) {
+            pixi.renderer.resize(w, h);
+        } else {
+            els.compositor.width = w;
+            els.compositor.height = h;
+        }
+    }
+
+    // canvas の合成モード名 → Pixi のブレンドモード名。
+    // 加算・乗算・スクリーン以外は advanced-blend-modes.min.js が登録する拡張を使う
+    const PIXI_BLEND = {
+        'source-over': 'normal',
+        'lighter': 'add',
+        'multiply': 'multiply',
+        'screen': 'screen',
+        'overlay': 'overlay',
+        'darken': 'darken',
+        'lighten': 'lighten',
+        'difference': 'difference',
+        'exclusion': 'exclusion',
+        'color-dodge': 'color-dodge',
+        'color-burn': 'color-burn',
+        'hard-light': 'hard-light',
+        'soft-light': 'soft-light',
+    };
+
+    // クリップのブレンド設定（YMM4 名 → canvas 名 → Pixi 名）を解決する
+    function pixiBlendOf(clip) {
+        const canvasMode = clip.blend && BLEND_MODES[clip.blend];
+        return (canvasMode && PIXI_BLEND[canvasMode]) || 'normal';
+    }
+
+    // 4x5 カラー行列の合成（b を先に適用し、続けて a を適用した結果を返す）
+    function multiplyColorMatrix(a, b) {
+        const out = new Array(20).fill(0);
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 5; col++) {
+                let v = 0;
+                for (let k = 0; k < 4; k++) v += a[row * 5 + k] * b[k * 5 + col];
+                if (col === 4) v += a[row * 5 + 4];   // 平行移動（オフセット）成分
+                out[row * 5 + col] = v;
+            }
+        }
+        return out;
+    }
+
+    // CSS filter の brightness / contrast / saturate と同じ変換のカラー行列を作る。
+    // オフセット列は 0〜1 正規化（Pixi v8 の ColorMatrixFilter の規約に合わせる）
+    function cssColorMatrix(brightness, contrast, saturate) {
+        const b = brightness;
+        const brM = [b, 0, 0, 0, 0, 0, b, 0, 0, 0, 0, 0, b, 0, 0, 0, 0, 0, 1, 0];
+        const c = contrast, cO = 0.5 - 0.5 * c;
+        const coM = [c, 0, 0, 0, cO, 0, c, 0, 0, cO, 0, 0, c, 0, cO, 0, 0, 0, 1, 0];
+        const s = saturate;
+        const saM = [
+            0.213 + 0.787 * s, 0.715 - 0.715 * s, 0.072 - 0.072 * s, 0, 0,
+            0.213 - 0.213 * s, 0.715 + 0.285 * s, 0.072 - 0.072 * s, 0, 0,
+            0.213 - 0.213 * s, 0.715 - 0.715 * s, 0.072 + 0.928 * s, 0, 0,
+            0, 0, 0, 1, 0,
+        ];
+        // CSS の記述順（brightness → contrast → saturate）と同じ順に適用する
+        return multiplyColorMatrix(saM, multiplyColorMatrix(coM, brM));
+    }
+
+    // クリップの描画ソースから Pixi テクスチャを得る（クリップ単位でキャッシュ）
+    function pixiTexture(clip, src) {
+        if (clip._pxTex && clip._pxSrc === src) {
+            // 動画・クロマキー用キャンバスは内容が毎フレーム変わるため再アップロードを指示する
+            if (clip._pxLive) clip._pxTex.source.update();
+            return clip._pxTex;
+        }
+        if (clip._pxTex) clip._pxTex.destroy(true);   // ソース差し替え時は古いテクスチャを破棄
+        let source;
+        if (typeof HTMLVideoElement !== 'undefined' && src instanceof HTMLVideoElement) {
+            // 再生・シークは syncAV が制御するため autoPlay は必ず切る
+            source = new PIXI.VideoSource({ resource: src, autoPlay: false, autoLoad: true });
+            clip._pxLive = true;
+        } else if (src instanceof HTMLCanvasElement) {
+            source = new PIXI.CanvasSource({ resource: src });
+            clip._pxLive = true;
+        } else {
+            source = new PIXI.ImageSource({ resource: src });
+            clip._pxLive = false;
+        }
+        clip._pxTex = new PIXI.Texture({ source });
+        clip._pxSrc = src;
+        return clip._pxTex;
+    }
+
+    // タイムライン上の表示クリップ一式を Pixi のシーングラフへ組み立てて描画する
+    function compositePixi(visuals, time) {
+        const W = els.compositor.width, H = els.compositor.height;
+        const stage = pixi.stage;
+        stage.removeChildren();
+        // 黒背景（Canvas 2D 版の黒塗りと同じ役割。サイズが変わったときだけ引き直す）
+        if (pixi.bgW !== W || pixi.bgH !== H) {
+            pixi.bg.clear().rect(0, 0, W, H).fill(0x000000);
+            pixi.bgW = W; pixi.bgH = H;
+        }
+        stage.addChild(pixi.bg);
+        for (const clip of visuals) {
+            if (clip.type === 'effect') pixiEffectOverlay(clip, time, stage);
+            else if (clip.type === 'text') pixiTextClip(clip, time, stage);
+            else if (clip.type === 'shape') pixiShapeClip(clip, time, stage);
+            else if (clip.type === 'video' || clip.type === 'image') pixiVisualClip(clip, time, stage);
+        }
+        pixi.renderer.render(stage);
+    }
+
+    // スプライトへ配置・サイズ・回転・反転・不透明度・ブレンドを設定する共通処理
+    function configurePixiSprite(sp, tex, dw, dh, clip, x, y, rotation, alpha, blend) {
+        sp.texture = tex;
+        sp.anchor.set(0.5);
+        sp.width = dw;
+        sp.height = dh;
+        // width/height 代入で scale が正値に張り直されるため、反転はその後に符号だけ返す
+        if (clip.flipH) sp.scale.x = -sp.scale.x;
+        if (clip.flipV) sp.scale.y = -sp.scale.y;
+        sp.position.set(x, y);
+        sp.rotation = rotation;
+        sp.alpha = alpha;
+        sp.blendMode = blend;
+    }
+
+    // 映像・画像クリップをスプライトとして配置する（drawVisualClip の Pixi 版）
+    function pixiVisualClip(clip, time, stage) {
+        const W = els.compositor.width, H = els.compositor.height;
+        const p = clip.props;
+
+        let media, mw, mh, ready = false;
+        if (clip.type === 'video') {
+            media = getMediaEl(clip);
+            if (!media) return;   // ソース未解決（YMM4 読み込み直後など）
+            mw = media.videoWidth; mh = media.videoHeight;
+            ready = media.readyState >= 2 && mw > 0;
+        } else {
+            media = getImg(clip);
+            if (!media) return;   // ソース未解決（YMM4 読み込み直後など）
+            mw = media.naturalWidth; mh = media.naturalHeight;
+            ready = media.complete && mw > 0;
+        }
+        if (!ready) return;
+
+        // クリップ内の進行度（アニメーション・登場退場エフェクトの基準）
+        const p01 = clip.dur > 0 ? clampNum((time - clip.start) / clip.dur, 0, 1) : 0;
+        const fx = effectState(clip, time);
+
+        // クロマキーは CPU 加工済みキャンバスをテクスチャ元へ差し替える（配置サイズは元のまま）
+        let src = media;
+        const ck = (clip.effects || []).find((f) => f.kind === 'chroma-key');
+        if (ck) {
+            const keyed = applyChromaKey(clip, media, mw, mh, ck);
+            if (keyed) src = keyed;
+        }
+
+        const alpha = clampNum(animProp(clip, 'opacity', p01, p.opacity) / 100, 0, 1)
+            * fadeFactor(clip, time) * fx.alpha;
+        if (alpha <= 0) return;
+
+        const tex = pixiTexture(clip, src);
+        const x = animProp(clip, 'x', p01, p.x);
+        const y = animProp(clip, 'y', p01, p.y);
+        const scale = animProp(clip, 'scale', p01, p.scale);
+        const rotate = animProp(clip, 'rotate', p01, p.rotate);
+        // YMM4 由来は素材の実寸 × 拡大率（等倍配置）、Auriga 内の素材は画面フィット基準
+        const base = clip.ymm ? projScale() : Math.min(W / mw, H / mh);
+        const fit = base * (scale / 100) * fx.scale;
+        const dw = mw * fit, dh = mh * fit;
+        const px = W / 2 + (x / 500) * (W / 2) + fx.dx;
+        const py = H / 2 + (y / 500) * (H / 2) + fx.dy;
+        const rot = rotate * Math.PI / 180;
+
+        // 影エフェクト（YMM4 の ShadowEffect）：本体の後ろへ影色のシルエットを敷く
+        const sh = (clip.effects || []).find((f) => f.kind === 'shadow');
+        if (sh) {
+            const s = projScale();
+            const shSp = clip._pxShadowSp || (clip._pxShadowSp = new PIXI.Sprite());
+            const shCm = clip._pxShadowCm || (clip._pxShadowCm = new PIXI.ColorMatrixFilter());
+            const shBl = clip._pxShadowBl || (clip._pxShadowBl = new PIXI.BlurFilter());
+            configurePixiSprite(shSp, tex, dw, dh, clip, px + sh.x * s, py + sh.y * s, rot, alpha, 'normal');
+            // RGB を影色で塗りつぶし、アルファに影の不透明度を乗算するカラー行列
+            const c = sh.color || { r: 0, g: 0, b: 0, a: 1 };
+            shCm.matrix = [
+                0, 0, 0, 0, c.r / 255,
+                0, 0, 0, 0, c.g / 255,
+                0, 0, 0, 0, c.b / 255,
+                0, 0, 0, clampNum((c.a == null ? 1 : c.a) * sh.opacity / 100, 0, 1), 0,
+            ];
+            // canvas の shadowBlur はぼかし径なので、σ 相当へ半分に換算する（近似）
+            shBl.strength = Math.max(0.1, sh.blur * s / 2);
+            shSp.filters = [shCm, shBl];
+            stage.addChild(shSp);
+        }
+
+        const sp = clip._pxSp || (clip._pxSp = new PIXI.Sprite());
+        configurePixiSprite(sp, tex, dw, dh, clip, px, py, rot, alpha, pixiBlendOf(clip));
+        // カラー補正（明るさ・コントラスト・彩度）と登場退場のぼかし
+        const filters = [];
+        if (p.brightness !== 100 || p.contrast !== 100 || p.saturate !== 100) {
+            const f = clip._pxColor || (clip._pxColor = new PIXI.ColorMatrixFilter());
+            f.matrix = cssColorMatrix(p.brightness / 100, p.contrast / 100, p.saturate / 100);
+            filters.push(f);
+        }
+        if (fx.blur > 0.2) {
+            const f = clip._pxBlur || (clip._pxBlur = new PIXI.BlurFilter());
+            f.strength = fx.blur;
+            filters.push(f);
+        }
+        sp.filters = filters.length ? filters : null;
+        stage.addChild(sp);
+    }
+
+    // テキストクリップを Pixi Text として配置する（drawTextClip の Pixi 版）。
+    // Text のラスタライズは重いため、内容やスタイルが変わったときだけ作り直す
+    function pixiTextClip(clip, time, stage) {
+        const W = els.compositor.width, H = els.compositor.height;
+        const p = clip.props;
+        const p01 = clip.dur > 0 ? clampNum((time - clip.start) / clip.dur, 0, 1) : 0;
+        const fx = effectState(clip, time);
+        const alpha = clampNum(animProp(clip, 'opacity', p01, p.opacity) / 100, 0, 1)
+            * fadeFactor(clip, time) * fx.alpha;
+        if (alpha <= 0) return;
+
+        const x = animProp(clip, 'x', p01, p.x);
+        const y = animProp(clip, 'y', p01, p.y);
+        const scale = animProp(clip, 'scale', p01, p.scale) / 100 * fx.scale;
+        const rotate = animProp(clip, 'rotate', p01, p.rotate);
+
+        const info = clip.text;
+        const sh = (clip.effects || []).find((f) => f.kind === 'shadow');
+        let cacheKey, make;
+        if (info) {
+            // ---- YMM4 のテキスト書式 ----
+            const ps = projScale();
+            const fs = Math.max(1, info.size * ps);   // 拡大率は transform の scale で反映する
+            const lh = fs * ((info.lineHeight || 100) / 100);
+            const bp = String(info.basePoint || 'CenterCenter');
+            cacheKey = JSON.stringify(['ymm', info.value, clip.name, info.font, info.size, info.bold,
+                info.italic, info.color, info.style, info.styleColor, info.lineHeight, bp, sh, ps]);
+            make = () => {
+                const style = {
+                    fontFamily: [info.font, 'Yu Gothic UI', 'sans-serif'].filter(Boolean),
+                    fontSize: fs,
+                    fontWeight: info.bold ? '700' : '400',
+                    fontStyle: info.italic ? 'italic' : 'normal',
+                    fill: rgbaStr(info.color),
+                    align: bp.startsWith('Left') ? 'left' : bp.startsWith('Right') ? 'right' : 'center',
+                    lineHeight: lh,
+                };
+                // 縁取りスタイル（Border）
+                if (info.style === 'Border' && info.styleColor) {
+                    style.stroke = { color: rgbaStr(info.styleColor), width: Math.max(1, fs * 0.08), join: 'round' };
+                }
+                // 影エフェクト（YMM4 の ShadowEffect）はテキストのドロップシャドウで表現する
+                if (sh) {
+                    style.dropShadow = {
+                        color: sh.color ? `rgb(${sh.color.r},${sh.color.g},${sh.color.b})` : '#000',
+                        alpha: clampNum(sh.opacity / 100, 0, 1),
+                        blur: sh.blur * ps / 2,
+                        angle: Math.atan2(sh.y, sh.x),
+                        distance: Math.hypot(sh.x * ps, sh.y * ps),
+                    };
+                }
+                const t = new PIXI.Text({ text: String(info.value || clip.name), style });
+                // 基準点（BasePoint）をアンカーで再現する
+                t.anchor.set(
+                    bp.startsWith('Left') ? 0 : bp.startsWith('Right') ? 1 : 0.5,
+                    bp.endsWith('Top') ? 0 : bp.endsWith('Bottom') ? 1 : 0.5);
+                return t;
+            };
+        } else {
+            // ---- Auriga 内で追加したテキスト（従来の固定スタイル） ----
+            const fs = W * 0.05;
+            cacheKey = JSON.stringify(['plain', clip.name, fs]);
+            make = () => {
+                const t = new PIXI.Text({
+                    text: clip.name,
+                    style: {
+                        fontFamily: ['Hiragino Sans', 'Yu Gothic UI', 'sans-serif'],
+                        fontSize: fs,
+                        fontWeight: '800',
+                        fill: '#ffffff',
+                        align: 'center',
+                        dropShadow: {
+                            color: '#000000', alpha: 0.7,
+                            blur: fs * 0.2, angle: Math.PI / 2, distance: fs * 0.06,
+                        },
+                    },
+                });
+                t.anchor.set(0.5);
+                return t;
+            };
+        }
+
+        if (!clip._pxText || clip._pxTextKey !== cacheKey) {
+            if (clip._pxText) clip._pxText.destroy();
+            clip._pxText = make();
+            clip._pxTextKey = cacheKey;
+        }
+        const t = clip._pxText;
+        t.position.set(
+            W / 2 + (x / 500) * (W / 2) + fx.dx,
+            H / 2 + (y / 500) * (H / 2) + fx.dy);
+        t.rotation = rotate * Math.PI / 180;
+        t.scale.set(scale);
+        t.alpha = alpha;
+        t.blendMode = pixiBlendOf(clip);
+        if (fx.blur > 0.2) {
+            const f = clip._pxBlur || (clip._pxBlur = new PIXI.BlurFilter());
+            f.strength = fx.blur;
+            t.filters = [f];
+        } else {
+            t.filters = null;
+        }
+        stage.addChild(t);
+    }
+
+    // 図形クリップ（現状は背景＝画面全体の単色塗りのみ）を Graphics として配置する
+    function pixiShapeClip(clip, time, stage) {
+        const s = clip.shape;
+        if (!s || s.kind !== 'BackgroundShapePlugin' || !s.color) return;
+        const W = els.compositor.width, H = els.compositor.height;
+        const p01 = clip.dur > 0 ? clampNum((time - clip.start) / clip.dur, 0, 1) : 0;
+        const alpha = clampNum(animProp(clip, 'opacity', p01, clip.props.opacity) / 100, 0, 1)
+            * fadeFactor(clip, time);
+        if (alpha <= 0) return;
+        const g = clip._pxShape || (clip._pxShape = new PIXI.Graphics());
+        g.clear().rect(0, 0, W, H).fill({
+            color: (s.color.r << 16) | (s.color.g << 8) | s.color.b,
+            alpha: clampNum(alpha * (s.color.a == null ? 1 : s.color.a), 0, 1),
+        });
+        g.blendMode = pixiBlendOf(clip);
+        stage.addChild(g);
+    }
+
+    // 放射光テクスチャ（中心 0.7 → 端 0 のラジアルグラデーション）。初回だけ生成して共有する
+    let radialLightTex = null;
+    function radialLightTexture() {
+        if (radialLightTex) return radialLightTex;
+        const size = 512;
+        const c = document.createElement('canvas');
+        c.width = c.height = size;
+        const ctx = c.getContext('2d');
+        const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+        g.addColorStop(0, 'rgba(255,250,220,0.7)');
+        g.addColorStop(1, 'rgba(255,250,220,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, size, size);
+        radialLightTex = new PIXI.Texture({ source: new PIXI.CanvasSource({ resource: c }) });
+        return radialLightTex;
+    }
+
+    // エフェクトアイテム（放射光）を加算ブレンドのスプライトとして重ねる
+    function pixiEffectOverlay(clip, time, stage) {
+        const W = els.compositor.width, H = els.compositor.height;
+        const p01 = clip.dur > 0 ? clampNum((time - clip.start) / clip.dur, 0, 1) : 0;
+        const alpha = clampNum(clip.props.opacity / 100, 0, 1) * fadeFactor(clip, time);
+        if (alpha <= 0) return;
+        if (!clip._pxFx) clip._pxFx = [];
+        let n = 0;
+        for (const f of (clip.effects || [])) {
+            if (f.kind !== 'radial-light') continue;
+            const value = clampNum(fxVal(f.value, p01, 100), 0, 400);
+            if (value <= 0) continue;
+            const s = projScale();
+            const radius = Math.max(W, H) * (value / 100);
+            const sp = clip._pxFx[n] || (clip._pxFx[n] = new PIXI.Sprite());
+            n++;
+            sp.texture = radialLightTexture();
+            sp.anchor.set(0.5);
+            sp.position.set(W / 2 + f.x * s, H / 2 + f.y * s);
+            sp.width = sp.height = radius * 2;
+            sp.alpha = alpha;
+            sp.blendMode = 'add';
+            stage.addChild(sp);
+        }
     }
 
     // ---- WebAudio（クリップ音量ゲイン用） ----
@@ -2222,7 +2654,7 @@
         const m = v.match(/(\d+)\s*[×x]\s*(\d+)/);
         if (m) {
             const w = +m[1], h = +m[2];
-            els.compositor.width = w; els.compositor.height = h;
+            resizeCompositor(w, h);
             // モニターのアスペクト比を解像度に合わせて固定（CSS変数で制御）
             els.viewerCanvas.style.setProperty('--ar-w', w);
             els.viewerCanvas.style.setProperty('--ar-h', h);
@@ -2234,8 +2666,7 @@
     // プロジェクトの解像度をモニターへ適用する（選択肢に同じ値があれば同期する）
     function applyProjectResolution(w, h) {
         if (!(w > 0 && h > 0)) return;
-        els.compositor.width = w;
-        els.compositor.height = h;
+        resizeCompositor(w, h);
         els.viewerCanvas.style.setProperty('--ar-w', w);
         els.viewerCanvas.style.setProperty('--ar-h', h);
         const sel = $('#resSelect');
@@ -2675,7 +3106,14 @@
 
     function saveFrame() {
         try {
-            const url = els.compositor.toDataURL('image/png');
+            let url;
+            if (pixi) {
+                // Pixi のステージを画像へ書き出す（WebGPU でも確実にピクセルを取れる）
+                const frame = new PIXI.Rectangle(0, 0, els.compositor.width, els.compositor.height);
+                url = pixi.renderer.extract.canvas({ target: pixi.stage, frame }).toDataURL('image/png');
+            } else {
+                url = els.compositor.toDataURL('image/png');
+            }
             const a = document.createElement('a');
             a.href = url; a.download = `frame_${formatTimecode(state.playhead).replace(/:/g, '-')}.png`;
             a.click();
@@ -3068,6 +3506,7 @@
         { key: 'chromium',        label: 'Chromium' },
         { key: 'node',            label: 'Node.js' },
         { key: 'v8',              label: 'V8' },
+        { key: 'renderer',        label: 'Renderer' },
         { key: 'os',              label: 'OS' },
     ];
 
@@ -3088,6 +3527,8 @@
                 return;
             }
         }
+        // コンポジターの描画バックエンド（WebGPU / WebGL / Canvas 2D）も表示する
+        if (compositorBackend) aboutInfoCache.renderer = compositorBackend;
         // 取得済みの値を dt/dd で描画する（未定義の項目は飛ばす）
         infoEl.innerHTML = ABOUT_FIELDS
             .filter((f) => aboutInfoCache[f.key] != null)
