@@ -5,7 +5,7 @@
     'use strict';
 
     // ---- 定数 ----
-    const FPS = 30;
+    let FPS = 30;   // 1秒あたりのフレーム数（プロジェクト読み込みで上書きされる）
     const THEME_KEY = 'auriga.theme';   // テーマ（モード）設定の保存キー
     const RES_KEY = 'auriga.resolution';   // 解像度選択の保存キー
     const PLAYHEAD_KEY = 'auriga.playhead'; // 再生ヘッド位置(秒)の保存キー
@@ -63,16 +63,21 @@
         clips: [],                    // {id,type,name,track,start,dur,props}
         nextId: 1,
         menuLayoutKey: null,   // 現在のメニュー定義（初回 applyTheme で確定）
+        projectWidth: null,    // YMM4 プロジェクトの解像度（px 座標の換算基準。null=未読込）
+        projectHeight: null,
     };
 
     // ---- トラック定義（上から） ----
     // YMM4 ライクに種類を設けず「レイヤー1」のような連番にする。
-    // どのレイヤーにも映像・音声・テキストを置ける。上のレイヤーほど手前に描画する。
+    // どのレイヤーにも映像・音声・テキストを置ける。
+    // 重なり順は YMM4 と同じで、番号が大きい（下の行の）レイヤーほど手前に描画する。
     const LAYER_COUNT = 5;             // 既定のレイヤー数（上から レイヤー1…）
     const DEFAULT_TRACK = 'L1';        // 新規クリップの既定レイヤー
     const TRACKS = Array.from({ length: LAYER_COUNT }, (_, i) => ({
         id: 'L' + (i + 1),
         label: 'レイヤー ' + (i + 1),
+        volume: 100,                   // レイヤー音量(%)（YMM4 の LayerSettings.Volume）
+        color: null,                   // レイヤー色（YMM4 の LayerSettings.Color。null=なし）
     }));
 
     // ---- メディアプール（読み込んだファイルが入る） ----
@@ -96,7 +101,7 @@
 
     const DEFAULT_PROPS = {
         x: 0, y: 0, scale: 100, rotate: 0, opacity: 100,
-        speed: 100, brightness: 100, contrast: 100, saturate: 100,
+        speed: 100, volume: 100, brightness: 100, contrast: 100, saturate: 100,
     };
 
     // ---- DOM 参照 ----
@@ -267,9 +272,11 @@
         // レイヤー行が潜り込んでも隠すスティッキー要素にする
         els.trackHeaders.innerHTML = '<div class="track-headers__spacer"></div>' + TRACKS.map((t, i) => {
             // 連番レイヤー。種類アイコンの代わりにレイヤー番号を表示する
+            // レイヤー色（YMM4 の LayerSettings.Color）があれば番号の背景に反映する
+            const tint = t.color ? ` style="background:${rgbaStr(t.color)};color:#fff"` : '';
             return `
             <div class="track-header" data-track="${t.id}">
-                <div class="track-header__icon">${i + 1}</div>
+                <div class="track-header__icon"${tint}>${i + 1}</div>
                 <div class="track-header__label">${t.label}</div>
                 <div class="track-header__ctrl">
                     <button class="track-header__btn" data-act="mute" title="ミュート">M</button>
@@ -614,6 +621,23 @@
         document.addEventListener('mouseup', up);
     }
 
+    // クリップの付加情報（YMM4 由来の描画情報など）を複製先へ引き継ぐ
+    function copyClipExtras(src, dest) {
+        dest.text = src.text || null;
+        dest.shape = src.shape || null;
+        dest.effects = src.effects || null;
+        dest.anim = src.anim || null;
+        dest.blend = src.blend || null;
+        dest.flipH = !!src.flipH;
+        dest.flipV = !!src.flipV;
+        dest.looped = !!src.looped;
+        dest.fadeIn = src.fadeIn || 0;
+        dest.fadeOut = src.fadeOut || 0;
+        dest.hidden = !!src.hidden;
+        dest.filePath = src.filePath || null;
+        dest.ymm = !!src.ymm;
+    }
+
     function splitClipAt(clip, t) {
         if (t <= clip.start + 0.1 || t >= clip.start + clip.dur - 0.1) {
             toast('再生ヘッドをクリップ内に置いてください'); return;
@@ -621,12 +645,11 @@
         const leftDur = Math.round((t - clip.start) * 10) / 10;
         const rightDur = Math.round((clip.dur - leftDur) * 10) / 10;
         clip.dur = leftDur;
-        // 右半分はソース・プロパティを引き継ぎ、素材の再生位置を分割点から始める
+        // 右半分はソース・プロパティ・付加情報を引き継ぎ、素材の再生位置を分割点から始める
         const right = addClip(clip.type, clip.name, clip.track, t, rightDur, true, clip.src);
         right.props = { ...clip.props };
         right.offset = (clip.offset || 0) + leftDur * ((clip.props.speed || 100) / 100);
-        right.hidden = clip.hidden;
-        right.filePath = clip.filePath || null;
+        copyClipExtras(clip, right);
         renderClips();
         toast('クリップを分割しました ✂');
     }
@@ -719,6 +742,24 @@
         return (Number(m[1]) || 0) * 86400 + Number(m[2]) * 3600 + Number(m[3]) * 60 + parseFloat(m[4]);
     }
 
+    // YMM4 の "#AARRGGBB" / "#RRGGBB" 形式の色を {r,g,b,a} へ変換する（不正時は fallback）
+    function ymmpColor(str, fallback) {
+        const m = String(str || '').match(/^#([0-9a-f]{6}|[0-9a-f]{8})$/i);
+        if (!m) return fallback || null;
+        const hex = m[1];
+        const n = parseInt(hex, 16);
+        return hex.length === 8
+            ? { a: ((n >>> 24) & 255) / 255, r: (n >>> 16) & 255, g: (n >>> 8) & 255, b: n & 255 }
+            : { a: 1, r: (n >>> 16) & 255, g: (n >>> 8) & 255, b: n & 255 };
+    }
+
+    // {r,g,b,a} を rgba() 文字列へ整形する（mul で不透明度を乗算）
+    function rgbaStr(c, mul) {
+        if (!c) return 'rgba(0,0,0,0)';
+        const a = clampNum(c.a * (mul == null ? 1 : mul), 0, 1);
+        return `rgba(${c.r},${c.g},${c.b},${a})`;
+    }
+
     // YMM4 のアニメ可能パラメータから値を取り出す。
     // 形式は {"Values":[{"Value":n}], "AnimationType":…} または素の数値。
     // アニメーション付きでも先頭キーフレームの値のみ採用する。
@@ -735,6 +776,52 @@
     // から短い型名（例: "TextItem"）を取り出す
     function ymmpShortType(t) {
         return String(t || '').split(',')[0].split('.').pop().trim();
+    }
+
+    // アニメ可能値が複数キーフレームを持つか
+    function ymmpIsAnimated(v) {
+        return !!(v && Array.isArray(v.Values) && v.Values.length > 1);
+    }
+
+    // アニメ可能値を {values, type} へ正規化する（静的値・単一キーフレームは null）。
+    // convert で各キーフレーム値の座標変換（px→スライダー値など）を挟める。
+    function ymmpAnimSpec(v, convert) {
+        if (!ymmpIsAnimated(v)) return null;
+        const f = convert || ((x) => x);
+        return {
+            values: v.Values.map((x) => f(Number(x.Value) || 0)),
+            type: v.AnimationType || '直線移動',
+        };
+    }
+
+    // キーフレーム列を進行度 p (0〜1) で評価する
+    function evalAnimValues(values, type, p) {
+        if (!values || !values.length) return 0;
+        if (values.length === 1) return values[0];
+        p = clampNum(p, 0, 1);
+        // 瞬間移動：等分した区間の境界で次の値へ切り替わる
+        if (type === '瞬間移動') {
+            return values[Math.min(values.length - 1, Math.floor(p * values.length))];
+        }
+        const segCount = values.length - 1;
+        const seg = Math.min(segCount - 1, Math.floor(p * segCount));
+        let sp = p * segCount - seg;
+        if (type === '加減速移動') sp = sp * sp * (3 - 2 * sp);   // 滑らかに加減速
+        return values[seg] + (values[seg + 1] - values[seg]) * sp;
+    }
+
+    // クリップのアニメ付きプロパティを進行度で評価する（アニメが無ければ fallback）
+    function animProp(clip, key, p, fallback) {
+        const a = clip.anim && clip.anim[key];
+        if (!a) return fallback;
+        return evalAnimValues(a.values, a.type, p);
+    }
+
+    // エフェクトパラメータ（数値 または {values,type}）を進行度で評価する
+    function fxVal(v, p, fallback) {
+        if (typeof v === 'number' && isFinite(v)) return v;
+        if (v && Array.isArray(v.values)) return evalAnimValues(v.values, v.type, p);
+        return fallback;
     }
 
     // タイムラインに表示するアイテム名を決める
@@ -758,6 +845,71 @@
         return YMMP_TYPE_LABELS[type] || 'アイテム';
     }
 
+    // アイテム内エフェクト（VideoEffects）1件を描画用に正規化する（無効・未対応は null）
+    function ymmpNormalizeEffect(fx) {
+        if (!fx || fx.IsEnabled === false) return null;
+        const t = ymmpShortType(fx['$type']);
+        switch (t) {
+            // 画面外から登場 / 退場（方向・時間・イージング付き）
+            case 'InOutMoveFromOutsideFrameEffect':
+                return {
+                    kind: 'move-outside', dir: String(fx.Value || 'Bottom'),
+                    isIn: fx.IsInEffect === true, isOut: fx.IsOutEffect === true,
+                    time: Number(fx.EffectTimeSeconds) || 0.5,
+                    easeT: fx.EasingType || 'Quad', easeM: fx.EasingMode || 'Out',
+                };
+            // 登場退場ぼかし
+            case 'InOutGaussianBlurEffect':
+                return {
+                    kind: 'inout-blur', value: ymmpAnimValue(fx.Value, 10),
+                    isIn: fx.IsInEffect === true, isOut: fx.IsOutEffect === true,
+                    time: Number(fx.EffectTimeSeconds) || 0.5,
+                    easeT: fx.EasingType || 'Quad', easeM: fx.EasingMode || 'Out',
+                };
+            // クラッシュ登場 / 退場（近似）
+            case 'InOutCrashEffect':
+                return {
+                    kind: 'crash',
+                    isIn: fx.IsInEffect === true, isOut: fx.IsOutEffect === true,
+                    time: Number(fx.EffectTimeSeconds) || 0.5,
+                    easeT: 'Quad', easeM: 'Out',
+                };
+            // 影
+            case 'ShadowEffect':
+                return {
+                    kind: 'shadow',
+                    x: ymmpAnimValue(fx.X, 6), y: ymmpAnimValue(fx.Y, 6),
+                    blur: ymmpAnimValue(fx.Blur, 3),
+                    opacity: ymmpAnimValue(fx.Opacity, 50),
+                    color: ymmpColor(fx.Brush && fx.Brush.Parameter && fx.Brush.Parameter.Color,
+                        { r: 0, g: 0, b: 0, a: 1 }),
+                };
+            // ランダム移動（振動）
+            case 'RandomMoveEffect':
+                return {
+                    kind: 'random-move',
+                    x: ymmpAnimValue(fx.X, 0), y: ymmpAnimValue(fx.Y, 0),
+                    span: Math.max(0.02, ymmpAnimValue(fx.Span, 0.1)),
+                };
+            // クロマキー（近似・縮小バッファで処理）
+            case 'ChromaKeyEffect':
+                return {
+                    kind: 'chroma-key', color: ymmpColor(fx.Color, null),
+                    tolerance: ymmpAnimValue(fx.Tolerance, 10),
+                    invert: fx.IsInvert === true,
+                };
+            // 放射光（EffectItem 経由で下位レイヤーに適用）
+            case 'RadialLightEffect':
+                return {
+                    kind: 'radial-light',
+                    value: ymmpAnimSpec(fx.Value) || ymmpAnimValue(fx.Value, 100),
+                    x: ymmpAnimValue(fx.X, 0), y: ymmpAnimValue(fx.Y, 0),
+                };
+            default:
+                return null;   // 未対応エフェクトは読み飛ばす
+        }
+    }
+
     // YMM4 アイテム1件を Auriga のクリップ相当の形に正規化する。
     // 対象外・不正なアイテムは null を返して読み飛ばす。
     function ymmpNormalizeItem(raw, fps, width, height) {
@@ -774,6 +926,39 @@
         props.rotate = clampNum(Math.round(ymmpAnimValue(raw.Rotation, 0)), -180, 180);
         props.opacity = clampNum(Math.round(ymmpAnimValue(raw.Opacity, 100)), 0, 100);
         props.speed = clampNum(Math.round(Number(raw.PlaybackRate) || 100), 25, 200);
+        props.volume = clampNum(Math.round(ymmpAnimValue(raw.Volume, 100)), 0, 200);
+
+        // キーフレームアニメーション（複数キーフレームを持つプロパティのみ保持）
+        const toX = (v) => clampNum(v / (width / 2) * 500, -500, 500);
+        const toY = (v) => clampNum(v / (height / 2) * 500, -500, 500);
+        const anim = {};
+        const ax = ymmpAnimSpec(raw.X, toX); if (ax) anim.x = ax;
+        const ay = ymmpAnimSpec(raw.Y, toY); if (ay) anim.y = ay;
+        const az = ymmpAnimSpec(raw.Zoom); if (az) anim.scale = az;
+        const ar = ymmpAnimSpec(raw.Rotation); if (ar) anim.rotate = ar;
+        const ao = ymmpAnimSpec(raw.Opacity); if (ao) anim.opacity = ao;
+
+        // テキスト書式（TextItem のみ）
+        const text = type === 'text' ? {
+            value: String(raw.Text || ''),
+            font: typeof raw.Font === 'string' ? raw.Font : null,
+            size: Math.max(1, ymmpAnimValue(raw.FontSize, 34)),
+            color: ymmpColor(raw.FontColor, { r: 255, g: 255, b: 255, a: 1 }),
+            style: typeof raw.Style === 'string' ? raw.Style : 'Normal',
+            styleColor: ymmpColor(raw.StyleColor, { r: 0, g: 0, b: 0, a: 1 }),
+            bold: raw.Bold === true,
+            italic: raw.Italic === true,
+            basePoint: typeof raw.BasePoint === 'string' ? raw.BasePoint : 'CenterCenter',
+            lineHeight: ymmpAnimValue(raw.LineHeight2, 100),
+        } : null;
+
+        // 図形（ShapeItem のみ。単色ブラシの色を取り込む）
+        const shapeParam = raw.ShapeParameter || {};
+        const shape = type === 'shape' ? {
+            kind: ymmpShortType(raw.ShapeType2),
+            color: ymmpColor(shapeParam.Brush && shapeParam.Brush.Parameter
+                && shapeParam.Brush.Parameter.Color, null),
+        } : null;
 
         return {
             type,
@@ -784,6 +969,17 @@
             offset: parseTimeSpan(raw.ContentOffset),   // 素材内の再生開始位置(秒)
             filePath: typeof raw.FilePath === 'string' ? raw.FilePath : null,
             hidden: raw.IsHidden === true,
+            fadeIn: Math.max(0, Number(raw.FadeIn) || 0),    // フェードイン(秒)
+            fadeOut: Math.max(0, Number(raw.FadeOut) || 0),  // フェードアウト(秒)
+            looped: raw.IsLooped === true,
+            blend: typeof raw.Blend === 'string' ? raw.Blend : null,
+            flipH: raw.IsFlippedHorizontally === true,
+            flipV: raw.IsFlippedVertically === true,
+            anim: Object.keys(anim).length ? anim : null,
+            effects: (Array.isArray(raw.VideoEffects) ? raw.VideoEffects : [])
+                .map(ymmpNormalizeEffect).filter(Boolean),
+            text,
+            shape,
             props,
         };
     }
@@ -831,7 +1027,7 @@
     function ensureLayerCount(count) {
         while (TRACKS.length < count) {
             const n = TRACKS.length + 1;
-            TRACKS.push({ id: 'L' + n, label: 'レイヤー ' + n });
+            TRACKS.push({ id: 'L' + n, label: 'レイヤー ' + n, volume: 100, color: null });
         }
     }
 
@@ -852,11 +1048,22 @@
         const endSec = project.items.reduce((m, it) => Math.max(m, it.start + it.dur), 0);
         ensureTimelineCapacity(endSec + 5);   // 末尾に少し余白を持たせる
 
-        // レイヤーラベルを既定に戻してから、YMM4 の LayerSettings を反映する
-        TRACKS.forEach((t, i) => { t.label = 'レイヤー ' + (i + 1); });
+        // プロジェクトの FPS・解像度へ表示を追従させる
+        FPS = project.fps;
+        state.projectWidth = project.width;
+        state.projectHeight = project.height;
+        applyProjectResolution(project.width, project.height);
+
+        // レイヤー設定を既定に戻してから、YMM4 の LayerSettings を反映する
+        TRACKS.forEach((t, i) => { t.label = 'レイヤー ' + (i + 1); t.volume = 100; t.color = null; });
         project.layerSettings.forEach((ls) => {
             const t = TRACKS[Number(ls.Layer)];
-            if (t && typeof ls.Label === 'string' && ls.Label.trim()) t.label = ls.Label.trim();
+            if (!t) return;
+            if (typeof ls.Label === 'string' && ls.Label.trim()) t.label = ls.Label.trim();
+            const vol = Number(ls.Volume);
+            if (isFinite(vol)) t.volume = clampNum(vol, 0, 200);
+            const col = ymmpColor(ls.Color, null);
+            t.color = col && col.a > 0 ? col : null;   // 透明（未設定）は無視する
         });
 
         // アイテムをクリップとして展開する
@@ -872,6 +1079,17 @@
                 src: null,               // 素材は作者マシンのパスのため未解決
                 filePath: it.filePath,   // 参照元パス（再リンクで解決する）
                 hidden: it.hidden,
+                fadeIn: it.fadeIn,
+                fadeOut: it.fadeOut,
+                looped: it.looped,
+                blend: it.blend,
+                flipH: it.flipH,
+                flipV: it.flipV,
+                anim: it.anim,
+                effects: it.effects,
+                text: it.text,
+                shape: it.shape,
+                ymm: true,               // YMM4 由来（px 等倍配置・書式描画の分岐に使う）
                 props: it.props,
             });
         });
@@ -1113,27 +1331,213 @@
         compCtx.setTransform(1, 0, 0, 1, 0, 0);
         compCtx.filter = 'none';
         compCtx.globalAlpha = 1;
+        compCtx.globalCompositeOperation = 'source-over';
         compCtx.fillStyle = '#000';
         compCtx.fillRect(0, 0, W, H);
 
         const active = new Set();
 
-        // トラックを下から上へ（=奥から手前へ）描画。テキストが最前面。
-        for (let i = TRACKS.length - 1; i >= 0; i--) {
+        // トラックを上の行から順に（=奥から手前へ）描画する。
+        // YMM4 と同じく、番号が大きい（下の行の）レイヤーほど手前になる。
+        for (let i = 0; i < TRACKS.length; i++) {
             const tr = TRACKS[i];
             const clip = activeClipOnTrack(tr.id, time);
             if (!clip) continue;
+            // YMM4 側で非表示（IsHidden）だったアイテムは描画も再生もしない
+            if (clip.hidden) continue;
             active.add(clip.id);
-            // クリップ自身の種類で映像か音声かを判定（レイヤーは種類を持たない）
-            // YMM4 側で非表示（IsHidden）だったアイテムは描画しない
-            if (clip.type !== 'audio' && !clip.hidden && trackVisible(tr.id)) {
-                drawVisualClip(clip);
+            if (trackVisible(tr.id)) {
+                if (clip.type === 'effect') {
+                    // エフェクトアイテム：ここまで描画した下位レイヤーへ効果をかける
+                    drawEffectOverlay(clip, time);
+                } else if (clip.type !== 'audio') {
+                    drawVisualClip(clip, time);
+                }
             }
             // 動画の音声・オーディオクリップを同期再生
             syncAV(clip, time, playing, tr.id);
         }
 
         pauseInactive(active);
+    }
+
+    // YMM4 のブレンドモード → canvas の合成モード（対応するもののみ）
+    const BLEND_MODES = {
+        'Normal': 'source-over', '通常': 'source-over',
+        'Add': 'lighter', '加算': 'lighter',
+        'Multiply': 'multiply', '乗算': 'multiply',
+        'Screen': 'screen', 'スクリーン': 'screen',
+        'Overlay': 'overlay', 'オーバーレイ': 'overlay',
+        'Darken': 'darken', '比較(暗)': 'darken',
+        'Lighten': 'lighten', '比較(明)': 'lighten',
+        'Difference': 'difference', '差分': 'difference',
+        'Exclusion': 'exclusion', '除外': 'exclusion',
+        'ColorDodge': 'color-dodge', '覆い焼き': 'color-dodge',
+        'ColorBurn': 'color-burn', '焼き込み': 'color-burn',
+        'HardLight': 'hard-light', 'ハードライト': 'hard-light',
+        'SoftLight': 'soft-light', 'ソフトライト': 'soft-light',
+    };
+
+    // YMM4 のイージング（近似）。mode: In / Out / InOut
+    const EASE_FUNCS = {
+        Linear: (x) => x,
+        Sine:   (x) => 1 - Math.cos((x * Math.PI) / 2),
+        Quad:   (x) => x * x,
+        Cubic:  (x) => x * x * x,
+        Quart:  (x) => x * x * x * x,
+        Quint:  (x) => x * x * x * x * x,
+        Expo:   (x) => (x === 0 ? 0 : Math.pow(2, 10 * x - 10)),
+        Circ:   (x) => 1 - Math.sqrt(1 - clampNum(x, 0, 1) ** 2),
+        Back:   (x) => 2.70158 * x * x * x - 1.70158 * x * x,
+    };
+    function easeValue(type, mode, x) {
+        const f = EASE_FUNCS[type] || EASE_FUNCS.Quad;
+        x = clampNum(x, 0, 1);
+        if (mode === 'Out') return 1 - f(1 - x);
+        if (mode === 'InOut') return x < 0.5 ? f(x * 2) / 2 : 1 - f((1 - x) * 2) / 2;
+        return f(x);
+    }
+
+    // フェードイン / アウトによる不透明度係数（0〜1）
+    function fadeFactor(clip, time) {
+        const local = time - clip.start;
+        let f = 1;
+        if (clip.fadeIn > 0) f *= clampNum(local / clip.fadeIn, 0, 1);
+        if (clip.fadeOut > 0) f *= clampNum((clip.dur - local) / clip.fadeOut, 0, 1);
+        return f;
+    }
+
+    // 擬似乱数（同じ入力に同じ結果を返す。振動エフェクトの再現性確保用）
+    function prand(n) {
+        const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+        return x - Math.floor(x);
+    }
+    // クリップ ID から擬似乱数の種を作る
+    function seedOf(clip) {
+        if (clip._seed) return clip._seed;
+        let h = 0;
+        const s = String(clip.id);
+        for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+        clip._seed = Math.abs(h) + 1;
+        return clip._seed;
+    }
+
+    // 登場退場・ランダム移動エフェクトによる描画補正（位置・ぼかし・拡大・透明度）
+    function effectState(clip, time) {
+        const out = { dx: 0, dy: 0, blur: 0, scale: 1, alpha: 1 };
+        const W = els.compositor.width, H = els.compositor.height;
+        const local = time - clip.start;
+        for (const f of (clip.effects || [])) {
+            if (f.kind === 'move-outside' || f.kind === 'inout-blur' || f.kind === 'crash') {
+                // 登場（in）/ 退場（out）区間の未完了度（0=定位置、1=完全に効果側）
+                let disp = 0;
+                if (f.isIn && local < f.time) {
+                    disp = 1 - easeValue(f.easeT, f.easeM, local / f.time);
+                } else if (f.isOut && clip.dur - local < f.time) {
+                    disp = 1 - easeValue(f.easeT, f.easeM, (clip.dur - local) / f.time);
+                }
+                if (disp <= 0) continue;
+                if (f.kind === 'move-outside') {
+                    if (f.dir === 'Left') out.dx -= W * disp;
+                    else if (f.dir === 'Right') out.dx += W * disp;
+                    else if (f.dir === 'Top') out.dy -= H * disp;
+                    else out.dy += H * disp;   // Bottom（既定）
+                } else if (f.kind === 'inout-blur') {
+                    out.blur += f.value * disp * projScale();
+                } else {
+                    // クラッシュ（近似）：上から落ちつつ拡大・フェードする
+                    out.dy -= H * 0.4 * disp;
+                    out.scale *= 1 + disp * 0.5;
+                    out.alpha *= 1 - disp * 0.5;
+                }
+            } else if (f.kind === 'random-move') {
+                // Span 秒ごとに擬似乱数で位置を揺らす
+                const bucket = Math.floor(local / f.span);
+                const seed = seedOf(clip);
+                const s = projScale();
+                out.dx += (prand(seed + bucket * 2) - 0.5) * 2 * f.x * s;
+                out.dy += (prand(seed + bucket * 2 + 1) - 0.5) * 2 * f.y * s;
+            }
+        }
+        return out;
+    }
+
+    // クロマキー（近似）：縮小オフスクリーンで色距離により透過させる
+    const CHROMA_MAX_W = 640;   // 処理負荷を抑えるための最大処理幅(px)
+    function applyChromaKey(clip, media, mw, mh, fx) {
+        if (!fx.color || !(mw > 0 && mh > 0)) return null;
+        const scale = Math.min(1, CHROMA_MAX_W / mw);
+        const w = Math.max(1, Math.round(mw * scale));
+        const h = Math.max(1, Math.round(mh * scale));
+        if (!clip._ckCanvas) clip._ckCanvas = document.createElement('canvas');
+        const c = clip._ckCanvas;
+        if (c.width !== w) c.width = w;
+        if (c.height !== h) c.height = h;
+        const ctx = c.getContext('2d', { willReadFrequently: true });
+        try {
+            ctx.clearRect(0, 0, w, h);
+            ctx.drawImage(media, 0, 0, w, h);
+            const img = ctx.getImageData(0, 0, w, h);
+            const d = img.data;
+            // RGB 距離の最大値（√3×255）に対する割合をしきい値にする
+            const th = (fx.tolerance / 100) * 442;
+            const kr = fx.color.r, kg = fx.color.g, kb = fx.color.b;
+            for (let i = 0; i < d.length; i += 4) {
+                const dist = Math.sqrt(
+                    (d[i] - kr) ** 2 + (d[i + 1] - kg) ** 2 + (d[i + 2] - kb) ** 2);
+                const hit = dist <= th;
+                if (fx.invert ? !hit : hit) d[i + 3] = 0;
+            }
+            ctx.putImageData(img, 0, 0);
+            return c;
+        } catch (e) {
+            return null;   // 読み取り不可（クロスオリジン等）の場合は素通し
+        }
+    }
+
+    // エフェクトアイテム：ここまで描画された下位レイヤーへ効果をかける（現状は放射光のみ）
+    function drawEffectOverlay(clip, time) {
+        const W = els.compositor.width, H = els.compositor.height;
+        const p01 = clip.dur > 0 ? clampNum((time - clip.start) / clip.dur, 0, 1) : 0;
+        const alpha = clampNum(clip.props.opacity / 100, 0, 1) * fadeFactor(clip, time);
+        if (alpha <= 0) return;
+        for (const f of (clip.effects || [])) {
+            if (f.kind !== 'radial-light') continue;
+            const value = clampNum(fxVal(f.value, p01, 100), 0, 400);
+            if (value <= 0) continue;
+            const s = projScale();
+            const cx = W / 2 + f.x * s;
+            const cy = H / 2 + f.y * s;
+            const radius = Math.max(W, H) * (value / 100);
+            const g = compCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+            g.addColorStop(0, `rgba(255,250,220,${0.7 * alpha})`);
+            g.addColorStop(1, 'rgba(255,250,220,0)');
+            compCtx.save();
+            compCtx.globalCompositeOperation = 'lighter';
+            compCtx.fillStyle = g;
+            compCtx.fillRect(0, 0, W, H);
+            compCtx.restore();
+        }
+    }
+
+    // 図形アイテムの描画（現状は背景＝画面全体の単色塗りのみ対応）
+    function drawShapeClip(clip, time) {
+        const s = clip.shape;
+        if (!s || s.kind !== 'BackgroundShapePlugin' || !s.color) return;
+        const W = els.compositor.width, H = els.compositor.height;
+        const p01 = clip.dur > 0 ? clampNum((time - clip.start) / clip.dur, 0, 1) : 0;
+        const alpha = clampNum(animProp(clip, 'opacity', p01, clip.props.opacity) / 100, 0, 1)
+            * fadeFactor(clip, time);
+        if (alpha <= 0) return;
+        compCtx.save();
+        compCtx.globalAlpha = 1;
+        compCtx.filter = 'none';
+        if (clip.blend && BLEND_MODES[clip.blend]) {
+            compCtx.globalCompositeOperation = BLEND_MODES[clip.blend];
+        }
+        compCtx.fillStyle = rgbaStr(s.color, alpha);
+        compCtx.fillRect(0, 0, W, H);
+        compCtx.restore();
     }
 
     // 指定トラックで再生ヘッド位置にあるクリップ（重なりは後勝ち）
@@ -1147,11 +1551,12 @@
         return found;
     }
 
-    function drawVisualClip(clip) {
+    function drawVisualClip(clip, time) {
         const W = els.compositor.width, H = els.compositor.height;
         const p = clip.props;
 
-        if (clip.type === 'text') { drawTextClip(clip); return; }
+        if (clip.type === 'text') { drawTextClip(clip, time); return; }
+        if (clip.type === 'shape') { drawShapeClip(clip, time); return; }
 
         let media, mw, mh, ready = false;
         if (clip.type === 'video') {
@@ -1165,42 +1570,157 @@
             mw = media.naturalWidth; mh = media.naturalHeight;
             ready = media.complete && mw > 0;
         } else {
-            return; // 音声・図形・エフェクトなどは描画なし
+            return; // 音声・エフェクトなどは描画なし
         }
         if (!ready) return;
 
+        // クリップ内の進行度（アニメーション・登場退場エフェクトの基準）
+        const p01 = clip.dur > 0 ? clampNum((time - clip.start) / clip.dur, 0, 1) : 0;
+        const fx = effectState(clip, time);
+
+        // クロマキーは元画像を加工したオフスクリーンへ差し替えて描く（配置サイズは元のまま）
+        const ck = (clip.effects || []).find((f) => f.kind === 'chroma-key');
+        if (ck) {
+            const keyed = applyChromaKey(clip, media, mw, mh, ck);
+            if (keyed) media = keyed;
+        }
+
+        const alpha = clampNum(animProp(clip, 'opacity', p01, p.opacity) / 100, 0, 1)
+            * fadeFactor(clip, time) * fx.alpha;
+        if (alpha <= 0) return;
+
         compCtx.save();
-        compCtx.globalAlpha = Math.max(0, Math.min(1, p.opacity / 100));
-        compCtx.filter = `brightness(${p.brightness}%) contrast(${p.contrast}%) saturate(${p.saturate}%)`;
-        const cx = W / 2 + (p.x / 500) * (W / 2);
-        const cy = H / 2 + (p.y / 500) * (H / 2);
-        compCtx.translate(cx, cy);
-        compCtx.rotate(p.rotate * Math.PI / 180);
-        const fit = Math.min(W / mw, H / mh) * (p.scale / 100);
+        compCtx.globalAlpha = clampNum(alpha, 0, 1);
+        let filter = `brightness(${p.brightness}%) contrast(${p.contrast}%) saturate(${p.saturate}%)`;
+        if (fx.blur > 0.2) filter += ` blur(${fx.blur.toFixed(1)}px)`;
+        compCtx.filter = filter;
+        if (clip.blend && BLEND_MODES[clip.blend]) {
+            compCtx.globalCompositeOperation = BLEND_MODES[clip.blend];
+        }
+        // 影エフェクト（YMM4 の ShadowEffect）
+        const sh = (clip.effects || []).find((f) => f.kind === 'shadow');
+        if (sh) {
+            const s = projScale();
+            compCtx.shadowColor = rgbaStr(sh.color, sh.opacity / 100);
+            compCtx.shadowBlur = sh.blur * s;
+            compCtx.shadowOffsetX = sh.x * s;
+            compCtx.shadowOffsetY = sh.y * s;
+        }
+        const x = animProp(clip, 'x', p01, p.x);
+        const y = animProp(clip, 'y', p01, p.y);
+        const scale = animProp(clip, 'scale', p01, p.scale);
+        const rotate = animProp(clip, 'rotate', p01, p.rotate);
+        compCtx.translate(
+            W / 2 + (x / 500) * (W / 2) + fx.dx,
+            H / 2 + (y / 500) * (H / 2) + fx.dy);
+        compCtx.rotate(rotate * Math.PI / 180);
+        if (clip.flipH || clip.flipV) compCtx.scale(clip.flipH ? -1 : 1, clip.flipV ? -1 : 1);
+        // YMM4 由来は素材の実寸 × 拡大率（等倍配置）、Auriga 内の素材は画面フィット基準
+        const base = clip.ymm ? projScale() : Math.min(W / mw, H / mh);
+        const fit = base * (scale / 100) * fx.scale;
         const dw = mw * fit, dh = mh * fit;
         try { compCtx.drawImage(media, -dw / 2, -dh / 2, dw, dh); } catch (e) { /* not ready */ }
         compCtx.restore();
     }
 
-    function drawTextClip(clip) {
+    function drawTextClip(clip, time) {
         const W = els.compositor.width, H = els.compositor.height;
         const p = clip.props;
+        const p01 = clip.dur > 0 ? clampNum((time - clip.start) / clip.dur, 0, 1) : 0;
+        const fx = effectState(clip, time);
+        const alpha = clampNum(animProp(clip, 'opacity', p01, p.opacity) / 100, 0, 1)
+            * fadeFactor(clip, time) * fx.alpha;
+        if (alpha <= 0) return;
+
         compCtx.save();
-        compCtx.globalAlpha = Math.max(0, Math.min(1, p.opacity / 100));
-        const cx = W / 2 + (p.x / 500) * (W / 2);
-        const cy = H / 2 + (p.y / 500) * (H / 2);
-        compCtx.translate(cx, cy);
-        compCtx.rotate(p.rotate * Math.PI / 180);
-        const fs = W * 0.05 * (p.scale / 100);
-        compCtx.font = `800 ${fs}px "Hiragino Sans","Yu Gothic UI",sans-serif`;
-        compCtx.textAlign = 'center';
-        compCtx.textBaseline = 'middle';
-        compCtx.shadowColor = 'rgba(0,0,0,.7)';
-        compCtx.shadowBlur = fs * 0.4;
-        compCtx.shadowOffsetY = fs * 0.06;
-        compCtx.fillStyle = '#fff';
-        compCtx.fillText(clip.name, 0, 0);
+        compCtx.globalAlpha = clampNum(alpha, 0, 1);
+        if (fx.blur > 0.2) compCtx.filter = `blur(${fx.blur.toFixed(1)}px)`;
+        if (clip.blend && BLEND_MODES[clip.blend]) {
+            compCtx.globalCompositeOperation = BLEND_MODES[clip.blend];
+        }
+        const x = animProp(clip, 'x', p01, p.x);
+        const y = animProp(clip, 'y', p01, p.y);
+        const scale = animProp(clip, 'scale', p01, p.scale) / 100 * fx.scale;
+        const rotate = animProp(clip, 'rotate', p01, p.rotate);
+        compCtx.translate(
+            W / 2 + (x / 500) * (W / 2) + fx.dx,
+            H / 2 + (y / 500) * (H / 2) + fx.dy);
+        compCtx.rotate(rotate * Math.PI / 180);
+
+        const info = clip.text;
+        if (info) {
+            // ---- YMM4 のテキスト書式で描画する ----
+            const fs = Math.max(1, info.size * projScale() * scale);
+            const weight = info.bold ? '700' : '400';
+            const style = info.italic ? 'italic ' : '';
+            const family = info.font ? `"${info.font.replace(/"/g, '')}",` : '';
+            compCtx.font = `${style}${weight} ${fs}px ${family}"Yu Gothic UI",sans-serif`;
+            const lines = String(info.value || clip.name).split(/\r?\n/);
+            const lh = fs * ((info.lineHeight || 100) / 100);
+            // 基準点（BasePoint）から水平揃えと縦位置を決める
+            const bp = String(info.basePoint || 'CenterCenter');
+            compCtx.textAlign = bp.startsWith('Left') ? 'left'
+                : bp.startsWith('Right') ? 'right' : 'center';
+            compCtx.textBaseline = 'middle';
+            const total = lh * (lines.length - 1);
+            let startY = -total / 2;                        // 縦中央基準
+            if (bp.endsWith('Top')) startY = lh / 2;        // 上端基準
+            else if (bp.endsWith('Bottom')) startY = -total - lh / 2;   // 下端基準
+            // 影エフェクト（YMM4 の ShadowEffect）
+            const sh = (clip.effects || []).find((f) => f.kind === 'shadow');
+            if (sh) {
+                const s = projScale();
+                compCtx.shadowColor = rgbaStr(sh.color, sh.opacity / 100);
+                compCtx.shadowBlur = sh.blur * s;
+                compCtx.shadowOffsetX = sh.x * s;
+                compCtx.shadowOffsetY = sh.y * s;
+            }
+            compCtx.fillStyle = rgbaStr(info.color);
+            lines.forEach((line, i) => {
+                const ly = startY + i * lh;
+                // 縁取りスタイルは先に輪郭を描いてから本体を重ねる
+                if (info.style === 'Border' && info.styleColor) {
+                    compCtx.lineJoin = 'round';
+                    compCtx.lineWidth = Math.max(1, fs * 0.08);
+                    compCtx.strokeStyle = rgbaStr(info.styleColor);
+                    compCtx.strokeText(line, 0, ly);
+                }
+                compCtx.fillText(line, 0, ly);
+            });
+        } else {
+            // ---- Auriga 内で追加したテキスト（従来の固定スタイル） ----
+            const fs = W * 0.05 * scale;
+            compCtx.font = `800 ${fs}px "Hiragino Sans","Yu Gothic UI",sans-serif`;
+            compCtx.textAlign = 'center';
+            compCtx.textBaseline = 'middle';
+            compCtx.shadowColor = 'rgba(0,0,0,.7)';
+            compCtx.shadowBlur = fs * 0.4;
+            compCtx.shadowOffsetY = fs * 0.06;
+            compCtx.fillStyle = '#fff';
+            compCtx.fillText(clip.name, 0, 0);
+        }
         compCtx.restore();
+    }
+
+    // ---- WebAudio（クリップ音量ゲイン用） ----
+    // YMM4 の音量は 100% を超えられる（例: 172.5%）ため、GainNode を挟んで増幅する。
+    let audioCtx = null;
+    function attachClipAudio(clip, el) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        try {
+            if (!audioCtx) audioCtx = new AC();
+            const src = audioCtx.createMediaElementSource(el);
+            clip._gain = audioCtx.createGain();
+            src.connect(clip._gain);
+            clip._gain.connect(audioCtx.destination);
+        } catch (e) {
+            clip._gain = null;   // 接続できない場合は el.volume のみで制御する
+        }
+    }
+    // 自動再生制限で停止した AudioContext を再開する（再生ボタン＝ユーザー操作時に呼ぶ）
+    function resumeAudioCtx() {
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
     }
 
     // ---- クリップ用メディア要素（遅延生成・クリップに紐付け） ----
@@ -1213,12 +1733,14 @@
             v.addEventListener('seeked', onMediaSettled);
             v.addEventListener('loadeddata', onMediaSettled);
             clip._el = v;
+            attachClipAudio(clip, v);
             return v;
         }
         if (clip.type === 'audio') {
             const a = new Audio(clip.src);
             a.preload = 'auto';
             clip._el = a;
+            attachClipAudio(clip, a);
             return a;
         }
         return null;
@@ -1249,10 +1771,21 @@
         const rate = (clip.props.speed || 100) / 100;
         el.playbackRate = rate;
         el.muted = trackMuted(trackId);
-        el.volume = state.volume;
+        el.loop = clip.looped === true;
+        // 音量 = クリップ音量 × レイヤー音量 × フェード（マスター音量は別段で乗算）
+        const clipVol = ((clip.props.volume != null ? clip.props.volume : 100) / 100)
+            * trackGain(trackId) * fadeFactor(clip, time);
+        if (clip._gain) {
+            // WebAudio 経由：100% を超えるゲインもかけられる
+            clip._gain.gain.value = clipVol;
+            el.volume = clampNum(state.volume, 0, 1);
+        } else {
+            el.volume = clampNum(state.volume * clipVol, 0, 1);
+        }
         // 素材内の再生開始位置（分割・左トリムで進んだぶん）を加味する
-        const local = (clip.offset || 0) + (time - clip.start) * rate;
+        let local = (clip.offset || 0) + (time - clip.start) * rate;
         const dur = el.duration;
+        if (clip.looped && isFinite(dur) && dur > 0) local = local % dur;   // ループ素材は周回位置へ
         const want = Math.max(0, isFinite(dur) ? Math.min(local, dur - 0.05) : local);
         if (playing) {
             if (Math.abs(el.currentTime - want) > 0.35) { try { el.currentTime = want; } catch (e) {} }
@@ -1287,6 +1820,12 @@
     function trackMuted(trackId) {
         const b = document.querySelector(`.track-header[data-track="${trackId}"] [data-act="mute"]`);
         return !!(b && b.classList.contains('is-off'));
+    }
+    // レイヤー音量（YMM4 の LayerSettings.Volume）を 0〜2 の係数で返す
+    function trackGain(trackId) {
+        const t = TRACKS.find((x) => x.id === trackId);
+        const v = t && isFinite(t.volume) ? t.volume : 100;
+        return v / 100;
     }
     // 指定トラックの表示/非表示を切り替える
     function toggleTrackVisible(trackId) {
@@ -1347,6 +1886,7 @@
         if (state.playing) {
             enterProgram();                  // 再生は常に合成モニターで
             els.viewerCanvas.classList.add('program');
+            resumeAudioCtx();                // 自動再生制限の解除（ユーザー操作起点）
             lastTs = performance.now();
             composite(state.playhead, true); // 再生開始フレーム
             rafId = requestAnimationFrame(tick);
@@ -1587,6 +2127,28 @@
         if (!silent) toast(`解像度: ${v}`);
     }
 
+    // プロジェクトの解像度をモニターへ適用する（選択肢に同じ値があれば同期する）
+    function applyProjectResolution(w, h) {
+        if (!(w > 0 && h > 0)) return;
+        els.compositor.width = w;
+        els.compositor.height = h;
+        els.viewerCanvas.style.setProperty('--ar-w', w);
+        els.viewerCanvas.style.setProperty('--ar-h', h);
+        const sel = $('#resSelect');
+        if (sel) {
+            const opt = Array.from(sel.options).find((o) => {
+                const m = o.value.match(/(\d+)\s*[×x]\s*(\d+)/);
+                return m && +m[1] === w && +m[2] === h;
+            });
+            if (opt) sel.value = opt.value;
+        }
+    }
+
+    // プロジェクト座標(px)→キャンバス座標(px)の倍率（プロジェクト未読込時は 1）
+    function projScale() {
+        return els.compositor.width / (state.projectWidth || els.compositor.width);
+    }
+
     // ======================================================
     // ブラウザに保存した状態の復元
     // ======================================================
@@ -1738,12 +2300,10 @@
             try { localStorage.setItem(RES_KEY, e.target.value); } catch (err) {}
         });
 
-        // 音量
+        // 音量（マスター）。クリップ音量・レイヤー音量は composite → syncAV が反映する
         $('#volume').addEventListener('input', (e) => {
             state.volume = Number(e.target.value) / 100;
-            for (const c of state.clips) {
-                if (c._el) c._el.volume = state.volume;
-            }
+            if (state.monitorMode === 'program') composite(state.playhead, state.playing);
             // ソースモニターのプレビューにも反映
             els.previewVideo.volume = state.volume;
         });
@@ -1958,13 +2518,16 @@
         const c = addClip(clip.type, clip.name, clip.track, clip.start + clip.dur, clip.dur, true, clip.src);
         c.props = { ...clip.props };
         c.offset = clip.offset || 0;
+        copyClipExtras(clip, c);
         renderClips();
         selectClip(c.id);
         toast('クリップを複製しました');
     }
 
     function copyClip(clip) {
-        state.clipboard = { type: clip.type, name: clip.name, src: clip.src, dur: clip.dur, offset: clip.offset || 0, props: { ...clip.props } };
+        const cb = { type: clip.type, name: clip.name, src: clip.src, dur: clip.dur, offset: clip.offset || 0, props: { ...clip.props } };
+        copyClipExtras(clip, cb);   // 付加情報（書式・エフェクト等）もクリップボードへ
+        state.clipboard = cb;
         toast('クリップをコピーしました');
     }
 
@@ -1975,6 +2538,7 @@
         const c = addClip(cb.type, cb.name, dest, at, cb.dur, true, cb.src);
         c.props = { ...cb.props };
         c.offset = cb.offset || 0;
+        copyClipExtras(cb, c);
         renderClips();
         selectClip(c.id);
         toast('クリップを貼り付けました');
