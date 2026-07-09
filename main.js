@@ -1265,13 +1265,23 @@
 
     // 選択されたファイル群から、未解決の行に名前と種別が一致するものだけ候補として仮登録する
     function stageRelinkFromFiles(files) {
-        const wanted = new Map(missingFileGroups().map((g) => [pathBaseName(g.filePath).toLowerCase(), g]));
+        // 同名ファイルを別々のパスが参照している場合があるので、ファイル名→グループ配列でまとめる
+        const wanted = new Map();
+        missingFileGroups().forEach((g) => {
+            const k = pathBaseName(g.filePath).toLowerCase();
+            if (!wanted.has(k)) wanted.set(k, []);
+            wanted.get(k).push(g);
+        });
         let n = 0;
         files.forEach((f) => {
-            const g = wanted.get(f.name.toLowerCase());
-            if (g && fileType(f) === g.type && !pendingRelinkFiles.has(g.filePath)) {
-                pendingRelinkFiles.set(g.filePath, f); n++;
-            }
+            const groups = wanted.get(f.name.toLowerCase());
+            if (!groups) return;
+            // 同名で参照している全グループに候補を付ける（片方だけ行方不明のまま残らないように）
+            groups.forEach((g) => {
+                if (fileType(f) === g.type && !pendingRelinkFiles.has(g.filePath)) {
+                    pendingRelinkFiles.set(g.filePath, f); n++;
+                }
+            });
         });
         renderRelinkTable();
         toast(n ? `${n}件の候補が見つかりました（「適用」で反映されます）` : '一致する素材が見つかりませんでした');
@@ -1279,11 +1289,13 @@
 
     // 「適用」：候補が付いている行だけ実際にクリップへ反映する
     function applyRelink() {
+        const registered = new Map();   // File → media（同一 File を複数グループへ割り当てても重複登録しない）
         let n = 0;
         missingFileGroups().forEach((g) => {
             const file = pendingRelinkFiles.get(g.filePath);
             if (!file) return;
-            const m = registerMedia(file);
+            let m = registered.get(file);
+            if (!m) { m = registerMedia(file); registered.set(file, m); }
             g.clips.forEach((c) => { c.src = m.src; });
             n += g.clips.length;
         });
