@@ -288,6 +288,20 @@ Season2</textarea>
     propsInputHandler = propsClickHandler = null;
   }
 
+  // アイテムパネルを body 直下へ移し、画面の高さいっぱいに置けるようにする。
+  // （既定では .layout の中にあり、タイムラインと縦に並べられないため）
+  function detachPropsPanel(ctx) {
+    const props = ctx.$('.panel--props');
+    if (props && props.parentNode !== document.body) document.body.appendChild(props);
+  }
+
+  // アイテムパネルを .layout の末尾（元の位置）へ戻す
+  function reattachPropsPanel(ctx) {
+    const props = ctx.$('.panel--props');
+    const layout = ctx.$('.layout');
+    if (props && layout && props.parentNode !== layout) layout.appendChild(props);
+  }
+
   // プロパティパネルを YMM4 の「アイテム」パネルへ差し替える
   function buildPropsPanel(ctx) {
     const content = ctx.$('#propsContent');
@@ -325,8 +339,10 @@ Season2</textarea>
       if (ptab) ptab.textContent = 'アイテム';
       ctx.setTitleSuffix('YMM4');
 
-      // アイテムパネル（プロパティ）を本家と同じ構成に組み直す
+      // アイテムパネル（プロパティ）を本家と同じ構成に組み直し、
+      // 画面右側の高さいっぱいへ移す
       buildPropsPanel(ctx);
+      detachPropsPanel(ctx);
 
       // 下部ステータスバー（本家はここに現在時刻・プロジェクト情報を表示する）
       if (!document.querySelector('.ymm4-statusbar')) {
@@ -365,8 +381,9 @@ Season2</textarea>
       if (label) label.textContent = 'プログラムモニター';
       const ptab = ctx.$('.panel--props .ptab');
       if (ptab) ptab.textContent = 'プロパティ';
-      // アイテムパネルを元の内容へ戻す
+      // アイテムパネルを元の内容・元の位置へ戻す
       restorePropsPanel(ctx);
+      reattachPropsPanel(ctx);
       // ステータスバーと監視を取り除く
       if (timeObserver) { timeObserver.disconnect(); timeObserver = null; }
       const res = ctx.$('#resSelect');

@@ -121,8 +121,9 @@ body { background: #e8e8ec; color: #1e1e24; }
 
 /* 2 カラムの土台（隙間に地色がのぞく） */
 .layout { background: #d4d4da; }
-/* 右パネル（アイテム）の背景 */
+/* 右パネル（アイテム）の背景。左隣のプレビュー／タイムラインとは境界線で仕切る */
 .panel { background: #f5f5f7; }
+.panel--props { border-left: 1px solid #d4d4da; }
 /* パネル見出し帯の下線 */
 .panel__head { border-bottom: 1px solid #d4d4da; }
 /* パネル内タブ（アイテム） */

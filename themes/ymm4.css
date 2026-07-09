@@ -36,11 +36,33 @@ body { font-family: "Yu Gothic UI", "Segoe UI", "Hiragino Sans", system-ui, sans
 .clip--video .clip__wave { display: none; }
 
 
-/* ===== レイアウト（メディアパネル分を詰めて 2 カラムへ） ===== */
+/* ===== レイアウト（本家の「左：プレビュー＋タイムライン / 右：アイテム」） ===== */
 
-/* 中央プレビュー + 右の「アイテム」パネル。
-   アイテムパネルは 2 列の項目グリッドを収めるため、本家と同じ幅を確保する */
-.layout { grid-template-columns: minmax(0, 1fr) 480px; }
+/* 本家はアイテムパネルが画面の高さいっぱいを占め、タイムラインはその左隣
+   （プレビューと同じ幅）に収まる。既定の DOM ではアイテムパネルが .layout の
+   中にいるためこの配置を作れない。そこで themes/ymm4.js が .panel--props を
+   body 直下へ移し、ここで body 自体を 2 カラムのグリッドとして組み直す。
+   ・左列（1 列目）: プレビュー → リサイザー → タイムライン
+   ・右列（2 列目）: アイテムパネル（縦にぶち抜き）
+   ・メニューバーとステータスバーは 2 列にまたがる */
+body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 480px;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+}
+/* 位置を取り合わないよう、行と列は要素ごとに明示する
+   （position: fixed のスプラッシュ・モーダル・トーストはグリッドに参加しない） */
+.menubar        { grid-area: 1 / 1 / 2 / 3; }
+.layout         { grid-area: 2 / 1 / 3 / 2; }
+.tl-resizer     { grid-area: 3 / 1 / 4 / 2; }
+.timeline       { grid-area: 4 / 1 / 5 / 2; }
+.ymm4-statusbar { grid-area: 5 / 1 / 6 / 3; }
+/* アイテムパネルは body 直下へ移されたときだけ右列に置く。
+   テーマ JS が動く前の一瞬（まだ .layout の中）に妙な位置へ飛ばさないよう子セレクタで限定する */
+body > .panel--props { grid-area: 2 / 2 / 5 / 3; }
+
+/* .layout に残るのはプレビューだけ（メディアパネルは非表示、アイテムパネルは外へ出した） */
+.layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
 
 
 /* ===== メニューバー（本家の細いメニュー帯に合わせる） ===== */
