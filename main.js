@@ -2598,6 +2598,12 @@
         setTitleSuffix(suffix) {
             document.title = suffix ? `Auriga Studio — ${suffix}` : 'Auriga Studio — 動画編集';
         },
+        // プロパティパネルの DOM をテーマが差し替えたあと、入力の購読をやり直す。
+        // 差し替え前の要素に付いたリスナーは要素ごと捨てられるため、二重購読にはならない。
+        rebindProps() {
+            bindProps();
+            updateProps();
+        },
     };
 
     // テーマ JS からの登録窓口（テーマ JS は main.js より後に読み込まれる）

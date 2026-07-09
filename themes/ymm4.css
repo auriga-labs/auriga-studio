@@ -38,8 +38,9 @@ body { font-family: "Yu Gothic UI", "Segoe UI", "Hiragino Sans", system-ui, sans
 
 /* ===== レイアウト（メディアパネル分を詰めて 2 カラムへ） ===== */
 
-/* 中央プレビュー + 右の「アイテム」パネル。右パネルは本家に合わせて広めにする */
-.layout { grid-template-columns: minmax(0, 1fr) 340px; }
+/* 中央プレビュー + 右の「アイテム」パネル。
+   アイテムパネルは 2 列の項目グリッドを収めるため、本家と同じ幅を確保する */
+.layout { grid-template-columns: minmax(0, 1fr) 480px; }
 
 
 /* ===== メニューバー（本家の細いメニュー帯に合わせる） ===== */
@@ -106,14 +107,14 @@ input[type="range"]::-webkit-slider-thumb { width: 11px; height: 11px; }
 
 .panel__head { padding: 0 6px; }
 .ptab { padding: 6px 10px 5px; font-size: 11.5px; border-bottom: none; }
-.panel__body { padding: 8px 10px; }
-.prop-group { margin-bottom: 12px; }
+.panel__body { padding: 6px 4px 6px 0; }
+.prop-group { margin-bottom: 10px; }
 /* 本家のエクスパンダー見出し「＾ 全般」風にする */
 .prop-group__title {
   display: flex; align-items: center; gap: 7px;
   text-transform: none; letter-spacing: 0;
   font-size: 11.5px; font-weight: 600;
-  border-bottom: none; padding-bottom: 4px; margin-bottom: 6px;
+  border-bottom: none; padding: 0 0 5px 6px; margin-bottom: 4px;
 }
 /* 見出し左の「開いている」シェブロン（∧） */
 .prop-group__title::before {
@@ -123,10 +124,131 @@ input[type="range"]::-webkit-slider-thumb { width: 11px; height: 11px; }
   border-top: 1.6px solid currentColor;
   transform: rotate(45deg);
 }
+/* テーマ JS が差し替える前の既定パネル（フォールバック）用 */
 .prop-row { grid-template-columns: 64px 1fr 46px; gap: 6px; margin-bottom: 6px; }
 .prop-row label { font-size: 11px; }
-/* 数値は本家の数値ボックス風（枠付き・右寄せ）。枠色は各モード側で塗る */
 .prop-row output { padding: 2px 5px; font-size: 10.5px; border-radius: 2px; border: 1px solid transparent; }
+
+
+/* ===== アイテムパネル：本家 YMM4 と同じ 2 列の項目グリッド ===== */
+
+/* 項目は左右 2 列に流し込む。全幅の行だけ 2 列ぶちぬきにする */
+.ymm4-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 10px; row-gap: 4px;
+  padding: 0 4px;
+}
+.ymm4-row--full { grid-column: 1 / -1; }
+
+/* 1 行 = ラベル / 数値 / スライダー / 補助ボタン。
+   DOM は [input][output][.ymm4-num] の順（main.js が nextElementSibling を使う）なので、
+   見た目の並びは order で作る */
+.ymm4-row { display: flex; align-items: center; gap: 4px; min-width: 0; min-height: 22px; }
+.ymm4-row--top { align-items: flex-start; }
+/* ラベル幅は最長の「フェードアウト」（全角 7 文字）が収まるように取る */
+.ymm4-row__label {
+  order: 1; flex: none; width: 70px;
+  text-align: right; font-size: 10px; line-height: 1.3;
+  white-space: nowrap;
+}
+.ymm4-num {
+  order: 2; flex: none; width: 50px;
+  text-align: right; font-size: 10px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.ymm4-row input[type="range"] { order: 3; flex: 1 1 auto; min-width: 0; }
+.ymm4-row output { display: none; }
+/* 「フ」「x2」「-」などの小さな補助ボタン */
+.ymm4-mini {
+  order: 4; flex: none;
+  min-width: 16px; height: 16px; padding: 0 3px;
+  font-size: 9.5px; line-height: 1;
+  border-radius: 2px; cursor: pointer;
+  display: grid; place-items: center;
+}
+.ymm4-mini--icon .ti { font-size: 11px; }
+
+/* セレクト行・色見本行はスライダーの代わりに幅いっぱいの部品を置く */
+.ymm4-select {
+  order: 3; flex: 1 1 auto; min-width: 0;
+  height: 20px; padding: 0 4px;
+  font: inherit; font-size: 10.5px;
+  border-radius: 2px; cursor: pointer;
+}
+.ymm4-swatch {
+  order: 3; flex: 1 1 auto; min-width: 0;
+  height: 18px; border-radius: 2px; cursor: pointer;
+}
+.ymm4-text {
+  order: 3; flex: 1 1 auto; min-width: 0;
+  height: 20px; padding: 0 5px;
+  font: inherit; font-size: 10.5px; border-radius: 2px;
+}
+
+/* トグル行（ロック・非表示・太字 など）。1 セルに 1〜2 個ずつ並べる */
+.ymm4-row--tg { gap: 0; }
+.ymm4-tg { flex: 1 1 0; display: flex; align-items: center; gap: 5px; min-width: 0; }
+/* 最長の「行末スペース削除」（全角 8 文字）が収まる幅にする */
+.ymm4-tg__label {
+  flex: none; width: 80px; text-align: right;
+  font-size: 10px; white-space: nowrap;
+}
+/* 本家のピル型スイッチ */
+.ymm4-switch {
+  flex: none; position: relative;
+  width: 26px; height: 13px; padding: 0;
+  border: none; border-radius: 7px; cursor: pointer;
+}
+.ymm4-switch::after {
+  content: ""; position: absolute;
+  top: 2px; left: 2px; width: 9px; height: 9px;
+  border-radius: 50%;
+  transition: transform .12s ease;
+}
+.ymm4-switch.is-on::after { transform: translateX(13px); }
+
+/* テキスト編集欄（ツールバー + 入力域） */
+.ymm4-editor { order: 3; flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ymm4-texttools { display: flex; align-items: center; gap: 1px; padding: 1px 2px; border-radius: 2px; }
+.ymm4-tt {
+  flex: none; width: 18px; height: 18px; padding: 0;
+  background: transparent; border: none; border-radius: 2px;
+  cursor: pointer; display: grid; place-items: center;
+}
+.ymm4-tt .ti { font-size: 12px; }
+.ymm4-textarea {
+  width: 100%; min-height: 40px; resize: vertical;
+  padding: 4px 6px; font: inherit; font-size: 11px; line-height: 1.4;
+  border-radius: 2px;
+}
+
+/* 映像エフェクト一覧（左が項目リスト、右が縦ツールバー） */
+.ymm4-fx { display: flex; gap: 4px; padding: 0 4px; }
+.ymm4-fx__list { flex: 1 1 auto; min-width: 0; min-height: 150px; border-radius: 2px; padding: 2px; }
+.ymm4-fx__item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 6px; border-radius: 2px;
+  font-size: 10.5px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* 項目左のチェックボックス */
+.ymm4-check {
+  flex: none; position: relative;
+  width: 12px; height: 12px; border-radius: 2px;
+}
+/* チェック済みは白いレ点を描く */
+.ymm4-check.is-on::after {
+  content: ""; position: absolute;
+  left: 3px; top: 0; width: 4px; height: 8px;
+  border-right: 1.6px solid; border-bottom: 1.6px solid;
+  transform: rotate(42deg);
+}
+.ymm4-fx__tools { flex: none; display: flex; flex-direction: column; gap: 1px; }
+.ymm4-fx__tools .ymm4-tt { width: 20px; height: 20px; }
+
+/* 「デフォルトに設定」ボタン */
+.ymm4-default-btn { width: calc(100% - 8px); margin: 0 4px; padding: 4px; font-size: 11px; border-radius: 2px; }
 
 
 /* ===== タイムライン ===== */

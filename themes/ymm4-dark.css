@@ -199,10 +199,47 @@ input[type="range"]::-webkit-slider-thumb { background: #c9c9cf; border: 1px sol
 .props-empty { color: #8f8f96; }
 /* プロパティ群の見出し（全般・描画 など） */
 .prop-group__title { color: #e4e4e8; }
-/* 各行のラベル */
+/* 既定パネル（フォールバック）の行 */
 .prop-row label { color: #c9c9cf; }
-/* 各行の数値表示（本家の数値ボックス風） */
 .prop-row output { color: #f0f0f2; background: #3a3a41; border-color: #55555c; }
+
+/* ---- アイテムパネル（本家 YMM4 構成） ---- */
+
+/* 行ラベルと数値表示 */
+.ymm4-row__label, .ymm4-tg__label { color: #c9c9cf; }
+.ymm4-num { color: #f0f0f2; }
+/* 「フ」「x2」「-」の補助ボタン */
+.ymm4-mini { background: #3a3a41; border: 1px solid #4a4a52; color: #c9c9cf; }
+.ymm4-mini:hover { background: #47474f; color: #f0f0f2; }
+/* セレクト・テキスト入力 */
+.ymm4-select, .ymm4-text, .ymm4-textarea {
+  background: #3a3a41; border: 1px solid #4a4a52; color: #f0f0f2;
+}
+.ymm4-select:hover, .ymm4-text:hover, .ymm4-textarea:hover { border-color: #6a6a72; }
+.ymm4-text::placeholder { color: #75757e; }
+/* 色見本 */
+.ymm4-swatch { border: 1px solid #55555c; }
+/* トグルスイッチ（オフはグレー、オンはアクセントの青） */
+.ymm4-switch { background: #55555c; }
+.ymm4-switch::after { background: #d8d8dc; }
+.ymm4-switch.is-on { background: #4a6fe0; }
+.ymm4-switch.is-on::after { background: #fff; }
+/* テキスト編集ツールバー */
+.ymm4-texttools { background: #35353b; }
+.ymm4-tt { color: #c9c9cf; }
+.ymm4-tt:hover { background: #47474f; color: #f0f0f2; }
+/* 映像エフェクト一覧 */
+.ymm4-fx__list { background: #3a3a41; border: 1px solid #4a4a52; }
+.ymm4-fx__item { color: #f0f0f2; }
+.ymm4-fx__item:hover { background: #45454d; }
+/* 選択中の項目は本家の青い帯 */
+.ymm4-fx__item.is-sel { background: #3c5bb5; }
+.ymm4-check { background: #2b2b30; border: 1px solid #75757e; }
+.ymm4-check.is-on { background: #4a6fe0; border-color: #4a6fe0; }
+.ymm4-check.is-on::after { border-color: #fff; }
+/* 「デフォルトに設定」ボタン */
+.ymm4-default-btn { background: #3a3a41; border: 1px solid #4a4a52; color: #f0f0f2; }
+.ymm4-default-btn:hover { background: #47474f; }
 
 
 /* ===== タイムライン ===== */
