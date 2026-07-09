@@ -89,7 +89,7 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => mainWindow.show());
 
   mainWindow.loadFile('index.html');
-  mainWindow.webContents.openDevTools({ mode: 'bottom' });
+  // mainWindow.webContents.openDevTools({ mode: 'bottom' });
 
   // リサイズ・移動のたびに書き込むと重いので、変化を貯めてから間引いて保存する
   let saveTimer = null;
