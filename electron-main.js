@@ -43,7 +43,8 @@ function createWindow() {
       shell.openExternal(url);
       return { action: 'deny' };
     }
-    return { action: 'allow' };
+    // http(s) 以外（file: など）は安全のため開かない
+    return { action: 'deny' };
   });
 
   mainWindow.on('closed', () => {

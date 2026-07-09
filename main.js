@@ -141,6 +141,7 @@
         renderRuler();
         bindUI();
         restorePersistedState();   // 保存済みの解像度・再生ヘッド位置を復元
+        els.previewVideo.volume = state.volume;   // ソースモニターの初期音量を状態に合わせる
         updateTimeDisplay();
         updatePlayhead();
         els.viewerCanvas.classList.add('program');   // 既定はプログラム（合成）モニター
@@ -188,7 +189,7 @@
                     ${thumbInner(m)}
                     <span class="media-item__badge">${m.badge || m.type.toUpperCase()}</span>
                 </div>
-                <div class="media-item__name" title="${m.name}">${m.name}</div>
+                <div class="media-item__name" title="${escapeHtml(m.name)}">${escapeHtml(m.name)}</div>
             </div>
         `).join('');
 
@@ -200,15 +201,13 @@
                 const md = m();
                 e.dataTransfer.setData('application/json', JSON.stringify({
                     kind: 'media', type: md.type, name: md.name, src: md.src || null,
+                    dur: md.dur || null,   // 実尺（読み取り済みなら配置に使う）
                 }));
             });
             // クリック → モニターに表示
             el.addEventListener('click', () => showInMonitor(m()));
             // ダブルクリック → タイムラインに追加
-            el.addEventListener('dblclick', () => {
-                const md = m();
-                addClipToBestTrack(md.type, md.name, md.src);
-            });
+            el.addEventListener('dblclick', () => addClipToBestTrack(m()));
         });
     }
 
@@ -323,7 +322,8 @@
                 try { data = JSON.parse(e.dataTransfer.getData('application/json')); }
                 catch { return; }
                 if (data.kind === 'media') {
-                    const dur = data.type === 'image' || data.type === 'text' ? 3 : 5;
+                    // 実尺が読み取り済みならそれを、無ければ既定尺を使う
+                    const dur = data.dur || (data.type === 'image' || data.type === 'text' ? 3 : 5);
                     addClip(data.type, data.name, trackEl.dataset.track, start, dur, false, data.src);
                 } else if (data.kind === 'effect') {
                     toast(`「${data.name}」エフェクト — クリップにドロップしてください`);
@@ -351,6 +351,7 @@
             type, name, track,
             start: Math.round(start * 10) / 10,
             dur,
+            offset: 0,                // 素材内の再生開始位置(秒)。分割・左トリムで進む
             src: src || null,
             props: { ...DEFAULT_PROPS },
         };
@@ -391,11 +392,10 @@
                 offset += 3;
                 if (--pending === 0) finishDrop(lastClip);
             } else {
+                // バッジは registerMedia 側が反映する。ここでは配置尺のためだけに読む
                 probeDuration(m.src, m.type, (dur) => {
-                    m.badge = formatRulerTime(Math.round(dur));
                     lastClip = placeClip(m.type, m.name, track, offset, dur, m.src);
                     offset += dur;
-                    renderMedia();
                     if (--pending === 0) finishDrop(lastClip);
                 });
             }
@@ -408,7 +408,7 @@
         }
     }
 
-    // ---- メディアプールへの登録（サムネ生成つき） ----
+    // ---- メディアプールへの登録（サムネ生成・実尺の読み取りつき） ----
     function registerMedia(file) {
         const type = fileType(file);
         const src = URL.createObjectURL(file);
@@ -416,12 +416,21 @@
             id: 'm' + (state.nextId++),
             type, name: file.name, src,
             thumb: null,
+            dur: null,   // 動画/音声の実尺(秒)。読み取り後に入る
             badge: type === 'image' ? 'IMG' : type.toUpperCase(),
         };
         MEDIA.push(m);
         generateThumbnail(src, type, (thumb) => {
             if (thumb) { m.thumb = thumb; renderMedia(); }
         });
+        // 動画/音声は実尺を読み取り、バッジとクリップの既定尺に使う
+        if (type !== 'image') {
+            probeDuration(src, type, (dur) => {
+                m.dur = dur;
+                m.badge = formatRulerTime(Math.round(dur));
+                renderMedia();
+            });
+        }
         return m;
     }
 
@@ -492,8 +501,10 @@
         el.src = src;
     }
 
-    function addClipToBestTrack(type, name, src) {
-        addClip(type, name, DEFAULT_TRACK, state.playhead, type === 'image' || type === 'text' ? 3 : 5, false, src);
+    // メディアプールの項目を既定レイヤーの再生ヘッド位置へ追加する（実尺があれば使う）
+    function addClipToBestTrack(m) {
+        const dur = m.dur || (m.type === 'image' || m.type === 'text' ? 3 : 5);
+        addClip(m.type, m.name, DEFAULT_TRACK, state.playhead, dur, false, m.src);
     }
 
     function renderClips() {
@@ -573,6 +584,7 @@
     function startResize(e, el, clip, side) {
         const startX = e.clientX;
         const origStart = clip.start, origDur = clip.dur;
+        const origOffset = clip.offset || 0;
         const move = (ev) => {
             const dx = (ev.clientX - startX) / state.zoom;
             if (side === 'r') {
@@ -581,6 +593,9 @@
                 const newStart = Math.max(0, Math.min(origStart + dx, origStart + origDur - 0.5));
                 clip.dur = Math.round((origDur - (newStart - origStart)) * 10) / 10;
                 clip.start = Math.round(newStart * 10) / 10;
+                // 左トリムしたぶんだけ素材内の再生開始位置も進める
+                const rate = (clip.props.speed || 100) / 100;
+                clip.offset = Math.max(0, origOffset + (clip.start - origStart) * rate);
             }
             el.style.left = (clip.start * state.zoom) + 'px';
             el.style.width = (clip.dur * state.zoom) + 'px';
@@ -601,7 +616,12 @@
         const leftDur = Math.round((t - clip.start) * 10) / 10;
         const rightDur = Math.round((clip.dur - leftDur) * 10) / 10;
         clip.dur = leftDur;
-        addClip(clip.type, clip.name, clip.track, t, rightDur, true);
+        // 右半分はソース・プロパティを引き継ぎ、素材の再生位置を分割点から始める
+        const right = addClip(clip.type, clip.name, clip.track, t, rightDur, true, clip.src);
+        right.props = { ...clip.props };
+        right.offset = (clip.offset || 0) + leftDur * ((clip.props.speed || 100) / 100);
+        right.hidden = clip.hidden;
+        right.filePath = clip.filePath || null;
         renderClips();
         toast('クリップを分割しました ✂');
     }
@@ -635,6 +655,13 @@
     function recomputeDuration() {
         const end = state.clips.reduce((m, c) => Math.max(m, c.start + c.dur), 0);
         state.duration = Math.max(1, Math.round(end));
+        // クリップが右端に近づいたらタイムラインを自動延長する
+        // （renderTracks はクリップ要素ごと作り直すため、幅とルーラーだけ更新する）
+        if (end > TIMELINE_SECONDS - 5) {
+            ensureTimelineCapacity(end + 30);
+            renderRuler();
+            els.tracks.style.width = (TIMELINE_SECONDS * state.zoom) + 'px';
+        }
         updateTimeDisplay();
         // 編集後、停止中ならプログラムモニターを更新
         if (!state.playing && state.monitorMode === 'program') {
@@ -965,6 +992,11 @@
                 els.viewerCanvas.style.backgroundPosition = 'center';
                 els.previewVideo.removeAttribute('src');
             }
+        } else if (s.type === 'audio' && s.src) {
+            // 音声は <video> 要素で音だけ再生する（表示はプレースホルダーのまま）
+            els.viewerCanvas.classList.remove('has-media');
+            els.viewerCanvas.style.backgroundImage = '';
+            if (els.previewVideo.getAttribute('src') !== s.src) els.previewVideo.src = s.src;
         } else {
             els.viewerCanvas.classList.remove('has-media');
             els.viewerCanvas.style.backgroundImage = '';
@@ -1129,7 +1161,8 @@
         el.playbackRate = rate;
         el.muted = trackMuted(trackId);
         el.volume = state.volume;
-        const local = (time - clip.start) * rate;
+        // 素材内の再生開始位置（分割・左トリムで進んだぶん）を加味する
+        const local = (clip.offset || 0) + (time - clip.start) * rate;
         const dur = el.duration;
         const want = Math.max(0, isFinite(dur) ? Math.min(local, dur - 0.05) : local);
         if (playing) {
@@ -1260,7 +1293,9 @@
     }
 
     function seek(sec) {
-        state.playhead = Math.max(0, Math.min(sec, state.duration));
+        // コンテンツ末尾より先にも置けるようにタイムライン全長でクランプする
+        // （末尾より先へ置いてからクリップを追加する操作を可能にする）
+        state.playhead = Math.max(0, Math.min(sec, TIMELINE_SECONDS));
         enterProgram();
         updatePlayhead();
         updateTimeDisplay();
@@ -1617,7 +1652,9 @@
 
         // キーボードショートカット
         document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+            // 入力中の要素ではショートカットを無効にする
+            const tag = e.target.tagName;
+            if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
 
             // Ctrl / Cmd の組み合わせ（コンテキストメニューと対応）
             if (e.ctrlKey || e.metaKey) {
@@ -1657,16 +1694,8 @@
 
     function handleFileImport(e) {
         const files = Array.from(e.target.files || []);
-        files.forEach((f) => {
-            const m = registerMedia(f);
-            // 動画/音声は尺をバッジに反映
-            if (m.type !== 'image') {
-                probeDuration(m.src, m.type, (dur) => {
-                    m.badge = formatRulerTime(Math.round(dur));
-                    renderMedia();
-                });
-            }
-        });
+        // 登録時に尺の読み取り・バッジ反映まで行われる
+        files.forEach((f) => registerMedia(f));
         renderMedia();
         if (files.length) toast(`${files.length}件のメディアを読み込みました`);
         e.target.value = '';
@@ -1685,7 +1714,7 @@
 
     // items: [{icon,label,key,action,danger,disabled} | {separator:true}]
     function showContextMenu(x, y, items, header) {
-        let html = header ? `<div class="ctxmenu__header">${header}</div>` : '';
+        let html = header ? `<div class="ctxmenu__header">${escapeHtml(header)}</div>` : '';
         items.forEach((it, i) => {
             if (it.separator) { html += '<div class="ctxmenu__sep"></div>'; return; }
             const cls = 'ctxmenu__item'
@@ -1774,7 +1803,7 @@
     function showMediaMenu(x, y, m) {
         showContextMenu(x, y, [
             { icon: '🖥', label: 'モニターに表示', action: () => showInMonitor(m) },
-            { icon: '＋', label: 'タイムラインに追加', action: () => addClipToBestTrack(m.type, m.name, m.src) },
+            { icon: '＋', label: 'タイムラインに追加', action: () => addClipToBestTrack(m) },
             { separator: true },
             { icon: '✏', label: '名前を変更', action: () => renameMedia(m) },
             { icon: '🗑', label: 'プールから削除', danger: true, action: () => deleteMedia(m) },
@@ -1830,13 +1859,14 @@
     function duplicateClip(clip) {
         const c = addClip(clip.type, clip.name, clip.track, clip.start + clip.dur, clip.dur, true, clip.src);
         c.props = { ...clip.props };
+        c.offset = clip.offset || 0;
         renderClips();
         selectClip(c.id);
         toast('クリップを複製しました');
     }
 
     function copyClip(clip) {
-        state.clipboard = { type: clip.type, name: clip.name, src: clip.src, dur: clip.dur, props: { ...clip.props } };
+        state.clipboard = { type: clip.type, name: clip.name, src: clip.src, dur: clip.dur, offset: clip.offset || 0, props: { ...clip.props } };
         toast('クリップをコピーしました');
     }
 
@@ -1846,6 +1876,7 @@
         const dest = TRACKS.find((t) => t.id === track) ? track : DEFAULT_TRACK;
         const c = addClip(cb.type, cb.name, dest, at, cb.dur, true, cb.src);
         c.props = { ...cb.props };
+        c.offset = cb.offset || 0;
         renderClips();
         selectClip(c.id);
         toast('クリップを貼り付けました');
@@ -2142,6 +2173,38 @@
             case 'timeline-zoom-in':  setZoom(state.zoom + 20); return;
             case 'timeline-zoom-out': setZoom(state.zoom - 20); return;
             case 'add-text-item':   addClip('text', 'テキスト', DEFAULT_TRACK, state.playhead, 3); return;
+            // ---- 編集系（選択中クリップに対する操作） ----
+            case 'copy': {
+                const c = getSelectedClip();
+                if (c) copyClip(c); else toast('コピーするクリップを選択してください');
+                return;
+            }
+            case 'cut': {
+                const c = getSelectedClip();
+                if (!c) { toast('切り取るクリップを選択してください'); return; }
+                copyClip(c);
+                deleteSelected();
+                toast('クリップを切り取りました ✂');
+                return;
+            }
+            case 'paste': {
+                if (!state.clipboard) { toast('コピーされたクリップがありません'); return; }
+                const c = getSelectedClip();
+                pasteClip(c ? c.track : DEFAULT_TRACK, Math.round(state.playhead * 10) / 10);
+                return;
+            }
+            case 'delete':          deleteSelected(); return;
+            case 'split-at-playhead': {
+                const c = getSelectedClip();
+                if (c) splitClipAt(c, state.playhead); else toast('分割するクリップを選択してください');
+                return;
+            }
+            case 'duplicate-clip':
+            case 'duplicate-selection': {
+                const c = getSelectedClip();
+                if (c) duplicateClip(c); else toast('複製するクリップを選択してください');
+                return;
+            }
             // ---- ロゴ文字のメニュー（全テーマ共通） ----
             case 'theme-auriga':    applyTheme('auriga');   return;
             case 'theme-ymm4':      applyTheme('ymm4');     return;
@@ -2158,7 +2221,13 @@
             case 'keyboard-shortcuts': toast('キーボードショートカット（準備中）'); return;
             case 'check-updates':   toast('お使いのバージョンは最新です ✅'); return;
             case 'website':         toast('公式サイトを開きます 🌐'); return;
-            case 'quit':            toast('終了（デモ）'); return;
+            case 'exit':
+            case 'quit':
+                // Electron ではウィンドウを閉じるとアプリが終了する。
+                // ブラウザではスクリプトからタブを閉じられないことがあるため案内を出す
+                window.close();
+                setTimeout(() => toast('ブラウザではタブを閉じて終了してください'), 200);
+                return;
             default:
                 toast(`「${it.label}」（未実装）`);
         }
@@ -2524,10 +2593,10 @@
 
         // 一覧。各行はテーマ済みの .effect-item を再利用して配色を揃える
         list.innerHTML = cloudFiles.map((f) => `
-            <div class="effect-item cloud-file" data-id="${f.id}" title="${f.name}">
+            <div class="effect-item cloud-file" data-id="${escapeHtml(f.id)}" title="${escapeHtml(f.name)}">
                 <span class="effect-item__icon"><i class="ti ${cloudFileIcon(f.mimeType)}"></i></span>
                 <div class="cloud-file__info">
-                    <div class="effect-item__name">${f.name}</div>
+                    <div class="effect-item__name">${escapeHtml(f.name)}</div>
                     <div class="effect-item__desc">${formatBytes(Number(f.size) || 0)} · ${formatCloudDate(f.modifiedTime)}</div>
                 </div>
             </div>

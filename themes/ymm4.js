@@ -6,13 +6,18 @@
     // 念のためラベルは既定に戻し、タイトルへソフト名を付与する。
     apply(ctx) {
       document.body.classList.add('theme-js--ymm4');
-      document.getElementsByClassName("stage__label")[0].innerHTML = "プレビュー";
+      // YMM4 に合わせてモニターのラベルを変更する
+      const label = ctx.$('.stage__label');
+      if (label) label.textContent = 'プレビュー';
       ctx.setTitleSuffix('YMM4');
       ctx.setWorkspaceTabs(['編集', 'カラー', 'オーディオ', '書き出し']);
     },
     // 他テーマへの切替時：このテーマ専用の状態を片付ける
-    cleanup() {
+    cleanup(ctx) {
       document.body.classList.remove('theme-js--ymm4');
+      // 変更したモニターのラベルを既定へ戻す
+      const label = ctx.$('.stage__label');
+      if (label) label.textContent = 'プログラムモニター';
     },
   });
 })();
