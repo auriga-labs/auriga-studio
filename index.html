@@ -4,27 +4,79 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auriga Studio — 動画編集</title>
+
+    <!-- これは、Auriga Studioの バージョン0.1.0 のソースコードです。 -->
+
+    <!-- 現時点での技術選定は以下の通りです。
+    
+    Electron（デスクトップアプリ化）: https://www.electronjs.org/
+    Tabler Icons（アイコンフォント） v3.44.0 : https://tabler-icons.io/
+    PixiJS（WebGL描画基盤） v8.13.2 : https://pixijs.com/
+    fflate（ZIP圧縮/解凍ライブラリ）v0.8.3 : https://github.com/101arrowz/fflate
+
+    動作確認済みブラウザ: Chrome, Edge, Firefox, Safari, Opera, Brave
+    動作保証する動画編集ソフト: ゆっくりムービーメーカー4（YMM4）v4.53.0.9 , DaVinci Resolve 21.0.1 , Adobe Premiere Pro 2026.3.0
+
+    -->
+
+    <!-- ここを読むなんて、すっごくニッチな人なんだね　ふつうに大好きだよ？結婚しようね -->
+ 
+    <!-- そんなあなたに伝えたいことがあります。聞いてください。
+
+    　　　　まだ、開発途中なんだけど、Auriga Studioは、動画編集ソフトとしては珍しい「Webアプリ」として動作するんです。
+　　　　つまり、ブラウザで開くだけで、インストール不要で使えるんです。しかも、Electron版もあるので、WindowsやMacでも使えます。
+
+　　　　お願いだから… これからも… ずぅっと… 愛してね？
+
+        　ときくん より　-->
+
+
+    <!-- アイコンフォントの先読み -->
     <link rel="preload" href="./assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="./assets/vendor/tabler-icons-webfont/3.44.0/fonts/tabler-icons-filled.woff2" as="font" type="font/woff2" crossorigin>
-    <!-- タブラー アイコン（かわいいよね！！） ex: https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css -->
-    <link rel="stylesheet" href="./assets/vendor/tabler-icons-webfont/3.44.0/tabler-icons.min.css">
-    <!-- フィルド（塗りつぶし）アイコン。ti-fi クラスでスコープしてアウトラインと共存させる -->
-    <link rel="stylesheet" href="./assets/vendor/tabler-icons-webfont/3.44.0/tabler-icons-filled.scoped.css">
-    <!-- ファビコン -->
-    <link rel="icon" type="image/x-icon" href="favicon.ico?symbol">
-    <!-- PWA（Web版のみ有効。Electron では pwa.js が登録をスキップする） -->
-    <link rel="manifest" href="manifest.webmanifest">
-    <meta name="theme-color" content="#131521">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Auriga Studio">
-    <link rel="apple-touch-icon" href="favicon-symbol.png">
-    <link rel="stylesheet" href="style.css">
-    <!-- テーマ配色（パレット）。既定は YMM4。main.js の applyTheme が href を差し替える。
-         共通（モード非依存）を先に読み込み、その上にライト/ダーク差分を重ねる -->
-    <link rel="stylesheet" id="themeLink" href="themes/ymm4.css">
-    <link rel="stylesheet" id="themeVariantLink" href="themes/ymm4-light.css">
+
+    <!-- 依存関係 -->
+        <!-- タブラー アイコン（かわいいよね！！） ex: https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css -->
+        <link rel="stylesheet" href="./assets/vendor/tabler-icons-webfont/3.44.0/tabler-icons.min.css">
+        <!-- フィルド（塗りつぶし）アイコン。ti-fi クラスでスコープしてアウトラインと共存させる -->
+        <link rel="stylesheet" href="./assets/vendor/tabler-icons-webfont/3.44.0/tabler-icons-filled.scoped.css">
+
+        <!-- PixiJS（コンポジターの WebGPU / WebGL 描画基盤） -->
+        <script src="./assets/vendor/pixi.js/8.13.2/pixi.min.js"></script>
+        <!-- 拡張ブレンドモード（オーバーレイ・焼き込みなど）。読み込むだけで自己登録される -->
+        <script src="./assets/vendor/pixi.js/8.13.2/advanced-blend-modes.min.js"></script>
+
+        <!-- fflate (ZIP 圧縮/解凍ライブラリ) -->
+        <script src="./assets/vendor/fflate/0.8.3/index.js"></script>
+
+        <!-- 使ってくれるあなた (ふふっ、もうこれなしじゃ生きてけないね) -->
+
+    <!-- アプリの設定 -->
+        <!-- ファビコン -->
+        <link rel="icon" type="image/x-icon" href="favicon.ico?symbol">
+
+        <!-- PWA（Web版のみ有効。Electron では pwa.js が登録をスキップする） -->
+        <link rel="manifest" href="manifest.webmanifest">
+        <meta name="theme-color" content="#131521">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="Auriga Studio">
+        <link rel="apple-touch-icon" href="favicon-symbol.png">
+
+    <!-- CSSとJavaScript -->
+        <!-- スタイルの適用 -->
+        <link rel="stylesheet" href="style.css">
+
+        <!-- テーマ配色（パレット）。既定は YMM4。main.js の applyTheme が href を差し替える。
+            共通（モード非依存）を先に読み込み、その上にライト/ダーク差分を重ねる -->
+        <link rel="stylesheet" id="themeLink" href="themes/ymm4.css">
+        <link rel="stylesheet" id="themeVariantLink" href="themes/ymm4-light.css">
+
+        <!-- スクリプト -->
+        <script src="main.js"></script>
+        <!-- PWA（サービスワーカー登録）。Web で開いたときだけ動作する -->
+        <script src="pwa.js"></script>
 </head>
 <body>
     <!-- ===== スプラッシュ画面 ===== -->
@@ -388,13 +440,5 @@
 
     <!-- トースト通知 -->
     <div class="toast" id="toast"></div>
-
-    <!-- PixiJS（コンポジターの WebGPU / WebGL 描画基盤） -->
-    <script src="./assets/vendor/pixi.js/8.13.2/pixi.min.js"></script>
-    <!-- 拡張ブレンドモード（オーバーレイ・焼き込みなど）。読み込むだけで自己登録される -->
-    <script src="./assets/vendor/pixi.js/8.13.2/advanced-blend-modes.min.js"></script>
-    <script src="main.js"></script>
-    <!-- PWA（サービスワーカー登録）。Web で開いたときだけ動作する -->
-    <script src="pwa.js"></script>
 </body>
 </html>
