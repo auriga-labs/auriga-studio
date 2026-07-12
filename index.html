@@ -64,7 +64,7 @@
         <meta name="apple-mobile-web-app-title" content="Auriga Studio">
         <link rel="apple-touch-icon" href="favicon-symbol.png">
 
-    <!-- CSSとJavaScript -->
+    <!-- CSS -->
         <!-- スタイルの適用 -->
         <link rel="stylesheet" href="style.css">
 
@@ -72,11 +72,6 @@
             共通（モード非依存）を先に読み込み、その上にライト/ダーク差分を重ねる -->
         <link rel="stylesheet" id="themeLink" href="themes/ymm4.css">
         <link rel="stylesheet" id="themeVariantLink" href="themes/ymm4-light.css">
-
-        <!-- スクリプト -->
-        <script src="main.js"></script>
-        <!-- PWA（サービスワーカー登録）。Web で開いたときだけ動作する -->
-        <script src="pwa.js"></script>
 </head>
 <body>
     <!-- ===== スプラッシュ画面 ===== -->
@@ -440,5 +435,11 @@
 
     <!-- トースト通知 -->
     <div class="toast" id="toast"></div>
+
+    <!-- JavaScript -->
+        <!-- スクリプト -->
+        <script src="main.js"></script>
+        <!-- PWA（サービスワーカー登録）。Web で開いたときだけ動作する -->
+        <script src="pwa.js"></script>
 </body>
 </html>
