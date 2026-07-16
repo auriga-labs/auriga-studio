@@ -3222,7 +3222,9 @@
         const panel = buildPanel(menu.items || [], 0);
         menuLayer.appendChild(panel);
         const r = btn.getBoundingClientRect();
-        positionPanel(panel, r.left, r.bottom + 2);
+        // スマホパネル内から開いたときは、階層が分かるよう少し右にずらす
+        const indent = btn.closest('.mobile-panel') ? 16 : 0;
+        positionPanel(panel, r.left + indent, r.bottom + 2);
     }
 
     // すべてのドロップダウンを閉じる
