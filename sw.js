@@ -2,7 +2,7 @@
 // オフライン起動とアセットの高速表示を担う。
 // キャッシュ名はアプリのバージョンに紐付け、更新時に古いキャッシュを破棄する。
 
-const CACHE_VERSION = 'auriga-v0.0.1-r3';
+const CACHE_VERSION = 'auriga-v0.0.1-r4';
 
 // 起動に最低限必要なアプリシェル。install 時に先読みキャッシュする。
 const PRECACHE_URLS = [

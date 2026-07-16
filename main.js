@@ -3136,6 +3136,7 @@
     document.body.appendChild(menuLayer);
 
     let activeMenuId = null;   // 現在開いているトップメニューの id
+    let menuBarMenus = [];     // 現在のメニューバー定義（スマホパネルの再構築に使う）
 
     // 配色モード（ライト / ダーク / システムに準ずる）のラジオ項目。
     // チェック状態は syncModeMenuChecks() が現在のモードに同期する。
@@ -3212,13 +3213,52 @@
                 if (activeMenuId && activeMenuId !== menu.id) openTopMenu(btn, menu);
             });
         });
+
+        // スマホパネルの1階層目も同じ定義から作り直す
+        menuBarMenus = menus;
+        renderMobilePanelMenu();
+    }
+
+    // スマホパネルの1階層目を、2階層目と同じ見た目（.appmenu 部品）で組み立てる
+    function renderMobilePanelMenu() {
+        const panel = $('#mobilePanel');
+        if (!panel) return;
+        const box = document.createElement('div');
+        box.className = 'appmenu';
+        menuBarMenus.forEach((menu, i) => {
+            // 項目ごとに区切り線を入れる（ドロップダウンと同じ部品を使う）
+            if (i > 0) {
+                const sep = document.createElement('div');
+                sep.className = 'appmenu__sep';
+                box.appendChild(sep);
+            }
+            const row = document.createElement('div');
+            row.className = 'appmenu__item has-sub';
+            row.innerHTML = `
+                <span class="appmenu__icon">${iconHtml(menu.icon)}</span>
+                <span class="appmenu__label">${labelHtml(menu)}</span>
+                <span class="appmenu__key"></span>
+                <span class="appmenu__arrow"><i class="ti ti-chevron-right"></i></span>`;
+            row.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (activeMenuId === menu.id) { closeMenuBar(); return; }
+                openTopMenu(row, menu);
+            });
+            // 開いている間は他のメニューにマウスを移すだけで切り替わる（ネイティブ風）
+            row.addEventListener('mouseenter', () => {
+                if (activeMenuId && activeMenuId !== menu.id) openTopMenu(row, menu);
+            });
+            box.appendChild(row);
+        });
+        panel.replaceChildren(box);
     }
 
     // トップメニューを開く
     function openTopMenu(btn, menu) {
         closeMenuBar();
         activeMenuId = menu.id;
-        btn.classList.add('is-active');
+        // is-open はスマホパネルの .appmenu__item 用（ドロップダウンと同じ選択色にする）
+        btn.classList.add('is-active', 'is-open');
         const panel = buildPanel(menu.items || [], 0);
         menuLayer.appendChild(panel);
         const r = btn.getBoundingClientRect();
@@ -3231,7 +3271,10 @@
     function closeMenuBar() {
         menuLayer.innerHTML = '';
         activeMenuId = null;
-        els.appMenu.querySelectorAll('.menu__item').forEach((b) => b.classList.remove('is-active'));
+        els.appMenu.querySelectorAll('.menu__item').forEach((b) => b.classList.remove('is-active', 'is-open'));
+        // スマホパネルの1階層目のハイライトも消す
+        const mp = $('#mobilePanel');
+        if (mp) mp.querySelectorAll('.appmenu__item').forEach((b) => b.classList.remove('is-active', 'is-open'));
         const logo = $('#appLogoMenu');
         if (logo) logo.classList.remove('is-active');
     }
@@ -4092,52 +4135,31 @@
     }
 
     // ======================================================
-    // スマホ幅メニュー（ヘッダー操作をネスト）
+    // スマホ幅メニュー（ハンバーガー）
     // ======================================================
-    // 狭い画面では、アプリメニュー・ワークスペースを
-    // ハンバーガーのパネルへ実体ごと移設する（イベントを保ったまま移動）。
+    // 狭い画面では、ハンバーガーのパネルにアプリメニューの1階層目を
+    // 2階層目と同じ見た目で表示する（中身は renderMobilePanelMenu が組み立てる）。
+    // ヘッダー側のメニューバーは CSS（メディアクエリ）で非表示にする。
     function bindMobileMenu() {
         const burger = $('#menuBurger');
         const panel = $('#mobilePanel');
         if (!burger || !panel) return;
 
-        // 移設対象と、デスクトップ復帰時の戻し先
-        // （ワークスペースタブはパネルへ入れず、ヘッダー側に残す）
-        const left = $('.menubar__left');
-        const appMenu = $('#appMenu');
-
-        const mq = window.matchMedia('(max-width: 720px)');
-        let mobile = false;
-
-        // パネルへ集約する（DOM ノードごと移動するのでイベントは維持される）
-        function toMobile() {
-            panel.append(appMenu);
-            mobile = true;
-        }
-        // ヘッダーの元の位置・順序へ戻す
-        function toDesktop() {
-            closePanel();
-            left.append(appMenu);               // ロゴの直後
-            mobile = false;
-        }
-        function apply(e) {
-            if (e.matches && !mobile) toMobile();
-            else if (!e.matches && mobile) toDesktop();
-        }
-
         function openPanel() { panel.hidden = false; burger.setAttribute('aria-expanded', 'true'); }
-        function closePanel() { panel.hidden = true; burger.setAttribute('aria-expanded', 'false'); }
+        function closePanel() {
+            closeMenuBar();   // 開いているドロップダウンも一緒に閉じる
+            panel.hidden = true;
+            burger.setAttribute('aria-expanded', 'false');
+        }
 
         burger.addEventListener('click', (e) => {
             e.stopPropagation();
             panel.hidden ? openPanel() : closePanel();
         });
+        // パネル・ドロップダウン・ハンバーガー以外をクリックしたら閉じる
         document.addEventListener('click', (e) => {
-            if (!panel.hidden && !e.target.closest('#mobilePanel, #menuBurger')) closePanel();
+            if (!panel.hidden && !e.target.closest('#mobilePanel, #menuBurger, .appmenu-layer')) closePanel();
         });
-
-        apply(mq);
-        mq.addEventListener('change', apply);
     }
 
     // モーダルの開閉操作をバインドする
