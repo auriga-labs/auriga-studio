@@ -914,7 +914,8 @@ body.is-scrubbing { cursor: ew-resize; user-select: none; }
 .mobile-panel[hidden] { display: none; }
 /* パネル内ではアプリメニュー・ワークスペースタブを縦並びにする */
 .mobile-panel .menu { flex-direction: column; gap: 2px; }
-.mobile-panel .menu__item { width: 100%; justify-content: flex-start; padding: 9px 11px; }
+/* 1階層目もドロップダウン(.appmenu__item)と同じ細さにそろえる */
+.mobile-panel .menu__item { width: 100%; justify-content: flex-start; padding: 7px 10px; }
 .mobile-panel .workspace-tabs { width: 100%; }
 .mobile-panel .ws-tab { flex: 1; text-align: center; }
 .mobile-panel .theme-select { width: 100%; padding: 9px 10px; }
