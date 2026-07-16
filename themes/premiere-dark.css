@@ -329,7 +329,7 @@ input[type="range"]::-webkit-slider-thumb { background: #7d96ff; border: 2px sol
 .menu-burger { background: #23272f; border: 1px solid #343a45; color: #e7eaf0; }
 .menu-burger:hover { background: #2a2e37; border-color: #7d96ff; }
 /* ヘッダー操作を縦に積むパネル */
-.mobile-panel { background: #1d2026; border-bottom: 1px solid #343a45; box-shadow: 0 8px 30px rgba(0, 0, 0, .45); }
+.mobile-panel { background: #1d2026; border: 1px solid #343a45; box-shadow: 0 8px 30px rgba(0, 0, 0, .45); }
 
 
 /* ===== バージョン情報モーダル ===== */

@@ -4102,24 +4102,22 @@
         if (!burger || !panel) return;
 
         // 移設対象と、デスクトップ復帰時の戻し先
+        // （ワークスペースタブはパネルへ入れず、ヘッダー側に残す）
         const left = $('.menubar__left');
-        const center = $('.menubar__center');
         const appMenu = $('#appMenu');
-        const wsTabs = $('.workspace-tabs');
 
         const mq = window.matchMedia('(max-width: 720px)');
         let mobile = false;
 
         // パネルへ集約する（DOM ノードごと移動するのでイベントは維持される）
         function toMobile() {
-            panel.append(appMenu, wsTabs);
+            panel.append(appMenu);
             mobile = true;
         }
         // ヘッダーの元の位置・順序へ戻す
         function toDesktop() {
             closePanel();
             left.append(appMenu);               // ロゴの直後
-            center.append(wsTabs);
             mobile = false;
         }
         function apply(e) {

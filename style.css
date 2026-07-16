@@ -901,24 +901,25 @@ body.is-scrubbing { cursor: ew-resize; user-select: none; }
 }
 .menu-burger:hover { background: #e3e6ec; border-color: #2bae8f; }
 
-/* ヘッダー操作を縦に積むネストパネル */
+/* アプリメニューをネストするパネル。
+   全幅のバンドではなく、2階層目のドロップダウン(.appmenu)と同じ「短い幅の箱」で出す */
 .mobile-panel {
-    position: fixed; top: 52px; left: 0; right: 0; z-index: 150;
+    position: fixed; top: 52px; left: 8px; z-index: 150;
+    width: max-content; min-width: 180px;
+    max-width: calc(100vw - 16px);
     background: #f4f5f8;
-    border-bottom: 1px solid #ccd2dc;
+    border: 1px solid #ccd2dc;
+    border-radius: 8px;
     box-shadow: 0 8px 30px rgba(40, 50, 70, 0.18);
-    padding: 14px;
+    padding: 5px;
     display: flex; flex-direction: column; gap: 12px;
-    max-height: calc(100vh - 52px); overflow-y: auto;
+    max-height: calc(100vh - 60px); overflow-y: auto;
 }
 .mobile-panel[hidden] { display: none; }
-/* パネル内ではアプリメニュー・ワークスペースタブを縦並びにする */
-/* 1階層目は全幅に伸ばさず、文字幅のまま左端に寄せる */
-.mobile-panel .menu { flex-direction: column; gap: 2px; align-items: flex-start; }
+/* パネル内ではアプリメニューを縦並びにする（項目の背景は箱の幅いっぱいに広げる） */
+.mobile-panel .menu { flex-direction: column; gap: 2px; }
 /* 1階層目もドロップダウン(.appmenu__item)と同じ細さにそろえる */
 .mobile-panel .menu__item { justify-content: flex-start; padding: 7px 10px; }
-.mobile-panel .workspace-tabs { width: 100%; }
-.mobile-panel .ws-tab { flex: 1; text-align: center; }
 .mobile-panel .theme-select { width: 100%; padding: 9px 10px; }
 .mobile-panel .btn { width: 100%; justify-content: center; padding: 9px 14px; }
 
