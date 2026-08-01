@@ -2799,6 +2799,7 @@
         bindAccountMenu();   // アカウント情報ポップオーバーの開閉
         bindMobileMenu();   // スマホ幅でヘッダー操作をネストする
         bindTimelineResizer();   // タイムラインの高さをドラッグで調整
+        bindItemsResizer();   // アイテムパネルの幅をドラッグで調整
         bindFloatingPanels();   // プレビュー / アイテム / タイムラインの独立ウィンドウ化
 
         // ファイルがトラック外に落ちてもブラウザがファイルを開かないようにする
@@ -3747,6 +3748,71 @@
         // ウィンドウ縮小時に上限を超えないよう再クランプする
         window.addEventListener('resize', () => {
             if (timeline.style.height) setTimelineHeight(parseInt(timeline.style.height, 10));
+        });
+    }
+
+    // ======================================================
+    // アイテム（右パネル）の幅リサイズ
+    // ======================================================
+    // 幅の下限（px）と保存キー。実際の幅は :root の --items-w に書き込み、
+    // style.css（3カラム）と themes/ymm4.css（body 2カラム）の両方がこれを見る。
+    const ITEMS_MIN_WIDTH = 200;
+    const ITEMS_WIDTH_KEY = 'auriga.itemsWidth';
+    let itemsWidth = 0;   // 現在適用中の幅（0 = 未指定でテーマ既定のまま）
+
+    // ウィンドウ幅に応じた幅の上限を求める（左隣のプレビューを潰しきらない）
+    function itemsMaxWidth() {
+        return Math.max(ITEMS_MIN_WIDTH, window.innerWidth - 420);
+    }
+
+    // 幅を範囲内に収めて適用する
+    function setItemsWidth(w) {
+        const clamped = Math.min(itemsMaxWidth(), Math.max(ITEMS_MIN_WIDTH, Math.round(w)));
+        itemsWidth = clamped;
+        document.documentElement.style.setProperty('--items-w', clamped + 'px');
+        return clamped;
+    }
+
+    // 左辺のドラッグでアイテムパネルの幅を変える
+    function bindItemsResizer() {
+        const resizer = $('#itemsResizer');
+        const panel = $('.panel--props');
+        if (!resizer || !panel) return;
+
+        // 保存済みの幅があれば復元する（なければテーマ既定の幅のまま）
+        const stored = parseInt(localStorage.getItem(ITEMS_WIDTH_KEY), 10);
+        if (Number.isFinite(stored)) setItemsWidth(stored);
+
+        let startX = 0;
+        let startWidth = 0;
+
+        function onMove(e) {
+            // 左へドラッグするほど幅が増える
+            setItemsWidth(startWidth - (e.clientX - startX));
+        }
+
+        function onUp() {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            document.body.classList.remove('is-resizing-items');
+            resizer.classList.remove('is-dragging');
+            // 確定した幅を保存する
+            localStorage.setItem(ITEMS_WIDTH_KEY, itemsWidth);
+        }
+
+        resizer.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            startX = e.clientX;
+            startWidth = panel.getBoundingClientRect().width;
+            document.body.classList.add('is-resizing-items');
+            resizer.classList.add('is-dragging');
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+        });
+
+        // ウィンドウ縮小時に上限を超えないよう再クランプする
+        window.addEventListener('resize', () => {
+            if (itemsWidth) setItemsWidth(itemsWidth);
         });
     }
 

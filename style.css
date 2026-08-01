@@ -311,7 +311,8 @@ body {
 .layout {
     flex: 1 1 auto;
     display: grid;
-    grid-template-columns: 290px 1fr 280px;
+    /* 右列（アイテム）の幅は左辺のドラッグで決まる（JS が :root へ --items-w を書く） */
+    grid-template-columns: 290px 1fr var(--items-w, 280px);
     min-height: 0;
     background: #e9ebf0;
     gap: 1px;
@@ -333,6 +334,8 @@ body.is-no-preview.is-no-items .layout { grid-template-columns: 1fr; }
     min-height: 0;
     overflow: hidden;
 }
+/* 左辺のリサイズつかみしろ（.panel-resizer）を絶対配置する基準にする */
+.panel--props { position: relative; }
 .panel__head {
     flex: none;
     border-bottom: 1px solid #ccd2dc;
@@ -614,6 +617,35 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 /* ドラッグ中は本文の選択を抑止する */
 body.is-resizing-timeline { cursor: row-resize; user-select: none; }
 body.is-scrubbing { cursor: ew-resize; user-select: none; }
+
+/* ===== アイテムパネルの幅リサイズ ===== */
+/* アイテム（右パネル）の左辺に重ねるつかみしろ。ドラッグで幅を変える */
+.panel-resizer {
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 6px;
+    cursor: col-resize;
+    z-index: 10;
+}
+/* 中央につまみのインジケーターを描く（tl-resizer と同じ見た目） */
+.panel-resizer::after {
+    content: "";
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 2px; height: 40px;
+    transform: translate(-50%, -50%);
+    border-radius: 2px;
+    background: #ccd2dc;
+    transition: background-color .15s;
+}
+.panel-resizer:hover::after,
+.panel-resizer.is-dragging::after { background: #2bae8f; }
+body.is-resizing-items { cursor: col-resize; user-select: none; }
+/* 独立ウィンドウ中は8方向のつかみしろ（.float-grip）に任せる */
+.panel--props.is-floating > .panel-resizer { display: none; }
+/* プレビュー非表示のときは残りいっぱいに広がる列なので、幅を変えられない＝隠す
+   （YMM4 テーマはアイテムパネルが .layout の外にいるため対象外） */
+body.is-no-preview .layout > .panel--props > .panel-resizer { display: none; }
 
 .timeline {
     flex: none;
@@ -984,7 +1016,7 @@ body.is-tl-floating .tl-resizer { display: none; }
 
 /* ===== レスポンシブ ===== */
 @media (max-width: 1100px) {
-    .layout { grid-template-columns: 240px 1fr 240px; }
+    .layout { grid-template-columns: 240px 1fr var(--items-w, 240px); }
     body.is-no-preview .layout,
     body.is-no-items .layout { grid-template-columns: 240px 1fr; }
     body.is-no-preview.is-no-items .layout { grid-template-columns: 1fr; }

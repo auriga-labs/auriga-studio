@@ -247,8 +247,10 @@ input[type="range"]::-webkit-slider-thumb { background: #c9c9cf; border: 1px sol
 
 /* プレビューとの境界リサイザー */
 .tl-resizer { background: #2e2e33; border-top: 1px solid #3f3f46; }
-.tl-resizer::after { background: #3f3f46; }
-.tl-resizer:hover::after, .tl-resizer.is-dragging::after { background: #4a6fe0; }
+.tl-resizer::after,
+.panel-resizer::after { background: #3f3f46; }
+.tl-resizer:hover::after, .tl-resizer.is-dragging::after,
+.panel-resizer:hover::after, .panel-resizer.is-dragging::after { background: #4a6fe0; }
 
 /* タイムライン全体の背景 */
 .timeline { background: #2e2e33; }

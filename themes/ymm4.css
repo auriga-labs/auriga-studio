@@ -47,7 +47,8 @@ body { font-family: "Yu Gothic UI", "Segoe UI", "Hiragino Sans", system-ui, sans
    ・メニューバーとステータスバーは 2 列にまたがる */
 body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 480px;
+  /* 右列（アイテム）の幅は左辺のドラッグで決まる（JS が :root へ --items-w を書く） */
+  grid-template-columns: minmax(0, 1fr) var(--items-w, 480px);
   grid-template-rows: auto minmax(0, 1fr) auto auto auto;
 }
 /* 位置を取り合わないよう、行と列は要素ごとに明示する

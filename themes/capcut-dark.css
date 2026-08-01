@@ -246,9 +246,11 @@ input[type="range"]::-webkit-slider-thumb { background: #1ec8cf; border: 2px sol
 /* プレビューとの境界リサイザー */
 .tl-resizer { background: #1d2026; border-top: 1px solid #343a45; }
 /* リサイザー中央のつまみ */
-.tl-resizer::after { background: #343a45; }
+.tl-resizer::after,
+.panel-resizer::after { background: #343a45; }
 /* リサイザー：ホバー/ドラッグ中 */
-.tl-resizer:hover::after, .tl-resizer.is-dragging::after { background: #1ec8cf; }
+.tl-resizer:hover::after, .tl-resizer.is-dragging::after,
+.panel-resizer:hover::after, .panel-resizer.is-dragging::after { background: #1ec8cf; }
 
 /* タイムライン全体の背景 */
 .timeline { background: #1d2026; }
