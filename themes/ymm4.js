@@ -12,6 +12,11 @@
   let numObserver = null;
   let propsInputHandler = null;
   let propsClickHandler = null;
+  // トランスポート（再生コントロール）関連の後始末用
+  let seekDragging = false;        // シークバーをドラッグ中は再生ヘッドへの自動追従を止める
+  let volumeInputHandler = null;   // 音量スライダーの % 表示更新
+  let savedPrevIcon = null;        // 差し替えたフレーム送りアイコンの復元用
+  let savedNextIcon = null;
 
   // ---------------------------------------------------------
   // 下部ステータスバー
@@ -33,6 +38,160 @@
       const m = String(res.value).match(/(\d+)\s*[×x]\s*(\d+)/);
       sbRes.textContent = m ? `${m[1]}x${m[2]}` : '';
     }
+  }
+
+  // ---------------------------------------------------------
+  // トランスポート（本家 YMM4 の再生コントロール帯）
+  // ---------------------------------------------------------
+  // 既存のボタン（再生・先頭へ など）は main.js のリスナーを保ったままの移動にとどめ、
+  // 本家にしかない部品（停止・再生速度・シークバー・音量 % 表示）を新たに作って足す。
+  // 並びは本家と同じ:
+  //   再生 / 停止 / 速度 / リピート / フィット | 先頭 / 前アイテム / 前フレーム
+  //   [シークバー] 次フレーム / 次アイテム / 末尾 | 音量アイコン / % / スライダー
+
+  // プレビューの再生速度の選択肢（本家のコンボボックスと同じ並び）
+  const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 3.5, 4, 5];
+
+  // 「x 1.0」「x 1.25」の表示形式（整数は 1 桁小数で見せる）
+  function speedLabel(v) {
+    return `x ${Number.isInteger(v) ? v.toFixed(1) : String(v)}`;
+  }
+
+  // アイコンボタンを 1 つ作る小さなヘルパー
+  function tpButton(title, icon, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tbtn';
+    b.title = title;
+    b.innerHTML = `<i class="${icon}"></i>`;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  // 再生コントロール帯を本家 YMM4 の構成へ組み替える
+  function buildTransport(ctx) {
+    const bar = ctx.$('.transport');
+    if (!bar || bar.querySelector('.ymm4-transport')) return;   // 配色モード切替などの再適用では作り直さない
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ymm4-transport';
+
+    // --- 左グループ：再生・停止・速度・リピート・フィット ---
+    const gPlay = document.createElement('div');
+    gPlay.className = 'ymm4-tp__group';
+
+    const btnStop = tpButton('停止', 'ti ti-fi ti-player-stop', () => ctx.transport.stop());
+
+    const speed = document.createElement('select');
+    speed.className = 'ymm4-speed';
+    speed.title = '再生速度';
+    speed.innerHTML = SPEED_OPTIONS.map((v) => `<option value="${v}">${speedLabel(v)}</option>`).join('');
+    speed.value = String(ctx.transport.getRate());
+    speed.addEventListener('change', () => ctx.transport.setRate(speed.value));
+
+    // プレビューは常にフィット表示のため、いまは押下状態の切り替えのみ
+    const btnFit = tpButton('映像を画面サイズに合わせる', 'ti ti-arrows-diagonal', (e) => {
+      e.currentTarget.classList.toggle('is-active');
+    });
+
+    gPlay.append(ctx.$('#btnPlay'), btnStop, speed, ctx.$('#btnLoop'), btnFit);
+
+    // --- 中央：フレーム移動ボタンとシークバー ---
+    const btnPrev = ctx.$('#btnPrev');
+    const btnNext = ctx.$('#btnNext');
+    // 1 フレーム送りは本家と同じ小さな三角のアイコンへ差し替える（cleanup で戻す）
+    savedPrevIcon = btnPrev.innerHTML;
+    savedNextIcon = btnNext.innerHTML;
+    btnPrev.innerHTML = '<i class="ti ti-fi ti-caret-left"></i>';
+    btnNext.innerHTML = '<i class="ti ti-fi ti-caret-right"></i>';
+
+    const gPrev = document.createElement('div');
+    gPrev.className = 'ymm4-tp__group';
+    gPrev.append(
+      ctx.$('#btnStart'),
+      tpButton('前のアイテムへ', 'ti ti-fi ti-player-track-prev', () => ctx.transport.prevItem()),
+      btnPrev
+    );
+
+    // シークバー（ミリ秒単位）。再生ヘッドへの追従は syncSeekbar が行う
+    const seek = document.createElement('input');
+    seek.type = 'range';
+    seek.className = 'ymm4-seek';
+    seek.title = 'シーク';
+    seek.min = '0';
+    seek.step = '1';
+    seek.max = String(Math.round(ctx.transport.duration() * 1000));
+    seek.value = String(Math.round(ctx.transport.playhead() * 1000));
+    seek.addEventListener('input', () => ctx.transport.seek(Number(seek.value) / 1000));
+    seek.addEventListener('pointerdown', () => { seekDragging = true; });
+    seek.addEventListener('pointerup', () => { seekDragging = false; });
+    seek.addEventListener('pointercancel', () => { seekDragging = false; });
+
+    const gNext = document.createElement('div');
+    gNext.className = 'ymm4-tp__group';
+    gNext.append(
+      btnNext,
+      tpButton('次のアイテムへ', 'ti ti-fi ti-player-track-next', () => ctx.transport.nextItem()),
+      ctx.$('#btnEnd')
+    );
+
+    // --- 右：音量（既存のアイコン＋スライダーに % 表示を挟む） ---
+    const vol = bar.querySelector('.volume');
+    const volInput = ctx.$('#volume');
+    const volNum = document.createElement('span');
+    volNum.className = 'ymm4-volnum';
+    vol.insertBefore(volNum, volInput);
+    volumeInputHandler = () => { volNum.textContent = `${Number(volInput.value).toFixed(1)} %`; };
+    volInput.addEventListener('input', volumeInputHandler);
+    volumeInputHandler();   // 初期値（現在の音量）を表示する
+
+    wrap.append(gPlay, gPrev, seek, gNext, vol);
+    bar.appendChild(wrap);
+  }
+
+  // 再生コントロール帯を既定の構成へ戻す（他テーマへの切替時）
+  function restoreTransport(ctx) {
+    const bar = ctx.$('.transport');
+    const wrap = bar && bar.querySelector('.ymm4-transport');
+    if (!wrap) return;
+
+    // 音量の % 表示と購読を取り除く
+    const volInput = ctx.$('#volume');
+    if (volInput && volumeInputHandler) volInput.removeEventListener('input', volumeInputHandler);
+    volumeInputHandler = null;
+    const volNum = wrap.querySelector('.ymm4-volnum');
+    if (volNum) volNum.remove();
+
+    // フレーム送りのアイコンを元へ戻す
+    const btnPrev = ctx.$('#btnPrev');
+    const btnNext = ctx.$('#btnNext');
+    if (btnPrev && savedPrevIcon != null) btnPrev.innerHTML = savedPrevIcon;
+    if (btnNext && savedNextIcon != null) btnNext.innerHTML = savedNextIcon;
+    savedPrevIcon = savedNextIcon = null;
+
+    // 移動した既存ボタンを元のコンテナへ元の並びで戻す
+    const controls = bar.querySelector('.transport__controls');
+    if (controls) controls.append(ctx.$('#btnStart'), btnPrev, ctx.$('#btnPlay'), btnNext, ctx.$('#btnEnd'));
+    const right = bar.querySelector('.transport__right');
+    const vol = wrap.querySelector('.volume');
+    if (right) {
+      right.append(ctx.$('#btnLoop'));
+      if (vol) right.append(vol);
+    }
+
+    // プレビュー速度を等倍へ戻し、新設した部品ごと帯を取り除く
+    ctx.transport.setRate(1);
+    seekDragging = false;
+    wrap.remove();
+  }
+
+  // 再生ヘッドの動きへシークバーを追従させる（ドラッグ中は触らない）
+  function syncSeekbar(ctx) {
+    const seek = document.querySelector('.ymm4-seek');
+    if (!seek || seekDragging) return;
+    const durMs = Math.round(ctx.transport.duration() * 1000);
+    if (Number(seek.max) !== durMs) seek.max = String(durMs);
+    seek.value = String(Math.round(ctx.transport.playhead() * 1000));
   }
 
   // ---------------------------------------------------------
@@ -344,6 +503,9 @@ Season2</textarea>
       buildPropsPanel(ctx);
       detachPropsPanel(ctx);
 
+      // 再生コントロールを本家の帯（停止・速度・シークバーつき）へ組み替える
+      buildTransport(ctx);
+
       // 下部ステータスバー（本家はここに現在時刻・プロジェクト情報を表示する）
       if (!document.querySelector('.ymm4-statusbar')) {
         const bar = document.createElement('footer');
@@ -356,9 +518,10 @@ Season2</textarea>
         document.body.appendChild(bar);
       }
 
-      // トランスポートの時刻表示（テーマ CSS で非表示）を監視して写す
+      // トランスポートの時刻表示（テーマ CSS で非表示）を監視して写す。
+      // 同じ更新タイミングでシークバーも再生ヘッドへ追従させる
       if (timeObserver) timeObserver.disconnect();
-      timeObserver = new MutationObserver(() => syncStatusbar(ctx));
+      timeObserver = new MutationObserver(() => { syncStatusbar(ctx); syncSeekbar(ctx); });
       ['#curTime', '#durTime'].forEach((sel) => {
         const el = ctx.$(sel);
         if (el) timeObserver.observe(el, { childList: true, characterData: true, subtree: true });
@@ -371,6 +534,7 @@ Season2</textarea>
         res.addEventListener('change', resHandler);
       }
       syncStatusbar(ctx);
+      syncSeekbar(ctx);
     },
 
     // 他テーマへの切替時：このテーマ専用の状態を片付ける
@@ -384,6 +548,8 @@ Season2</textarea>
       // アイテムパネルを元の内容・元の位置へ戻す
       restorePropsPanel(ctx);
       reattachPropsPanel(ctx);
+      // 再生コントロールを既定の構成へ戻す
+      restoreTransport(ctx);
       // ステータスバーと監視を取り除く
       if (timeObserver) { timeObserver.disconnect(); timeObserver = null; }
       const res = ctx.$('#resSelect');

@@ -53,6 +53,7 @@
         zoom: 60,                     // 1秒あたりのpx
         playing: false,
         loop: false,
+        rate: 1,                      // プレビューの再生速度（YMM4 テーマの速度コンボが変更する）
         playhead: 0,                  // 秒
         duration: 10,                 // 秒
         selectedClipId: null,
@@ -2312,7 +2313,8 @@
         const el = getMediaEl(clip);
         if (!el) return;
         const rate = (clip.props.speed || 100) / 100;
-        el.playbackRate = rate;
+        // クリップ速度 × プレビュー速度（ブラウザが対応する 0.0625〜16 倍へ収める）
+        el.playbackRate = clampNum(rate * state.rate, 0.0625, 16);
         el.muted = trackMuted(trackId);
         el.loop = clip.looped === true;
         // 音量 = クリップ音量 × レイヤー音量 × フェード（マスター音量は別段で乗算）
@@ -2419,6 +2421,7 @@
     // ======================================================
     let rafId = null;
     let lastTs = 0;
+    let playStartPos = 0;   // 再生を開始した位置(秒)。停止ボタンでここへ戻る
 
     function togglePlay() {
         state.playing = !state.playing;
@@ -2427,6 +2430,7 @@
             ? '<i class="ti ti-fi ti-player-pause"></i>'
             : '<i class="ti ti-fi ti-player-play"></i>';
         if (state.playing) {
+            playStartPos = state.playhead;   // 停止ボタンで戻る位置を覚えておく
             enterProgram();                  // 再生は常に合成モニターで
             els.viewerCanvas.classList.add('program');
             resumeAudioCtx();                // 自動再生制限の解除（ユーザー操作起点）
@@ -2445,7 +2449,7 @@
         if (!state.playing) return;
         const dt = (ts - lastTs) / 1000;
         lastTs = ts;
-        state.playhead += dt;
+        state.playhead += dt * state.rate;   // プレビュー速度ぶんだけ進める
         if (state.playhead >= state.duration) {
             if (state.loop) {
                 state.playhead = 0;
@@ -2473,6 +2477,13 @@
         updateTimeDisplay();
         composite(state.playhead, state.playing);
         savePlayhead();   // 再生ヘッド位置をブラウザに保存
+    }
+
+    // クリップの境界（開始・終了）位置を昇順で返す（前後のアイテムへの移動用）
+    function clipBoundaries() {
+        const set = new Set([0, state.duration]);
+        state.clips.forEach((c) => { set.add(c.start); set.add(c.start + c.dur); });
+        return Array.from(set).sort((a, b) => a - b);
     }
 
     // タイムライン上のマウス位置から時間を求めてシークする（ドラッグ継続対応）
@@ -2610,6 +2621,31 @@
         rebindProps() {
             bindProps();
             updateProps();
+        },
+        // トランスポート操作の窓口（YMM4 テーマの再生コントロールが使う）
+        transport: {
+            playing: () => state.playing,
+            playhead: () => state.playhead,
+            duration: () => state.duration,
+            toggle() { togglePlay(); },
+            // 停止：再生を止めて再生開始位置へ戻す（本家 YMM4 の停止ボタンと同じ挙動）
+            stop() {
+                if (state.playing) togglePlay();
+                seek(playStartPos);
+            },
+            seek(sec) { seek(sec); },
+            // プレビューの再生速度（0.25〜5 倍）。再生中でも次のフレームから反映される
+            getRate: () => state.rate,
+            setRate(r) { state.rate = clampNum(Number(r) || 1, 0.25, 5); },
+            // 前後のアイテム境界（クリップの開始・終了）へ移動する
+            prevItem() {
+                const prev = clipBoundaries().filter((t) => t < state.playhead - 0.001).pop();
+                if (prev != null) seek(prev);
+            },
+            nextItem() {
+                const next = clipBoundaries().find((t) => t > state.playhead + 0.001);
+                if (next != null) seek(next);
+            },
         },
     };
 

@@ -135,6 +135,35 @@ body.is-no-items .layout { grid-template-columns: minmax(0, 1fr); }
 .tbtn--play .ti { font-size: 15px; }
 .volume input[type="range"] { width: 90px; }
 
+/* ---- YMM4 風トランスポート（ymm4.js が組み立てる本家の再生コントロール） ---- */
+
+/* 既存ボタンはテーマ JS が .ymm4-transport の中へ移すため、空になった元のコンテナは隠す */
+body.theme-js--ymm4 .transport__controls,
+body.theme-js--ymm4 .transport__right { display: none; }
+
+/* 帯全体：ボタン群を左右に置き、中央のシークバーが余り幅を全て使う */
+.ymm4-transport { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.ymm4-tp__group { flex: none; display: flex; align-items: center; gap: 2px; }
+
+/* WPF ツールバー風の枠付き小ボタン（配色はライト/ダーク側で塗る） */
+.ymm4-transport .tbtn { width: 24px; height: 22px; border-radius: 2px; }
+.ymm4-transport .tbtn--play { width: 26px; height: 22px; }
+.ymm4-transport .tbtn .ti { font-size: 13px; }
+
+/* 再生速度のコンボボックス（x 1.0 など） */
+.ymm4-speed {
+  flex: none; height: 22px; padding: 0 2px;
+  font: inherit; font-size: 11px;
+  border-radius: 2px; cursor: pointer;
+}
+
+/* シークバー：余り幅いっぱいに伸ばす */
+.ymm4-seek { flex: 1 1 auto; min-width: 60px; }
+
+/* 音量の % 表示（100.0 % など） */
+.ymm4-volnum { flex: none; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ymm4-transport .volume { flex: none; gap: 6px; }
+
 
 /* ===== レンジ入力（WPF 風の細いスライダー） ===== */
 

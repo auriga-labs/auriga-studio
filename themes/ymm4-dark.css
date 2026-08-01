@@ -185,6 +185,18 @@ body { background: #232327; color: #f0f0f2; }
 /* 音量アイコン */
 .volume__icon { color: #c9c9cf; }
 
+/* ---- YMM4 風トランスポート（ymm4.js が組み立てる） ---- */
+
+/* WPF ツールバー風の枠付きボタン */
+.ymm4-transport .tbtn { background: #3a3a41; border: 1px solid #4a4a52; color: #f0f0f2; }
+.ymm4-transport .tbtn:hover { background: #47474f; border-color: #55555c; }
+/* リピートなどのオン状態は本家の青い面 */
+.ymm4-transport .tbtn.is-active { background: #3c5bb5; border: 1px solid #4a6fe0; color: #fff; }
+/* 再生速度のコンボボックスと音量の % 表示 */
+.ymm4-speed { background: #3a3a41; border: 1px solid #4a4a52; color: #f0f0f2; }
+.ymm4-speed:hover { border-color: #6a6a72; }
+.ymm4-volnum { color: #f0f0f2; }
+
 
 /* ===== レンジ入力（スライダー） ===== */
 
