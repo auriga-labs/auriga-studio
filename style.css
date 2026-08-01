@@ -948,6 +948,8 @@ body.is-scrubbing { cursor: ew-resize; user-select: none; }
     border: 1px solid #ccd2dc;
     box-shadow: 0 24px 70px rgba(15, 20, 30, .35);
 }
+/* 画面端にスナップ固定中は、端にぴったり見えるよう角丸をなくす */
+.is-floating.is-snapped { border-radius: 0; }
 /* 独立中はヘッダーがドラッグの持ち手になる */
 .stage.is-floating .stage__head,
 .panel.is-floating .panel__head,
@@ -956,6 +958,17 @@ body.is-scrubbing { cursor: ew-resize; user-select: none; }
 body.is-dragging-float { user-select: none; }
 /* タイムラインが独立中は境界バーを畳む */
 body.is-tl-floating .tl-resizer { display: none; }
+
+/* ドラッグで画面端に近づいたときに出す、スナップ先の半透明プレビュー */
+.snap-preview {
+    position: fixed;
+    z-index: 860;   /* 独立ウィンドウ(〜850)より上、メニュー層(900)より下 */
+    pointer-events: none;
+    background: rgba(43, 174, 143, .16);
+    border: 2px solid rgba(43, 174, 143, .55);
+    border-radius: var(--radius);
+    transition: left .12s ease, top .12s ease, width .12s ease, height .12s ease;
+}
 
 /* リサイズ用のつかみしろ（8方向）。独立中だけ表示する（見た目は透明） */
 .float-grip { position: absolute; display: none; z-index: 40; }

@@ -2640,6 +2640,9 @@
         const hooks = themeHooks[name];
         try { hooks && hooks.apply && hooks.apply(themeCtx, { silent }); } catch (e) { console.warn(e); }
         activeThemeName = name;
+        // テーマ JS がステータスバー等を出し入れするとスナップ領域が変わるため、
+        // 画面端に固定中の独立ウィンドウを計算し直す
+        reclampFloats();
     }
 
     // 起動時に保存済みテーマ・配色モードを復元する（未保存ならテーマ=YMM4 / モード=ダーク）
@@ -3760,7 +3763,9 @@
         timeline: { selector: '.timeline',     handle: '.timeline__toolbar', label: 'タイムライン', minW: 480, minH: 180 },
     };
     const GRIP_DIRS = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];   // リサイズつかみしろの方向
+    const SNAP_THRESHOLD = 20;   // ポインタが画面端からこの距離に入ったらスナップ候補にする(px)
     let floatZ = 300;   // 最前面管理用の z-index カウンター（メニュー層の 900 より下に収める）
+    let snapPreviewEl = null;   // スナップ先を示す半透明プレビュー（初回表示時に生成）
 
     // 指定パネルが独立ウィンドウ中か
     function isPanelFloating(id) {
@@ -3800,6 +3805,74 @@
         f.y = Math.min(Math.max(f.y, 0), vh - 50);
     }
 
+    // ======================================================
+    // 画面端スナップ（ドラッグで端に寄せると張り付いて固定される）
+    // ======================================================
+    // スナップ領域の上端（メニューバーの下）
+    function snapAreaTop() {
+        const bar = $('.menubar');
+        return bar ? Math.round(bar.getBoundingClientRect().bottom) : 0;
+    }
+
+    // スナップ領域の下端（YMM4 テーマのステータスバーがあればその上まで）
+    function snapAreaBottom() {
+        const sb = $('.ymm4-statusbar');
+        return sb ? Math.round(sb.getBoundingClientRect().top) : window.innerHeight;
+    }
+
+    // ポインタ位置から、しきい値内で一番近い画面端を返す（なければ null）
+    function detectSnapEdge(ev) {
+        const cands = [
+            ['left', ev.clientX],
+            ['right', window.innerWidth - ev.clientX],
+            ['top', ev.clientY - snapAreaTop()],
+            ['bottom', snapAreaBottom() - ev.clientY],
+        ].filter(([, d]) => d <= SNAP_THRESHOLD).sort((a, b) => a[1] - b[1]);
+        return cands.length ? cands[0][0] : null;
+    }
+
+    // 指定した端へスナップしたときの位置・サイズ。
+    // 左右は現在の幅を保って全高に、上下は現在の高さを保って全幅にする
+    function snapRect(id, edge, f) {
+        const def = FLOATABLE_PANELS[id];
+        const vw = window.innerWidth;
+        const top = snapAreaTop();
+        const bottom = snapAreaBottom();
+        const w = Math.max(def.minW, f.w);
+        const h = Math.max(def.minH, f.h);
+        if (edge === 'left')  return { x: 0, y: top, w, h: bottom - top };
+        if (edge === 'right') return { x: vw - w, y: top, w, h: bottom - top };
+        if (edge === 'top')   return { x: 0, y: top, w: vw, h };
+        return { x: 0, y: bottom - h, w: vw, h };
+    }
+
+    // スナップを確定する（戻すとき用に直前のサイズを覚えておく）
+    function applySnap(id, edge) {
+        const f = state.floats[id];
+        f.restore = { w: f.w, h: f.h };
+        f.snap = edge;
+        Object.assign(f, snapRect(id, edge, f));
+        applyFloatGeometry(id);
+    }
+
+    // スナップ候補のプレビューを表示する
+    function showSnapPreview(rect) {
+        if (!snapPreviewEl) {
+            snapPreviewEl = document.createElement('div');
+            snapPreviewEl.className = 'snap-preview';
+            document.body.appendChild(snapPreviewEl);
+        }
+        snapPreviewEl.style.left = rect.x + 'px';
+        snapPreviewEl.style.top = rect.y + 'px';
+        snapPreviewEl.style.width = rect.w + 'px';
+        snapPreviewEl.style.height = rect.h + 'px';
+        snapPreviewEl.style.display = 'block';
+    }
+
+    function hideSnapPreview() {
+        if (snapPreviewEl) snapPreviewEl.style.display = 'none';
+    }
+
     // 保存中の位置・サイズをパネルのインラインスタイルへ反映する
     function applyFloatGeometry(id) {
         const el = $(FLOATABLE_PANELS[id].selector);
@@ -3809,6 +3882,8 @@
         el.style.top = f.y + 'px';
         el.style.width = f.w + 'px';
         el.style.height = f.h + 'px';
+        // スナップ固定中は端にぴったり見えるよう角丸を外す（CSS が参照する）
+        el.classList.toggle('is-snapped', !!f.snap);
     }
 
     // パネルを最前面に出す（カウンターを使い切ったら振り直す）
@@ -3829,9 +3904,13 @@
         el.classList.toggle('is-floating', on);
         if (on) {
             ensureFloatGeometry(id);
+            // スナップ固定中は現在の画面サイズに合わせて端の張り付きを計算し直す
+            const f = state.floats[id];
+            if (f.snap) Object.assign(f, snapRect(id, f.snap, f));
             applyFloatGeometry(id);
             raiseFloat(el);
         } else {
+            el.classList.remove('is-snapped');
             el.style.left = el.style.top = el.style.width = el.style.height = el.style.zIndex = '';
             // タイムラインはドック時の高さ（リサイザーで保存した値）へ戻す
             if (id === 'timeline') {
@@ -3872,7 +3951,8 @@
             });
         } catch (e) { /* 壊れた保存値は既定値のまま無視する */ }
         Object.keys(FLOATABLE_PANELS).forEach((id) => {
-            if (isPanelFloating(id)) clampFloatGeometry(id, state.floats[id]);
+            // スナップ固定中は applyFloating が端の位置を計算し直すのでクランプしない
+            if (isPanelFloating(id) && !state.floats[id].snap) clampFloatGeometry(id, state.floats[id]);
             applyFloating(id);
         });
     }
@@ -3910,21 +3990,38 @@
             if (e.target.closest('button, select, input, textarea, .ptab')) return;
             e.preventDefault();
             const f = state.floats[id];
+            // スナップ固定中につかんだら固定を解除し、つかんだ位置を保ったまま元のサイズへ戻す
+            if (f.snap) {
+                const ratio = f.w > 0 ? (e.clientX - f.x) / f.w : 0.5;
+                if (f.restore) { f.w = f.restore.w; f.h = f.restore.h; }
+                f.snap = null;
+                f.x = Math.round(e.clientX - f.w * ratio);
+                f.y = Math.round(e.clientY - 14);
+                clampFloatGeometry(id, f);
+                applyFloatGeometry(id);
+            }
             const sx = e.clientX;
             const sy = e.clientY;
             const ox = f.x;
             const oy = f.y;
+            let pendingSnap = null;   // ドラッグ中のスナップ候補の端
             document.body.classList.add('is-dragging-float');
             const onMove = (ev) => {
                 f.x = ox + (ev.clientX - sx);
                 f.y = oy + (ev.clientY - sy);
                 clampFloatGeometry(id, f);
                 applyFloatGeometry(id);
+                // 画面端に近づいたらスナップ先のプレビューを出す
+                pendingSnap = detectSnapEdge(ev);
+                if (pendingSnap) showSnapPreview(snapRect(id, pendingSnap, f));
+                else hideSnapPreview();
             };
             const onUp = () => {
                 window.removeEventListener('pointermove', onMove);
                 window.removeEventListener('pointerup', onUp);
                 document.body.classList.remove('is-dragging-float');
+                hideSnapPreview();
+                if (pendingSnap) applySnap(id, pendingSnap);
                 saveFloats();
             };
             window.addEventListener('pointermove', onMove);
@@ -3958,6 +4055,12 @@
                     else if (dir.includes('e')) { f.w = Math.max(def.minW, s.fw + dx); }
                     if (dir.includes('n')) { f.h = Math.max(def.minH, s.fh - dy); f.y = s.fy + (s.fh - f.h); }
                     else if (dir.includes('s')) { f.h = Math.max(def.minH, s.fh + dy); }
+                    // スナップ固定中は端に張り付いたまま、空いている方向のサイズだけ変える
+                    if (f.snap) {
+                        if (f.snap === 'left' || f.snap === 'right') f.restore = Object.assign({}, f.restore, { w: f.w });
+                        else f.restore = Object.assign({}, f.restore, { h: f.h });
+                        Object.assign(f, snapRect(id, f.snap, f));
+                    }
                     applyFloatGeometry(id);
                 };
                 const onUp = () => {
@@ -3973,11 +4076,14 @@
     }
 
     // ウィンドウ縮小時に独立ウィンドウが画面外へ出ないよう再クランプする
+    // （スナップ固定中は端に張り付いたまま追従させる）
     function reclampFloats() {
         let changed = false;
         Object.keys(FLOATABLE_PANELS).forEach((id) => {
             if (!isPanelFloating(id)) return;
-            clampFloatGeometry(id, state.floats[id]);
+            const f = state.floats[id];
+            if (f.snap) Object.assign(f, snapRect(id, f.snap, f));
+            else clampFloatGeometry(id, f);
             applyFloatGeometry(id);
             changed = true;
         });
