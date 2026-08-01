@@ -159,7 +159,7 @@ body { background: #e8e8ec; color: #1e1e24; }
 /* 解像度セレクト（非表示だが念のため） */
 .stage__res select { background: #ffffff; color: #1e1e24; border: 1px solid #cfcfd6; }
 /* プレビュー外周の余白地（本家はフラットな明るいグレー） */
-.viewer { background: #e8e8ec; }
+.viewer { background: #ffffff; }
 /* 映像の表示面の枠線 */
 .viewer__canvas { box-shadow: 0 0 0 1px #cfcfd6; }
 /* 映像未読込み時の中央メッセージ */
