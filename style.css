@@ -317,6 +317,15 @@ body {
     gap: 1px;
 }
 
+/* ツールメニューの「プレビュー」「アイテム」で隠したパネル。
+   display:none だけだと列が空いたままになるので、body のクラスを見て列構成も詰める。
+   （YMM4 テーマは body 自体がグリッドなので themes/ymm4.css 側で詰め直す） */
+.stage.is-hidden,
+.panel--props.is-hidden { display: none; }
+body.is-no-preview .layout,
+body.is-no-items .layout { grid-template-columns: 290px 1fr; }
+body.is-no-preview.is-no-items .layout { grid-template-columns: 1fr; }
+
 .panel {
     background: #f4f5f8;
     display: flex;
@@ -916,6 +925,9 @@ body.is-scrubbing { cursor: ew-resize; user-select: none; }
 /* ===== レスポンシブ ===== */
 @media (max-width: 1100px) {
     .layout { grid-template-columns: 240px 1fr 240px; }
+    body.is-no-preview .layout,
+    body.is-no-items .layout { grid-template-columns: 240px 1fr; }
+    body.is-no-preview.is-no-items .layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
     .menu-burger { display: grid; }

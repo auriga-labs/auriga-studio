@@ -10,6 +10,7 @@
     const RES_KEY = 'auriga.resolution';   // 解像度選択の保存キー
     const PLAYHEAD_KEY = 'auriga.playhead'; // 再生ヘッド位置(秒)の保存キー
     const USER_KEY = 'auriga.user';     // ログイン中ユーザー情報の保存キー
+    const PANELS_KEY = 'auriga.panels'; // ツールメニューで切り替えるパネル表示状態の保存キー
 
     // ---- OAuth（Google ログイン）----
     // Google の認可画面を新しいタブで直接開く。リダイレクト先の PHP バックエンド
@@ -65,6 +66,8 @@
         menuLayoutKey: null,   // 現在のメニュー定義（初回 applyTheme で確定）
         projectWidth: null,    // YMM4 プロジェクトの解像度（px 座標の換算基準。null=未読込）
         projectHeight: null,
+        // ツールメニューのチェックリストで切り替えるパネルの表示状態
+        panels: { preview: true, items: true },
     };
 
     // ---- トラック定義（上から） ----
@@ -143,6 +146,7 @@
     // 初期化
     // ======================================================
     async function init() {
+        restorePanelVisibility();   // パネルの表示状態を先に確定させる（メニューのチェックがこれに従う）
         applyStoredTheme();   // 保存済みテーマを最初に適用（対応するメニューバーも生成される）
         renderMedia();
         renderEffects();
@@ -2717,6 +2721,67 @@
     }
 
     // ======================================================
+    // パネルの表示/非表示（ツールメニューのチェックリスト）
+    // ======================================================
+    // ツールメニューの項目 id → 対象パネルと、空いた領域を詰めるための body クラス。
+    // 詰め方はテーマごとにレイアウトが違うので、body クラスを見て CSS 側（style.css /
+    // themes/ymm4.css）が調整する。
+    const TOGGLEABLE_PANELS = {
+        preview: { selector: '.stage',        bodyClass: 'is-no-preview', label: 'プレビュー' },
+        items:   { selector: '.panel--props', bodyClass: 'is-no-items',   label: 'アイテム' },
+    };
+
+    // 現在の表示状態を DOM（パネルと body クラス）へ反映する
+    function applyPanelVisibility() {
+        Object.keys(TOGGLEABLE_PANELS).forEach((id) => {
+            const def = TOGGLEABLE_PANELS[id];
+            const el = $(def.selector);
+            const visible = state.panels[id] !== false;
+            if (el) el.classList.toggle('is-hidden', !visible);
+            document.body.classList.toggle(def.bodyClass, !visible);
+        });
+    }
+
+    // パネルの表示/非表示を切り替える（ツールメニューのチェックから呼ぶ）
+    function setPanelVisible(id, visible) {
+        const def = TOGGLEABLE_PANELS[id];
+        if (!def) return;
+        state.panels[id] = !!visible;
+        applyPanelVisibility();
+        savePanelVisibility();
+        // プレビューを出し直したときは表示サイズが変わっているので描き直す
+        if (id === 'preview' && state.panels[id]) composite(state.playhead, false);
+        toast(`${def.label}を${state.panels[id] ? '表示' : '非表示'}にしました`);
+    }
+
+    // 表示状態をブラウザに保存する
+    function savePanelVisibility() {
+        try { localStorage.setItem(PANELS_KEY, JSON.stringify(state.panels)); } catch (e) {}
+    }
+
+    // 保存済みの表示状態を復元して反映する
+    function restorePanelVisibility() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(PANELS_KEY)) || {};
+            Object.keys(TOGGLEABLE_PANELS).forEach((id) => {
+                if (typeof saved[id] === 'boolean') state.panels[id] = saved[id];
+            });
+        } catch (e) { /* 壊れた保存値は既定値のまま無視する */ }
+        applyPanelVisibility();
+    }
+
+    // 読み込んだメニュー定義のチェック状態を、現在の表示状態に合わせる（再帰）
+    function syncPanelMenuChecks(items) {
+        (items || []).forEach((it) => {
+            if (!it) return;
+            if (it.type === 'checkbox' && TOGGLEABLE_PANELS[it.id]) {
+                it.checked = state.panels[it.id] !== false;
+            }
+            if (it.items) syncPanelMenuChecks(it.items);
+        });
+    }
+
+    // ======================================================
     // UI バインド
     // ======================================================
     function bindUI() {
@@ -3180,6 +3245,8 @@
             if (!res.ok) throw new Error('fetch failed');
             const layout = await res.json();
             state.menuLayoutKey = key;
+            // 定義ファイルの checked は初期値なので、現在のパネル表示状態で上書きする
+            syncPanelMenuChecks(layout && layout.menus);
             renderMenuBar(layout);
         } catch (e) {
             // 読み込み失敗時は最小限のフォールバックを表示
@@ -3477,6 +3544,9 @@
             case 'mode-light':      applyMode('light');  return;
             case 'mode-dark':       applyMode('dark');   return;
             case 'mode-system':     applyMode('system'); return;
+            // ---- ツールメニュー（パネルの表示/非表示） ----
+            case 'preview':
+            case 'items':           setPanelVisible(it.id, it.checked); return;
             case 'about':           showAboutModal(); return;
             case 'whats-new':       toast('新着情報（準備中）'); return;
             case 'preferences':     toast('環境設定（準備中）⚙️'); return;

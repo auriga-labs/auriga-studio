@@ -64,6 +64,20 @@ body > .panel--props { grid-area: 2 / 2 / 5 / 3; }
 /* .layout に残るのはプレビューだけ（メディアパネルは非表示、アイテムパネルは外へ出した） */
 .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
 
+/* ツールメニューの「プレビュー」「アイテム」で隠したときの詰め直し。
+   本家と同じく、隠したぶんの領域は残さず他の要素が広がる */
+/* アイテムパネルを隠したら右列ごと畳む */
+body.is-no-items { grid-template-columns: minmax(0, 1fr); }
+/* プレビューを隠したら .layout と境界バーごと畳み、タイムラインを上まで伸ばす。
+   タイムラインの高さは境界バーのドラッグでインライン指定されるため !important で外す */
+body.is-no-preview .layout,
+body.is-no-preview .tl-resizer { display: none; }
+body.is-no-preview { grid-template-rows: auto 0 0 minmax(0, 1fr) auto; }
+body.is-no-preview .timeline { height: auto !important; }
+/* .layout の列指定は body 側で詰めるので、共通スタイルの上書きを打ち消す */
+body.is-no-preview .layout,
+body.is-no-items .layout { grid-template-columns: minmax(0, 1fr); }
+
 
 /* ===== メニューバー（本家の細いメニュー帯に合わせる） ===== */
 
