@@ -922,6 +922,53 @@ body.is-scrubbing { cursor: ew-resize; user-select: none; }
 /* パネル内の .appmenu は fixed にせず、パネルに沿わせる（縦線 ::before の基準にもなる） */
 .mobile-panel .appmenu { position: relative; }
 
+/* ===== フローティングパネル（プレビュー / アイテム / タイムラインの独立ウィンドウ化） ===== */
+/* ヘッダー右端の「独立 / 戻す」切り替えボタン */
+.float-btn {
+    flex: none;
+    width: 24px; height: 22px; max-height: 100%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: none; border: none; border-radius: 4px;
+    color: #5a6373; cursor: pointer; font-size: 13px;
+    transition: background-color .15s, color .15s;
+}
+.float-btn:hover { background: #e3e6ec; color: #1c2330; }
+/* ボタンをヘッダー右端へ寄せるための調整（既存の並びは崩さない） */
+.stage__head { gap: 8px; }
+.stage__label { flex: 1 1 auto; }
+.panel__head { display: flex; align-items: center; }
+.panel__tabs { flex: 1 1 auto; }
+
+/* 独立ウィンドウ本体。位置・サイズは JS がインラインスタイルで与える */
+.is-floating {
+    position: fixed !important;
+    z-index: 300;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid #ccd2dc;
+    box-shadow: 0 24px 70px rgba(15, 20, 30, .35);
+}
+/* 独立中はヘッダーがドラッグの持ち手になる */
+.stage.is-floating .stage__head,
+.panel.is-floating .panel__head,
+.timeline.is-floating .timeline__toolbar { cursor: move; }
+/* ドラッグ・リサイズ中はテキスト選択を抑止する */
+body.is-dragging-float { user-select: none; }
+/* タイムラインが独立中は境界バーを畳む */
+body.is-tl-floating .tl-resizer { display: none; }
+
+/* リサイズ用のつかみしろ（8方向）。独立中だけ表示する（見た目は透明） */
+.float-grip { position: absolute; display: none; z-index: 40; }
+.is-floating > .float-grip { display: block; }
+.float-grip--n  { top: 0; left: 10px; right: 10px; height: 6px; cursor: ns-resize; }
+.float-grip--s  { bottom: 0; left: 10px; right: 10px; height: 6px; cursor: ns-resize; }
+.float-grip--e  { right: 0; top: 10px; bottom: 10px; width: 6px; cursor: ew-resize; }
+.float-grip--w  { left: 0; top: 10px; bottom: 10px; width: 6px; cursor: ew-resize; }
+.float-grip--nw { top: 0; left: 0; width: 12px; height: 12px; cursor: nwse-resize; }
+.float-grip--ne { top: 0; right: 0; width: 12px; height: 12px; cursor: nesw-resize; }
+.float-grip--sw { bottom: 0; left: 0; width: 12px; height: 12px; cursor: nesw-resize; }
+.float-grip--se { bottom: 0; right: 0; width: 12px; height: 12px; cursor: nwse-resize; }
+
 /* ===== レスポンシブ ===== */
 @media (max-width: 1100px) {
     .layout { grid-template-columns: 240px 1fr 240px; }

@@ -11,6 +11,7 @@
     const PLAYHEAD_KEY = 'auriga.playhead'; // 再生ヘッド位置(秒)の保存キー
     const USER_KEY = 'auriga.user';     // ログイン中ユーザー情報の保存キー
     const PANELS_KEY = 'auriga.panels'; // ツールメニューで切り替えるパネル表示状態の保存キー
+    const FLOATS_KEY = 'auriga.floats'; // 独立ウィンドウ化したパネルの状態（位置・サイズ）の保存キー
 
     // ---- OAuth（Google ログイン）----
     // Google の認可画面を新しいタブで直接開く。リダイレクト先の PHP バックエンド
@@ -68,6 +69,8 @@
         projectHeight: null,
         // ツールメニューのチェックリストで切り替えるパネルの表示状態
         panels: { preview: true, items: true },
+        // 独立ウィンドウ化（フローティング）したパネルの状態。{ on, x, y, w, h } を持つ
+        floats: { preview: null, items: null, timeline: null },
     };
 
     // ---- トラック定義（上から） ----
@@ -2738,7 +2741,8 @@
             const el = $(def.selector);
             const visible = state.panels[id] !== false;
             if (el) el.classList.toggle('is-hidden', !visible);
-            document.body.classList.toggle(def.bodyClass, !visible);
+            // 非表示のときだけでなく、独立ウィンドウ中もドックの空きを詰める
+            document.body.classList.toggle(def.bodyClass, !visible || isPanelFloating(id));
         });
     }
 
@@ -2792,6 +2796,7 @@
         bindAccountMenu();   // アカウント情報ポップオーバーの開閉
         bindMobileMenu();   // スマホ幅でヘッダー操作をネストする
         bindTimelineResizer();   // タイムラインの高さをドラッグで調整
+        bindFloatingPanels();   // プレビュー / アイテム / タイムラインの独立ウィンドウ化
 
         // ファイルがトラック外に落ちてもブラウザがファイルを開かないようにする
         ['dragover', 'drop'].forEach((evt) => {
@@ -3691,8 +3696,10 @@
 
     // 高さを範囲内に収めてタイムラインへ適用する
     function setTimelineHeight(h) {
-        const clamped = Math.min(timelineMaxHeight(), Math.max(TL_MIN_HEIGHT, Math.round(h)));
         const timeline = $('.timeline');
+        // 独立ウィンドウ中の高さはフローティング側で管理する（ドック用のクランプはかけない）
+        if (timeline && timeline.classList.contains('is-floating')) return h;
+        const clamped = Math.min(timelineMaxHeight(), Math.max(TL_MIN_HEIGHT, Math.round(h)));
         if (timeline) timeline.style.height = clamped + 'px';
         return clamped;
     }
@@ -3738,6 +3745,261 @@
         window.addEventListener('resize', () => {
             if (timeline.style.height) setTimelineHeight(parseInt(timeline.style.height, 10));
         });
+    }
+
+    // ======================================================
+    // フローティングパネル（プレビュー / アイテム / タイムラインの独立ウィンドウ化）
+    // ======================================================
+    // ヘッダー右端のボタン（またはヘッダーのダブルクリック）でパネルをドックから
+    // 切り離し、自由に移動・リサイズできる独立ウィンドウにする。
+    // ドックの空きスペースは applyPanelVisibility が body クラスで詰める。
+    // 位置・サイズは localStorage に保存して次回起動時に復元する。
+    const FLOATABLE_PANELS = {
+        preview:  { selector: '.stage',        handle: '.stage__head',       label: 'プレビュー',   minW: 320, minH: 220 },
+        items:    { selector: '.panel--props', handle: '.panel__head',       label: 'アイテム',     minW: 260, minH: 220 },
+        timeline: { selector: '.timeline',     handle: '.timeline__toolbar', label: 'タイムライン', minW: 480, minH: 180 },
+    };
+    const GRIP_DIRS = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];   // リサイズつかみしろの方向
+    let floatZ = 300;   // 最前面管理用の z-index カウンター（メニュー層の 900 より下に収める）
+
+    // 指定パネルが独立ウィンドウ中か
+    function isPanelFloating(id) {
+        const f = state.floats[id];
+        return !!(f && f.on);
+    }
+
+    // 独立ウィンドウの初期位置・サイズを決める（保存値がないときだけ）
+    function ensureFloatGeometry(id) {
+        const f = state.floats[id];
+        if (f && Number.isFinite(f.x) && Number.isFinite(f.w)) return;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        let g;
+        if (id === 'preview') {
+            const w = Math.max(FLOATABLE_PANELS.preview.minW, Math.min(760, Math.round(vw * 0.55)));
+            g = { w, h: Math.round(w * 0.75), x: Math.round((vw - w) / 2), y: 70 };
+        } else if (id === 'items') {
+            const w = 340;
+            g = { w, h: Math.max(FLOATABLE_PANELS.items.minH, Math.min(620, vh - 140)), x: Math.max(8, vw - w - 40), y: 80 };
+        } else {
+            const w = Math.max(FLOATABLE_PANELS.timeline.minW, Math.round(vw * 0.72));
+            const h = 300;
+            g = { w, h, x: Math.round((vw - w) / 2), y: Math.max(8, vh - h - 60) };
+        }
+        state.floats[id] = Object.assign({}, f, g);
+    }
+
+    // 位置・サイズを画面内に収める（つかめる部分が必ず画面に残るようにする）
+    function clampFloatGeometry(id, f) {
+        const def = FLOATABLE_PANELS[id];
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        f.w = Math.max(def.minW, Math.min(f.w, vw));
+        f.h = Math.max(def.minH, Math.min(f.h, vh));
+        f.x = Math.min(Math.max(f.x, 90 - f.w), vw - 90);
+        f.y = Math.min(Math.max(f.y, 0), vh - 50);
+    }
+
+    // 保存中の位置・サイズをパネルのインラインスタイルへ反映する
+    function applyFloatGeometry(id) {
+        const el = $(FLOATABLE_PANELS[id].selector);
+        const f = state.floats[id];
+        if (!el || !f) return;
+        el.style.left = f.x + 'px';
+        el.style.top = f.y + 'px';
+        el.style.width = f.w + 'px';
+        el.style.height = f.h + 'px';
+    }
+
+    // パネルを最前面に出す（カウンターを使い切ったら振り直す）
+    function raiseFloat(el) {
+        if (floatZ > 850) {
+            floatZ = 300;
+            $$('.is-floating').forEach((p) => { p.style.zIndex = ++floatZ; });
+        }
+        el.style.zIndex = ++floatZ;
+    }
+
+    // フローティング状態を DOM へ反映する
+    function applyFloating(id) {
+        const def = FLOATABLE_PANELS[id];
+        const el = $(def.selector);
+        if (!el) return;
+        const on = isPanelFloating(id);
+        el.classList.toggle('is-floating', on);
+        if (on) {
+            ensureFloatGeometry(id);
+            applyFloatGeometry(id);
+            raiseFloat(el);
+        } else {
+            el.style.left = el.style.top = el.style.width = el.style.height = el.style.zIndex = '';
+            // タイムラインはドック時の高さ（リサイザーで保存した値）へ戻す
+            if (id === 'timeline') {
+                const stored = parseInt(localStorage.getItem(TL_HEIGHT_KEY), 10);
+                if (Number.isFinite(stored)) setTimelineHeight(stored);
+            }
+        }
+        // タイムラインが独立中は境界バー（tl-resizer）を畳む
+        if (id === 'timeline') document.body.classList.toggle('is-tl-floating', on);
+        applyPanelVisibility();   // ドックの空きを詰める body クラスを同期する
+        updateFloatButtons();
+    }
+
+    // パネルの独立ウィンドウ化を切り替える（ヘッダーのボタンから呼ぶ）
+    function setPanelFloating(id, on) {
+        const def = FLOATABLE_PANELS[id];
+        if (!def) return;
+        if (!state.floats[id]) state.floats[id] = {};
+        state.floats[id].on = !!on;
+        applyFloating(id);
+        saveFloats();
+        // プレビューは表示領域が変わるので描き直す
+        if (id === 'preview') composite(state.playhead, false);
+        toast(on ? `${def.label}を独立ウィンドウにしました` : `${def.label}を元の位置に戻しました`);
+    }
+
+    // フローティング状態をブラウザに保存する
+    function saveFloats() {
+        try { localStorage.setItem(FLOATS_KEY, JSON.stringify(state.floats)); } catch (e) {}
+    }
+
+    // 保存済みのフローティング状態を復元して反映する
+    function restoreFloatingPanels() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(FLOATS_KEY)) || {};
+            Object.keys(FLOATABLE_PANELS).forEach((id) => {
+                if (saved[id] && typeof saved[id] === 'object') state.floats[id] = saved[id];
+            });
+        } catch (e) { /* 壊れた保存値は既定値のまま無視する */ }
+        Object.keys(FLOATABLE_PANELS).forEach((id) => {
+            if (isPanelFloating(id)) clampFloatGeometry(id, state.floats[id]);
+            applyFloating(id);
+        });
+    }
+
+    // ヘッダー右端に「独立/戻す」切り替えボタンを差し込む
+    function makeFloatButton(id, def, el) {
+        const host = el.querySelector(def.handle);
+        if (!host || host.querySelector('.float-btn')) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'float-btn';
+        btn.dataset.float = id;
+        btn.addEventListener('click', () => setPanelFloating(id, !isPanelFloating(id)));
+        host.appendChild(btn);
+    }
+
+    // 全ボタンのアイコンとツールチップを現在の状態に合わせる
+    function updateFloatButtons() {
+        $$('.float-btn').forEach((btn) => {
+            const on = isPanelFloating(btn.dataset.float);
+            btn.innerHTML = on
+                ? '<i class="ti ti-arrows-diagonal-minimize-2"></i>'
+                : '<i class="ti ti-external-link"></i>';
+            btn.title = on ? '元の位置に戻す' : '独立ウィンドウにする';
+        });
+    }
+
+    // ヘッダーのドラッグで独立ウィンドウを移動する
+    function bindFloatDrag(id, def, el) {
+        const handle = el.querySelector(def.handle);
+        if (!handle) return;
+        handle.addEventListener('pointerdown', (e) => {
+            if (!isPanelFloating(id) || e.button !== 0) return;
+            // ヘッダー内の操作部品（ボタン・セレクトなど）はドラッグにしない
+            if (e.target.closest('button, select, input, textarea, .ptab')) return;
+            e.preventDefault();
+            const f = state.floats[id];
+            const sx = e.clientX;
+            const sy = e.clientY;
+            const ox = f.x;
+            const oy = f.y;
+            document.body.classList.add('is-dragging-float');
+            const onMove = (ev) => {
+                f.x = ox + (ev.clientX - sx);
+                f.y = oy + (ev.clientY - sy);
+                clampFloatGeometry(id, f);
+                applyFloatGeometry(id);
+            };
+            const onUp = () => {
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+                document.body.classList.remove('is-dragging-float');
+                saveFloats();
+            };
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+        });
+        // ヘッダーのダブルクリックでも独立/戻すを切り替えられるようにする
+        handle.addEventListener('dblclick', (e) => {
+            if (e.target.closest('button, select, input, textarea, .ptab')) return;
+            setPanelFloating(id, !isPanelFloating(id));
+        });
+    }
+
+    // 8方向のつかみしろを差し込み、ドラッグでリサイズできるようにする
+    function bindFloatResize(id, def, el) {
+        GRIP_DIRS.forEach((dir) => {
+            const grip = document.createElement('div');
+            grip.className = `float-grip float-grip--${dir}`;
+            el.appendChild(grip);
+            grip.addEventListener('pointerdown', (e) => {
+                if (!isPanelFloating(id) || e.button !== 0) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const f = state.floats[id];
+                const s = { x: e.clientX, y: e.clientY, fx: f.x, fy: f.y, fw: f.w, fh: f.h };
+                document.body.classList.add('is-dragging-float');
+                const onMove = (ev) => {
+                    const dx = ev.clientX - s.x;
+                    const dy = ev.clientY - s.y;
+                    // 西・北方向は最小サイズで止まるよう、確定した幅・高さから位置を逆算する
+                    if (dir.includes('w')) { f.w = Math.max(def.minW, s.fw - dx); f.x = s.fx + (s.fw - f.w); }
+                    else if (dir.includes('e')) { f.w = Math.max(def.minW, s.fw + dx); }
+                    if (dir.includes('n')) { f.h = Math.max(def.minH, s.fh - dy); f.y = s.fy + (s.fh - f.h); }
+                    else if (dir.includes('s')) { f.h = Math.max(def.minH, s.fh + dy); }
+                    applyFloatGeometry(id);
+                };
+                const onUp = () => {
+                    window.removeEventListener('pointermove', onMove);
+                    window.removeEventListener('pointerup', onUp);
+                    document.body.classList.remove('is-dragging-float');
+                    saveFloats();
+                };
+                window.addEventListener('pointermove', onMove);
+                window.addEventListener('pointerup', onUp);
+            });
+        });
+    }
+
+    // ウィンドウ縮小時に独立ウィンドウが画面外へ出ないよう再クランプする
+    function reclampFloats() {
+        let changed = false;
+        Object.keys(FLOATABLE_PANELS).forEach((id) => {
+            if (!isPanelFloating(id)) return;
+            clampFloatGeometry(id, state.floats[id]);
+            applyFloatGeometry(id);
+            changed = true;
+        });
+        if (changed) saveFloats();
+    }
+
+    // フローティングパネル一式の初期化（bindUI から呼ぶ）
+    function bindFloatingPanels() {
+        Object.keys(FLOATABLE_PANELS).forEach((id) => {
+            const def = FLOATABLE_PANELS[id];
+            const el = $(def.selector);
+            if (!el) return;
+            makeFloatButton(id, def, el);
+            bindFloatDrag(id, def, el);
+            bindFloatResize(id, def, el);
+            // どこかをつかんだら最前面へ出す
+            el.addEventListener('pointerdown', () => {
+                if (isPanelFloating(id)) raiseFloat(el);
+            }, true);
+        });
+        window.addEventListener('resize', reclampFloats);
+        restoreFloatingPanels();
     }
 
     // ======================================================

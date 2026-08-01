@@ -69,11 +69,13 @@ body > .panel--props { grid-area: 2 / 2 / 5 / 3; }
 /* アイテムパネルを隠したら右列ごと畳む */
 body.is-no-items { grid-template-columns: minmax(0, 1fr); }
 /* プレビューを隠したら .layout と境界バーごと畳み、タイムラインを上まで伸ばす。
-   タイムラインの高さは境界バーのドラッグでインライン指定されるため !important で外す */
-body.is-no-preview .layout,
+   タイムラインの高さは境界バーのドラッグでインライン指定されるため !important で外す。
+   ただしプレビューが独立ウィンドウ中は .layout の中に居続けるため、
+   :has() で除外して巻き添えに消さない（タイムラインの高さも独立側の指定を優先する） */
+body.is-no-preview .layout:not(:has(> .stage.is-floating)),
 body.is-no-preview .tl-resizer { display: none; }
 body.is-no-preview { grid-template-rows: auto 0 0 minmax(0, 1fr) auto; }
-body.is-no-preview .timeline { height: auto !important; }
+body.is-no-preview .timeline:not(.is-floating) { height: auto !important; }
 /* .layout の列指定は body 側で詰めるので、共通スタイルの上書きを打ち消す */
 body.is-no-preview .layout,
 body.is-no-items .layout { grid-template-columns: minmax(0, 1fr); }
