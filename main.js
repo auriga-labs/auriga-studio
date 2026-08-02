@@ -2647,6 +2647,13 @@
                 if (next != null) seek(next);
             },
         },
+        // タイムライン操作の窓口（YMM4 テーマのタイムラインツールバーが使う）
+        timeline: {
+            // 素材を持たない種別（テキストなど）を既定レイヤーの再生ヘッド位置へ追加する
+            addItem(type, name, dur) {
+                addClip(type, name, DEFAULT_TRACK, state.playhead, dur || 3);
+            },
+        },
     };
 
     // テーマ JS からの登録窓口（テーマ JS は main.js より後に読み込まれる）

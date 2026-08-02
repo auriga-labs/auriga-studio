@@ -321,15 +321,6 @@ input[type="range"]::-webkit-slider-thumb { width: 11px; height: 11px; }
 
 /* ===== タイムライン ===== */
 
-/* タイムライン上端の「メイン」タブ（本家のシーンタブの再現・装飾） */
-.timeline::before {
-  content: "メイン";
-  flex: none; align-self: flex-start;
-  margin: 4px 0 0 6px; padding: 3px 16px 4px;
-  font-size: 11px; line-height: 1;
-  border-radius: 3px 3px 0 0;
-}
-
 /* ツールバーは細く、ズームを本家同様に左端へ */
 .timeline__toolbar { height: 30px; gap: 10px; padding: 0 8px; }
 .tl-zoom { order: -1; margin-left: 0; gap: 6px; font-size: 11px; }
@@ -339,6 +330,58 @@ input[type="range"]::-webkit-slider-thumb { width: 11px; height: 11px; }
 .tl-actions { gap: 2px; }
 /* 分割・削除などは本家ツールバー同様の枠なしフラットボタンにする */
 .tl-actions .btn { padding: 3px 8px; font-size: 11px; border: none; border-radius: 3px; background: transparent; }
+
+/* ---- YMM4 風タイムラインツールバー（ymm4.js が本家の構成へ組み替える） ---- */
+
+/* 既存のツール・アクション・ズーム欄は新しい帯へ移し替えるため隠す */
+body.theme-js--ymm4 .tl-tools,
+body.theme-js--ymm4 .tl-actions,
+body.theme-js--ymm4 .tl-zoom { display: none; }
+
+/* タイムライン上端のシーンタブ帯（メイン ＋ ▼） */
+.ymm4-tltabs { flex: none; display: flex; align-items: center; gap: 2px; margin: 4px 6px 0; }
+.ymm4-tltab {
+  flex: none; padding: 3px 16px 4px;
+  font: inherit; font-size: 11px; line-height: 1;
+  border-radius: 3px 3px 0 0; cursor: pointer;
+}
+
+/* ツールバー全体。収まらない幅では右端からはみ出た分を隠す */
+.ymm4-tltb { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 3px; overflow: hidden; }
+.ymm4-tlgroup { flex: none; display: flex; align-items: center; gap: 1px; }
+
+/* グループ間の区切り（WPF ツールバー風の点線グリップ） */
+.ymm4-tlsep { flex: none; width: 0; height: 16px; margin: 0 4px; border-left: 2px dotted; }
+
+/* 枠なしのフラットなアイコンボタン */
+.ymm4-tlbtn {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 22px; padding: 0;
+  border: none; border-radius: 2px; background: transparent; cursor: pointer;
+}
+.ymm4-tlbtn .ti { font-size: 14px; }
+/* タブ横の＋やズームの▼などの小さめボタン */
+.ymm4-tlbtn--mini { width: 16px; height: 18px; }
+.ymm4-tlbtn--mini .ti { font-size: 10px; }
+/* 移設した選択・カット・ハンドツールも他のボタンと同じ寸法に揃える */
+.ymm4-tltb .tl-tool { width: 24px; height: 22px; border-radius: 2px; }
+.ymm4-tltb .tl-tool .ti { font-size: 14px; }
+
+/* ズーム（虫眼鏡・倍率・スライダー・▼） */
+.ymm4-tlz { flex: none; display: flex; align-items: center; gap: 4px; font-size: 11px; }
+.ymm4-tlz > .ti { font-size: 13px; }
+.ymm4-tlz__num { min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+.ymm4-tlz input[type="range"] { width: 90px; }
+
+/* フィードバック送信（右端のラベル付きボタン） */
+.ymm4-tlfeedback {
+  flex: none; margin-left: auto;
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 22px; padding: 0 8px;
+  font: inherit; font-size: 11px; white-space: nowrap;
+  border: none; border-radius: 2px; background: transparent; cursor: pointer;
+}
+.ymm4-tlfeedback .ti { font-size: 13px; }
 
 /* レイヤー欄は本家の細い行（名前だけ）に合わせる */
 .track-headers { width: 118px; }

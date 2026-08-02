@@ -17,6 +17,9 @@
   let volumeInputHandler = null;   // 音量スライダーの % 表示更新
   let savedPrevIcon = null;        // 差し替えたフレーム送りアイコンの復元用
   let savedNextIcon = null;
+  // タイムラインツールバー関連の後始末用
+  let tlZoomHandler = null;        // ズーム倍率表示（100.0 など）の更新
+  let savedToolIcons = null;       // 差し替えたツールボタン（⤧✂✋）の絵文字の復元用
 
   // ---------------------------------------------------------
   // 下部ステータスバー
@@ -192,6 +195,190 @@
     const durMs = Math.round(ctx.transport.duration() * 1000);
     if (Number(seek.max) !== durMs) seek.max = String(durMs);
     seek.value = String(Math.round(ctx.transport.playhead() * 1000));
+  }
+
+  // ---------------------------------------------------------
+  // タイムライン（本家 YMM4 のシーンタブとツールバー帯）
+  // ---------------------------------------------------------
+  // タイムライン上部を本家の構成へ組み替える。
+  //   ・上端：シーンタブ（メイン ＋ ▼）
+  //   ・ツールバー：ズーム | アイテム追加 | 元に戻す/やり直し | 編集 |
+  //     既存ツール（選択・カット・ハンド） | アイテム間移動 | ファイル | スクショ | フィードバック
+  // 実処理がある操作（分割・削除・ズームなど）は既存のボタンへ委譲し、
+  // 本家にしかない機能は未実装トーストのボタン（スタブ）として並べる。
+
+  // フラットなアイコンボタンを 1 つ作る
+  function tlButton(title, icon, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ymm4-tlbtn';
+    b.title = title;
+    b.innerHTML = `<i class="ti ti-${icon}"></i>`;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  // まだ実体のない機能のボタン（押すと未実装トーストを出す）
+  function tlStub(ctx, label, icon) {
+    return tlButton(label, icon, () => ctx.toast(`${label}（未実装）`));
+  }
+
+  // ボタンをひとまとまりにするグループ
+  function tlGroup(...children) {
+    const g = document.createElement('div');
+    g.className = 'ymm4-tlgroup';
+    g.append(...children);
+    return g;
+  }
+
+  // グループ間の区切り（WPF ツールバー風の点線グリップ）
+  function tlSep() {
+    const s = document.createElement('span');
+    s.className = 'ymm4-tlsep';
+    return s;
+  }
+
+  // シーンタブ帯（メイン ＋ ▼）を .timeline の先頭に挿す
+  function buildTimelineTabs(ctx) {
+    const tl = ctx.$('.timeline');
+    if (!tl || tl.querySelector('.ymm4-tltabs')) return;   // 再適用では作り直さない
+
+    const tabs = document.createElement('div');
+    tabs.className = 'ymm4-tltabs';
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'ymm4-tltab is-active';
+    tab.textContent = 'メイン';
+    const add = tlButton('タイムラインを追加', 'plus', () => ctx.toast('タイムラインの追加（未実装）'));
+    const menu = tlButton('タイムライン一覧', 'caret-down', () => ctx.toast('タイムライン一覧（未実装）'));
+    add.classList.add('ymm4-tlbtn--mini');
+    menu.classList.add('ymm4-tlbtn--mini');
+    tabs.append(tab, add, menu);
+    tl.insertBefore(tabs, tl.firstChild);
+  }
+
+  // ツールバー帯を組み立てて .timeline__toolbar へ足す
+  function buildTimelineToolbar(ctx) {
+    const bar = ctx.$('.timeline__toolbar');
+    if (!bar || bar.querySelector('.ymm4-tltb')) return;   // 再適用では作り直さない
+
+    const wrap = document.createElement('div');
+    wrap.className = 'ymm4-tltb';
+
+    // --- ズーム：虫眼鏡・倍率表示・既存スライダー（移設）・▼ ---
+    const zoom = ctx.$('#zoom');
+    const zBox = document.createElement('div');
+    zBox.className = 'ymm4-tlz';
+    zBox.innerHTML = '<i class="ti ti-zoom-in"></i>';
+    const zNum = document.createElement('span');
+    zNum.className = 'ymm4-tlz__num';
+    tlZoomHandler = () => { zNum.textContent = Number(zoom.value).toFixed(1); };
+    zoom.addEventListener('input', tlZoomHandler);
+    tlZoomHandler();   // 初期値（現在のズーム）を表示する
+    const zCaret = tlButton('ズームプリセット', 'caret-down', () => ctx.toast('ズームプリセット（未実装）'));
+    zCaret.classList.add('ymm4-tlbtn--mini');
+    zBox.append(zNum, zoom, zCaret);
+
+    // --- アイテム追加：テキストは実際に追加、動画・音声・画像はファイル選択を開く ---
+    const openPicker = () => ctx.$('#fileInput').click();
+    const gAdd = tlGroup(
+      tlStub(ctx, 'ボイスアイテム', 'message-circle'),
+      tlButton('テキストアイテム', 'letter-t', () => ctx.timeline.addItem('text', 'テキスト', 3)),
+      tlButton('動画アイテム（ファイルを選択）', 'video', openPicker),
+      tlButton('音声アイテム（ファイルを選択）', 'music', openPicker),
+      tlButton('画像アイテム（ファイルを選択）', 'photo', openPicker),
+      tlStub(ctx, '図形アイテム', 'triangle-square-circle'),
+      tlStub(ctx, '立ち絵アイテム', 'user'),
+      tlStub(ctx, '表情アイテム', 'mood-smile'),
+      tlStub(ctx, '画面効果アイテム', 'sparkles'),
+      tlStub(ctx, '画面パーツアイテム', 'layout-grid'),
+      tlStub(ctx, 'テンプレートアイテム', 'template'),
+      tlStub(ctx, 'エフェクトアイテム', 'wand')
+    );
+
+    // --- 元に戻す・やり直し（既存ボタンへ委譲） ---
+    const gUndo = tlGroup(
+      tlButton('元に戻す', 'arrow-back-up', () => ctx.$('#btnUndo').click()),
+      tlButton('やり直し', 'arrow-forward-up', () => ctx.$('#btnRedo').click())
+    );
+
+    // --- 編集：分割・削除は既存ボタンへ委譲 ---
+    const gEdit = tlGroup(
+      tlButton('再生位置で分割', 'scissors', () => ctx.$('#btnSplit').click()),
+      tlStub(ctx, 'コピー', 'copy'),
+      tlStub(ctx, '貼り付け', 'clipboard'),
+      tlButton('削除', 'trash', () => ctx.$('#btnDelete').click()),
+      tlStub(ctx, 'ロック', 'lock'),
+      tlStub(ctx, 'グリッド設定', 'grid-dots')
+    );
+
+    // --- 既存の選択・カット・ハンドツール（main.js のリスナーを保ったまま移す） ---
+    // 絵文字グリフ（⤧✂✋）は他のボタンと揃うアイコンへ差し替える（cleanup で戻す）
+    const TOOL_ICONS = { select: 'pointer', cut: 'cut', hand: 'hand-stop' };
+    savedToolIcons = {};
+    ctx.$$('.tl-tool').forEach((b) => {
+      savedToolIcons[b.dataset.tool] = b.innerHTML;
+      if (TOOL_ICONS[b.dataset.tool]) b.innerHTML = `<i class="ti ti-${TOOL_ICONS[b.dataset.tool]}"></i>`;
+    });
+    const gTools = tlGroup(...ctx.$$('.tl-tool'));
+
+    // --- 前後のアイテム境界へ移動 ---
+    const gJump = tlGroup(
+      tlButton('前のアイテムへ移動', 'arrow-bar-to-left', () => ctx.transport.prevItem()),
+      tlButton('次のアイテムへ移動', 'arrow-bar-to-right', () => ctx.transport.nextItem())
+    );
+
+    // --- ファイル操作・設定 ---
+    const gFile = tlGroup(
+      tlButton('ファイルを開く', 'folder-open', openPicker),
+      tlStub(ctx, 'プロジェクトを保存', 'device-floppy'),
+      tlStub(ctx, '設定', 'adjustments')
+    );
+
+    // --- スクリーンショット ---
+    const gShot = tlGroup(
+      tlStub(ctx, 'スクリーンショット', 'camera'),
+      tlStub(ctx, '画面の複製', 'screenshot')
+    );
+
+    // --- フィードバック送信（右端のラベル付きボタン） ---
+    const feedback = document.createElement('button');
+    feedback.type = 'button';
+    feedback.className = 'ymm4-tlfeedback';
+    feedback.innerHTML = '<i class="ti ti-message-report"></i>フィードバックを送信';
+    feedback.addEventListener('click', () => ctx.toast('フィードバックを送信（デモ）'));
+
+    wrap.append(
+      zBox, tlSep(), gAdd, tlSep(), gUndo, tlSep(), gEdit, tlSep(),
+      gTools, tlSep(), gJump, tlSep(), gFile, tlSep(), gShot, feedback
+    );
+    bar.appendChild(wrap);
+  }
+
+  // タイムライン上部を既定の構成へ戻す（他テーマへの切替時）
+  function restoreTimelineToolbar(ctx) {
+    const bar = ctx.$('.timeline__toolbar');
+    const wrap = bar && bar.querySelector('.ymm4-tltb');
+    if (wrap) {
+      // ズームスライダーの購読を外して元の位置へ戻す
+      const zoom = ctx.$('#zoom');
+      if (zoom && tlZoomHandler) zoom.removeEventListener('input', tlZoomHandler);
+      tlZoomHandler = null;
+      const zHome = bar.querySelector('.tl-zoom');
+      if (zHome && zoom) zHome.appendChild(zoom);
+      // 移設したツールボタンをアイコンごと元へ戻す
+      const tHome = bar.querySelector('.tl-tools');
+      wrap.querySelectorAll('.tl-tool').forEach((b) => {
+        if (savedToolIcons && savedToolIcons[b.dataset.tool] != null) b.innerHTML = savedToolIcons[b.dataset.tool];
+        if (tHome) tHome.appendChild(b);
+      });
+      savedToolIcons = null;
+      // 新設した部品ごと帯を取り除く
+      wrap.remove();
+    }
+    // シーンタブ帯も取り除く
+    const tabs = document.querySelector('.ymm4-tltabs');
+    if (tabs) tabs.remove();
   }
 
   // ---------------------------------------------------------
@@ -506,6 +693,10 @@ Season2</textarea>
       // 再生コントロールを本家の帯（停止・速度・シークバーつき）へ組み替える
       buildTransport(ctx);
 
+      // タイムライン上部を本家の構成（シーンタブ＋アイテム追加・編集ツールバー）へ組み替える
+      buildTimelineTabs(ctx);
+      buildTimelineToolbar(ctx);
+
       // 下部ステータスバー（本家はここに現在時刻・プロジェクト情報を表示する）
       if (!document.querySelector('.ymm4-statusbar')) {
         const bar = document.createElement('footer');
@@ -550,6 +741,8 @@ Season2</textarea>
       reattachPropsPanel(ctx);
       // 再生コントロールを既定の構成へ戻す
       restoreTransport(ctx);
+      // タイムライン上部（シーンタブ・ツールバー）を既定の構成へ戻す
+      restoreTimelineToolbar(ctx);
       // ステータスバーと監視を取り除く
       if (timeObserver) { timeObserver.disconnect(); timeObserver = null; }
       const res = ctx.$('#resSelect');

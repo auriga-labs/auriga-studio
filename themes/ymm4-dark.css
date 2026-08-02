@@ -266,11 +266,18 @@ input[type="range"]::-webkit-slider-thumb { background: #c9c9cf; border: 1px sol
 
 /* タイムライン全体の背景 */
 .timeline { background: #2e2e33; }
-/* タイムライン上端の「メイン」タブ（装飾） */
-.timeline::before {
+/* タイムライン上端のシーンタブ（メイン ＋ ▼） */
+.ymm4-tltab {
   background: #3a3a41; color: #f0f0f2;
   border: 1px solid #47474d; border-bottom: none;
 }
+/* タイムラインツールバーのボタン・区切り線・ズーム欄 */
+.ymm4-tlbtn { color: #c9c9cf; }
+.ymm4-tlbtn:hover { color: #f0f0f2; background: #47474f; }
+.ymm4-tlsep { color: #4a4a52; }
+.ymm4-tlz { color: #c9c9cf; }
+.ymm4-tlfeedback { color: #c9c9cf; }
+.ymm4-tlfeedback:hover { color: #f0f0f2; background: #47474f; }
 /* タイムライン上部ツールバーの下線 */
 .timeline__toolbar { border-bottom: 1px solid #3f3f46; }
 /* 選択/カット/ハンドのツールボタン */
