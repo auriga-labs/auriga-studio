@@ -722,10 +722,11 @@ Season2</textarea>
   }
 
   // エクスパンダー（丸囲みシェブロンの見出し + 折りたたみ本文）を 1 つ組む。
-  // mode を渡したグループは該当する出力モードのときだけ表示される
-  function exGroup(title, body, mode) {
+  // mode を渡したグループは該当する出力モードのときだけ表示され、
+  // closed=true のグループは折りたたんだ状態で開始する
+  function exGroup(title, body, mode, closed) {
     return `
-      <section class="ymm4-ex__group"${mode ? ` data-exmode="${mode}"` : ''}>
+      <section class="ymm4-ex__group${closed ? ' is-closed' : ''}"${mode ? ` data-exmode="${mode}"` : ''}>
         <button class="ymm4-ex__head" type="button"><span class="ymm4-ex__chev"></span>${title}</button>
         <div class="ymm4-ex__grp">${body}</div>
       </section>`;
@@ -843,6 +844,7 @@ Season2</textarea>
         <span class="ymm4-ex__unit">kbps</span>`)}
       ${exRow('音声ビットレート', exSelect('', ['96 kbps', '128 kbps', '160 kbps', '192 kbps', '256 kbps', '320 kbps'], '192 kbps'))}
     `, 'mf');
+    // 詳細設定は折りたたんだ状態で開始する
     const mfDetailGroup = exGroup('詳細設定', `
       <div class="ymm4-ex__cols">
         ${exCellSelect('H.264 プロファイル', ['デフォルト（High）', 'Baseline', 'Main', 'High'], 'デフォルト（High）')}
@@ -859,7 +861,7 @@ Season2</textarea>
         ${exCellToggle('CABAC', true)}
         ${exCellToggle('ノイズ対策', true)}
       </div>
-    `, 'mf');
+    `, 'mf', true);
 
     // --- エンコード設定（連番PNG + WAV出力） ---
     const pngGroup = exGroup('エンコード設定', `
@@ -900,7 +902,7 @@ Season2</textarea>
         <input type="number" class="ymm4-text ymm4-ex__frame" data-exval="end" value="1" min="0">
         <button class="ymm4-mini" type="button" data-ex="range-end" title="現在のフレームを終了位置にする">..]</button>`)}
       ${exRow('動画の長さ', '<span class="ymm4-ex__val" data-exval="len">00:00:00.0000000</span>')}
-    `);
+    `, null, true);
 
     // --- 音量調整 / 音割れ対策（全モード共通） ---
     const compGroup = exGroup('音量調整 / 音割れ対策（コンプレッサー）', `
@@ -913,7 +915,7 @@ Season2</textarea>
         ${exCellSlider('リリースタイム', { min: 0, max: 1, step: 0.001, value: 0.06, dec: 3, unit: '秒' })}
         ${exCellToggle('先読み', true)}
       </div>
-    `);
+    `, null, true);
 
     // --- その他（全モード共通） ---
     const etcGroup = exGroup('その他', `
