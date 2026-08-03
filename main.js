@@ -3995,7 +3995,7 @@
             case 'whats-new':       toast('新着情報（準備中）'); return;
             case 'preferences':     toast('環境設定（準備中）⚙️'); return;
             case 'keyboard-shortcuts': toast('キーボードショートカット（準備中）'); return;
-            case 'check-updates':   toast('お使いのバージョンは最新です ✅'); return;
+            case 'check-updates':   checkForUpdates(); return;
             case 'website':         toast('公式サイトを開きます 🌐'); return;
             case 'exit':
             case 'quit':
@@ -4159,6 +4159,56 @@
     function closeAboutModal() {
         const modal = $('#aboutModal');
         if (modal) modal.hidden = true;
+    }
+
+    // ======================================================
+    // アップデートの確認
+    // ======================================================
+    // 比較対象のリモートリポジトリ（GitHub の公開 API を認証なしで利用する）
+    const UPDATE_REPO = 'auriga-labs/auriga-studio';
+
+    // ローカルのコミットとリモートの最新を比較して、結果をトーストで知らせる
+    async function checkForUpdates() {
+        toast('アップデートを確認しています…');
+        // ローカルのコミット（Electron はネイティブ API、Web は PHP API から取得）
+        const local = await fetchLocalInfo();
+        const hash = local && local.commit && local.commit.hash;
+        if (!hash) {
+            toast('ローカルのコミット情報を取得できませんでした');
+            return;
+        }
+        const branch = local.branch || 'main';
+        try {
+            // compare API はローカルのコミットから見たリモート最新の位置関係を返す
+            const res = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/compare/${hash}...${encodeURIComponent(branch)}`);
+            if (res.status === 404) {
+                // ローカルのコミットやブランチがリモートに存在しない（未 push など）
+                toast('リモートに比較対象が見つかりませんでした（未 push の可能性）');
+                return;
+            }
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const cmp = await res.json();
+            switch (cmp.status) {
+                case 'identical':
+                    toast('お使いのバージョンは最新です ✅');
+                    break;
+                case 'ahead':
+                    // リモートにだけ新しいコミットがある＝アップデートあり
+                    toast(`新しい更新が ${cmp.ahead_by} 件あります 🔄`);
+                    break;
+                case 'behind':
+                    // ローカルにだけコミットがある＝開発中の未 push 状態
+                    toast(`ローカルの方が ${cmp.behind_by} 件進んでいます（未 push）`);
+                    break;
+                case 'diverged':
+                    toast(`リモートと分岐しています（ローカル +${cmp.behind_by} / リモート +${cmp.ahead_by}）`);
+                    break;
+                default:
+                    toast('比較結果を判定できませんでした');
+            }
+        } catch (e) {
+            toast('アップデートの確認に失敗しました（ネットワークをご確認ください）');
+        }
     }
 
     // バージョン情報を「ラベル: 値」の複数行テキストにしてクリップボードへ
