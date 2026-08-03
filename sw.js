@@ -2,7 +2,7 @@
 // オフライン起動とアセットの高速表示を担う。
 // キャッシュ名はアプリのバージョンに紐付け、更新時に古いキャッシュを破棄する。
 
-const CACHE_VERSION = 'auriga-v0.0.1-r7';
+const CACHE_VERSION = 'auriga-v0.0.1-r8';
 
 // 起動に最低限必要なアプリシェル。install 時に先読みキャッシュする。
 const PRECACHE_URLS = [
@@ -22,7 +22,7 @@ const PRECACHE_URLS = [
 ];
 
 // API・認証系のパス（動的なので絶対にキャッシュしない）
-const NETWORK_ONLY_PREFIXES = ['/oauth/', '/cloud/'];
+const NETWORK_ONLY_PREFIXES = ['/oauth/', '/cloud/', '/api/'];
 
 // インストール時：アプリシェルを先読みキャッシュする
 self.addEventListener('install', (event) => {

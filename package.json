@@ -18,6 +18,7 @@
     },
     "files": [
       "electron-main.js",
+      "preload.js",
       "main.js",
       "index.html",
       "privacy.html",
