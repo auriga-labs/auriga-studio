@@ -4061,10 +4061,14 @@
     // ======================================================
     // バージョン情報モーダル（Auriga Studio について）
     // ======================================================
-    // version.json の値を表示する順番とラベル（VS Code の About に倣う）
+    // 表示する値の順番とラベル（VS Code の About に倣う）
     const ABOUT_FIELDS = [
         { key: 'version',         label: 'Version' },
         { key: 'commit',          label: 'Commit' },
+        { key: 'branch',          label: 'Branch' },
+        { key: 'commitMessage',   label: 'Message' },
+        { key: 'commitAuthor',    label: 'Author' },
+        { key: 'workingTree',     label: 'Working Tree' },
         { key: 'date',            label: 'Date' },
         { key: 'electron',        label: 'Electron' },
         { key: 'electronBuildId', label: 'ElectronBuildId' },
@@ -4075,22 +4079,71 @@
         { key: 'os',              label: 'OS' },
     ];
 
-    let aboutInfoCache = null;   // 読み込んだ version.json を保持
+    let aboutInfoCache = null;   // 組み立てたバージョン情報を保持
 
-    // version.json を読み込んでモーダルを開く
+    // ローカル情報（git・ランタイム）を取得する。
+    // Electron では preload が公開するネイティブ API から、
+    // Web（app.auriga.studio）では PHP API から読み込む。
+    async function fetchLocalInfo() {
+        try {
+            if (window.aurigaNative && window.aurigaNative.getLocalInfo) {
+                return await window.aurigaNative.getLocalInfo();
+            }
+            if (location.protocol === 'http:' || location.protocol === 'https:') {
+                const res = await fetch('api/local-info.php');
+                if (res.ok) return await res.json();
+            }
+        } catch (e) {
+            // 取得できなくても version.json の内容だけで表示を続行する
+        }
+        return null;
+    }
+
+    // 取得したローカル情報を About 表示用のフラットな形に反映する
+    function applyLocalInfo(info, local) {
+        if (!local || local.error) return;
+        if (local.branch) info.branch = local.branch;
+        if (local.commit) {
+            if (local.commit.hash) info.commit = local.commit.hash;
+            if (local.commit.message) info.commitMessage = local.commit.message;
+            if (local.commit.author) info.commitAuthor = local.commit.author;
+            if (local.commit.date) info.date = local.commit.date;
+        }
+        if (local.repository && local.repository.is_dirty != null) {
+            info.workingTree = local.repository.is_dirty ? '変更あり' : 'クリーン';
+        }
+        // version.json が読めなかったときは Electron 側の package.json 由来の値で補完する
+        if (info.version == null && local.app && local.app.version) {
+            info.version = local.app.version;
+        }
+        if (local.runtime) {
+            for (const key of ['electron', 'chromium', 'node', 'v8', 'os']) {
+                if (local.runtime[key]) info[key] = local.runtime[key];
+            }
+        }
+    }
+
+    // version.json とローカル情報 API を読み込んでモーダルを開く
     async function showAboutModal() {
         const modal = $('#aboutModal');
         const infoEl = $('#aboutInfo');
         if (!modal || !infoEl) return;
         if (!aboutInfoCache) {
+            const info = {};
+            // 静的なビルド情報。Electron の file:// では読めないことがあるため任意扱いにする
             try {
                 const res = await fetch('version.json');
-                if (!res.ok) throw new Error('fetch failed');
-                aboutInfoCache = await res.json();
+                if (res.ok) Object.assign(info, await res.json());
             } catch (e) {
+                // ローカル情報だけで表示を続行する
+            }
+            // ローカル情報（git・ランタイム）で上書き・補完する
+            applyLocalInfo(info, await fetchLocalInfo());
+            if (Object.keys(info).length === 0) {
                 toast('バージョン情報の読み込みに失敗しました');
                 return;
             }
+            aboutInfoCache = info;
         }
         // コンポジターの描画バックエンド（WebGPU / WebGL / Canvas 2D）も表示する
         if (compositorBackend) aboutInfoCache.renderer = compositorBackend;

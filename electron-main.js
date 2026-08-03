@@ -5,9 +5,11 @@
    ====================================================== */
 'use strict';
 
-const { app, BrowserWindow, shell, screen } = require('electron');
+const { app, BrowserWindow, shell, screen, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
+const { execFile } = require('child_process');
 
 // 認証ポップアップを許可するオリジン（OAuth は window.open + postMessage で動く）
 const OAUTH_ORIGIN = 'https://app.auriga.studio';
@@ -72,9 +74,10 @@ function createWindow() {
     autoHideMenuBar: true,
     show: false,
     webPreferences: {
-      // レンダラーは純粋なブラウザコード。Node 連携は不要なので無効のまま安全側に倒す。
+      // レンダラーは純粋なブラウザコード。Node 連携は preload が公開する最小 API に限定する。
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
     },
   };
 
@@ -135,6 +138,65 @@ function createWindow() {
     mainWindow = null;
   });
 }
+
+// ======================================================
+// ローカル情報 API（api/local-info.php の Electron 版）
+// ======================================================
+
+// git コマンドを実行して標準出力を返す（失敗時は null を返す）
+function git(args) {
+  return new Promise((resolve) => {
+    execFile('git', args, { cwd: __dirname, encoding: 'utf8' }, (error, stdout) => {
+      resolve(error ? null : stdout.trim());
+    });
+  });
+}
+
+// リポジトリのローカル情報を収集する（PHP 版 api/local-info.php と同じ構造）
+// Electron ならではのランタイム情報（app / runtime）も併せて返す
+async function collectLocalInfo() {
+  const [branch, hash, shortHash, message, author, email, date, root, status] = await Promise.all([
+    git(['branch', '--show-current']),
+    git(['rev-parse', 'HEAD']),
+    git(['rev-parse', '--short', 'HEAD']),
+    git(['log', '-1', '--pretty=%s']),
+    git(['log', '-1', '--pretty=%an']),
+    git(['log', '-1', '--pretty=%ae']),
+    git(['log', '-1', '--date=iso-strict', '--pretty=%cd']),
+    git(['rev-parse', '--show-toplevel']),
+    git(['status', '--porcelain']),
+  ]);
+
+  return {
+    branch,
+    commit: {
+      hash,
+      short_hash: shortHash,
+      message,
+      author,
+      email,
+      date,
+    },
+    repository: {
+      root,
+      // git が使えない環境（パッケージ版など）では null にして「不明」を表す
+      is_dirty: status == null ? null : status !== '',
+    },
+    app: {
+      version: app.getVersion(),
+    },
+    runtime: {
+      electron: process.versions.electron,
+      chromium: process.versions.chrome,
+      node: process.versions.node,
+      v8: process.versions.v8,
+      os: `${os.type()} ${os.arch()} ${os.release()}`,
+    },
+  };
+}
+
+// レンダラー（About モーダル）からの取得要求に応える
+ipcMain.handle('auriga:local-info', () => collectLocalInfo());
 
 // 起動準備が整ったらウィンドウを開く
 app.whenReady().then(() => {
