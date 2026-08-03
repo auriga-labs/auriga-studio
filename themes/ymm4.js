@@ -684,6 +684,40 @@ Season2</textarea>
   let exRaf = 0;           // プレビュー転写ループの requestAnimationFrame ID
   let exKeyHandler = null; // Esc で閉じるキー購読（開いている間だけ）
 
+  // FFmpeg プリセット定義（本家 YMM4 と同じコマンド）。
+  // 選択すると映像/音声コマンドへ書き込み、映像ビットレートは -b:v の値から求める。
+  // 「カスタム」は定義を持たず、選択しても現在の設定を保つ
+  const EX_FF_PRESETS = {
+    'AVI': {
+      v: '-b:v 2097151000 -c:v rawvideo -f avi -loglevel warning',
+      a: '-b:a 192000 -c:a mp3 -f avi -loglevel warning',
+    },
+    'GIF': {
+      v: '-b:v 2097151000 -c:v gif -f gif -loglevel warning',
+      a: '-b:a 192000 -f null -c:a aac -loglevel warning',
+    },
+    'MP3': {
+      v: '-b:v 240000000 -f null -c:v h264 -loglevel warning',
+      a: '-b:a 192000 -c:a mp3 -f mp3 -loglevel warning',
+    },
+    'MP4 / AV1+AAC': {
+      v: '-b:v 10000000 -c:v libsvtav1 -f mp4 -loglevel warning',
+      a: '-b:a 192000 -c:a aac -f mp4 -loglevel warning',
+    },
+    'MP4 / H.264+AAC': {
+      v: '-b:v 240000000 -c:v h264 -f mp4 -loglevel warning',
+      a: '-b:a 192000 -c:a aac -f mp4 -loglevel warning',
+    },
+    'MP4 / VP9+AAC': {
+      v: '-b:v 2097151000 -c:v vp9 -f mp4 -loglevel warning',
+      a: '-b:a 192000 -c:a aac -f mp4 -loglevel warning',
+    },
+    'WebP': {
+      v: '-b:v 2097151000 -c:v webp -f webp -loglevel warning',
+      a: '-b:a 192000 -f null -c:a aac -loglevel warning',
+    },
+  };
+
   // ラベル + 任意の部品を 1 行に並べる
   function exRow(label, body) {
     return `<div class="ymm4-ex__row"><span class="ymm4-ex__label">${label}</span>${body}</div>`;
@@ -766,6 +800,19 @@ Season2</textarea>
     ff.querySelector('[data-excmd="a"]').textContent = acmd || `-b:a ${abr * 1000} -c:a aac -f mp4 -loglevel warning`;
   }
 
+  // プリセットの内容を FFmpeg の各欄（コマンド・映像ビットレート）へ反映する
+  function applyExPreset(name) {
+    const p = EX_FF_PRESETS[name];
+    if (!p || !exDlg) return;   // 「カスタム」は何もしない（現在の設定を保つ）
+    const ff = exDlg.querySelector('[data-exmode="ffmpeg"]');
+    ff.querySelector('.ymm4-ex__vcmd').value = p.v;
+    ff.querySelector('.ymm4-ex__acmd').value = p.a;
+    // 映像ビットレートはコマンドの -b:v（bps）を kbps に直して追従させる
+    const m = p.v.match(/-b:v (\d+)/);
+    if (m) ff.querySelector('.ymm4-ex__vbr').value = String(Math.round(Number(m[1]) / 1000));
+    updateExCmds();
+  }
+
   // 出力モードに応じてエンコード設定グループの表示を切り替える
   function applyExMode() {
     if (!exDlg) return;
@@ -820,7 +867,7 @@ Season2</textarea>
         <input type="text" class="ymm4-text ymm4-ex__dir" value=".\\user\\resource\\ffmpeg\\" spellcheck="false">
         <button class="ymm4-mini ymm4-mini--icon" type="button" data-ex="dir" title="フォルダを選択"><i class="ti ti-folder"></i></button>`)}
       ${exRow('プリセット', `
-        ${exSelect('', ['カスタム', 'AVI', 'GIF', 'MP3', 'MP4 / AV1+AAC', 'MP4 / H.264+AAC', 'MP4 / VP9+AAC', 'WebP'], 'カスタム')}
+        ${exSelect('ymm4-ex__preset', ['カスタム', ...Object.keys(EX_FF_PRESETS)], 'カスタム')}
         <button class="ymm4-mini ymm4-mini--icon" type="button" data-ex="preset-save" title="プリセットを保存"><i class="ti ti-device-floppy"></i></button>`)}
       ${exRow('映像ビットレート', `
         ${exSelect('ymm4-ex__w120 ymm4-ex__vauto', ['自動', '手動'], '自動')}
@@ -1030,9 +1077,14 @@ Season2</textarea>
         row.querySelector('.ymm4-ex__vbr').disabled = !manual;
         return;
       }
+      if (t.classList.contains('ymm4-ex__preset')) { applyExPreset(t.value); return; }
       if (t.classList.contains('ymm4-ex__zoomsel')) { applyExZoom(); return; }
       if (t.classList.contains('ymm4-ex__speed')) { ctx.transport.setRate(t.value); return; }
-      if (t.classList.contains('ymm4-ex__abr')) { updateExCmds(); }
+      if (t.classList.contains('ymm4-ex__abr')) {
+        // 音声ビットレートを手動で変えたらプリセットは「カスタム」へ戻す
+        exDlg.querySelector('.ymm4-ex__preset').value = 'カスタム';
+        updateExCmds();
+      }
     });
 
     // --- 入力（スライダーの数値表示・音量 %・コマンドプレビュー・動画範囲） ---
@@ -1044,7 +1096,12 @@ Season2</textarea>
         return;
       }
       if (t.classList.contains('ymm4-ex__vbr') || t.classList.contains('ymm4-ex__vcmd') || t.classList.contains('ymm4-ex__acmd')) {
-        updateExCmds();
+        // FFmpeg 側の欄を手動で変えたらプリセットは「カスタム」へ戻す
+        // （MediaFoundation 側のビットレート欄はプリセットと無関係）
+        if (t.closest('[data-exmode="ffmpeg"]')) {
+          exDlg.querySelector('.ymm4-ex__preset').value = 'カスタム';
+          updateExCmds();
+        }
         return;
       }
       if (t.dataset.exval === 'start' || t.dataset.exval === 'end') updateExRangeLen(ctx);
