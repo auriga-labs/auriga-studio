@@ -369,6 +369,18 @@
             <!-- タイムライン本体 -->
             <div class="tracks-area" id="tracksArea">
                 <div class="ruler" id="ruler"></div>
+                <!-- TRIBE v2 レーン（素材への脳反応の予測。描画は tribev2.js） -->
+                <div class="track tribe-lane" id="tribeLane">
+                    <!-- 横スクロールしても左端に残る表示領域。幅は tribev2.js が合わせる -->
+                    <div class="tribe-lane__view">
+                        <canvas class="tribe-lane__canvas"></canvas>
+                        <div class="tribe-lane__empty">
+                            <span class="tribe-lane__note">TRIBE v2 の解析結果はまだありません</span>
+                            <button class="btn btn--ghost btn--sm" data-tribe="copy" type="button">解析コマンドをコピー</button>
+                            <button class="btn btn--ghost btn--sm" data-tribe="load" type="button">結果を読み込む</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="tracks" id="tracks"></div>
                 <div class="playhead" id="playhead"><div class="playhead__head"></div><div class="playhead__hit"></div></div>
             </div>
@@ -441,6 +453,8 @@
     <!-- JavaScript -->
         <!-- スクリプト -->
         <script src="main.js"></script>
+        <!-- TRIBE v2 レーン（タイムラインへ脳反応の予測を描く） -->
+        <script src="tribev2.js"></script>
         <!-- PWA（サービスワーカー登録）。Web で開いたときだけ動作する -->
         <script src="pwa.js"></script>
 </body>

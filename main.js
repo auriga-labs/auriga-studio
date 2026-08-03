@@ -304,12 +304,26 @@
             </div>`;
         }).join('');
 
-        $$('.track-header__btn').forEach((b) => {
+        els.trackHeaders.querySelectorAll('.track-header__btn').forEach((b) => {
             b.addEventListener('click', () => {
                 b.classList.toggle('is-off');
                 renderViewer();
             });
         });
+
+        // ヘッダー行を作り直したので、拡張レーン（TRIBE v2）に並べ直してもらう
+        emitTimelineLayout();
+    }
+
+    // ======================================================
+    // 拡張レーン（tribev2.js など）への通知
+    // ======================================================
+    // タイムラインの寸法（ズーム・全体尺）やヘッダーの並びが変わったことを知らせる。
+    // レーン側はこれを受けて自分の幅と描画をやり直す。
+    function emitTimelineLayout() {
+        document.dispatchEvent(new CustomEvent('auriga:layout', {
+            detail: { zoom: state.zoom, seconds: TIMELINE_SECONDS, fps: FPS },
+        }));
     }
 
     // ======================================================
@@ -323,7 +337,9 @@
         const totalW = TIMELINE_SECONDS * state.zoom;
         els.tracks.style.width = totalW + 'px';
 
-        $$('.track').forEach((trackEl) => {
+        // 素材のドロップを受けるのはレイヤー行だけ（TRIBE v2 レーンも .track を名乗るため、
+        // 全体検索ではなく #tracks の中に限って束ねる）
+        els.tracks.querySelectorAll('.track').forEach((trackEl) => {
             trackEl.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 trackEl.classList.add('track--drop');
@@ -366,6 +382,9 @@
         }
         els.ruler.innerHTML = html;
         els.ruler.style.width = (TIMELINE_SECONDS * state.zoom) + 'px';
+
+        // ズーム・全体尺が変わった直後なので、拡張レーンにも寸法を伝える
+        emitTimelineLayout();
     }
 
     // ======================================================
@@ -2907,6 +2926,10 @@
         // 再生ヘッドは tracksArea 内の absolute 要素なので、
         // クリップやルーラーと同じコンテンツ座標（秒 × ズーム）をそのまま使う
         els.playhead.style.left = (state.playhead * state.zoom) + 'px';
+        // 拡張レーン（TRIBE v2）が再生位置の値を出せるように知らせる
+        document.dispatchEvent(new CustomEvent('auriga:playhead', {
+            detail: { playhead: state.playhead },
+        }));
     }
 
     function updateTimeDisplay() {
@@ -3059,6 +3082,17 @@
 
     // テーマ JS からの登録窓口（テーマ JS は main.js より後に読み込まれる）
     window.registerTheme = (name, hooks) => { themeHooks[name] = hooks || {}; };
+
+    // 拡張レーン（tribev2.js）が使う窓口。themeCtx と同じ考え方で、
+    // タイムラインの座標と最小限の操作だけを渡す。
+    window.aurigaTimeline = {
+        toast,
+        zoom: () => state.zoom,           // 1秒あたりの px
+        seconds: () => TIMELINE_SECONDS,  // タイムライン全体の長さ(秒)
+        playhead: () => state.playhead,
+        seek: (sec) => seek(sec),
+        selectedClip: () => getSelectedClip(),
+    };
 
     // themes/<name>.js を一度だけ動的に読み込む
     function loadThemeScript(name) {

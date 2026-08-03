@@ -746,6 +746,24 @@ body.is-no-preview .layout > .panel--props > .panel-resizer { display: none; }
 }
 .track--drop { background: rgba(108,92,231,.12); box-shadow: inset 0 0 0 2px #2bae8f; }
 
+/* ===== TRIBE v2 レーン ===== */
+/* 行の枠と地色は .track（テーマ配色）をそのまま使い、ここでは中身だけを定義する。
+   曲線はキャンバスに系列色で描くので、配色モードごとの指定は要らない。 */
+.tribe-lane { cursor: pointer; }
+.tribe-lane--drop { box-shadow: inset 0 0 0 2px #2bae8f; }
+/* 横スクロールしても左端に貼り付く表示領域（幅は tribev2.js が実寸で入れる） */
+.tribe-lane__view { position: sticky; left: 0; height: 100%; }
+.tribe-lane__canvas { display: block; }
+/* 解析結果が無いときの案内。キャンバスに重ねる */
+.tribe-lane__empty {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 10px;
+}
+/* display 指定が [hidden] の既定より強いので、非表示は明示しておく */
+.tribe-lane__empty[hidden] { display: none; }
+.tribe-lane__note { font-size: 11.5px; opacity: .7; }
+
 .clip {
     position: absolute; top: 5px; bottom: 5px;
     border-radius: 5px;
