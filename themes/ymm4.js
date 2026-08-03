@@ -718,6 +718,13 @@ Season2</textarea>
     },
   };
 
+  // 音声ビットレートの選択肢（本家 YMM4 の一覧）。
+  // 「指定しない」を選ぶとコマンドから -b:a を省く
+  const EX_ABR_OPTIONS = [
+    '指定しない', '32 kbps', '96 kbps', '128 kbps', '160 kbps', '192 kbps',
+    '256 kbps', '320 kbps', '384 kbps', '512 kbps', '576 kbps', '640 kbps',
+  ];
+
   // ラベル + 任意の部品を 1 行に並べる
   function exRow(label, body) {
     return `<div class="ymm4-ex__row"><span class="ymm4-ex__label">${label}</span>${body}</div>`;
@@ -793,11 +800,12 @@ Season2</textarea>
     if (!exDlg) return;
     const ff = exDlg.querySelector('[data-exmode="ffmpeg"]');
     const vbr = Number(ff.querySelector('.ymm4-ex__vbr').value) || 0;
-    const abr = parseInt(ff.querySelector('.ymm4-ex__abr').value, 10) || 0;
+    const abr = parseInt(ff.querySelector('.ymm4-ex__abr').value, 10);   // 「指定しない」は NaN になる
     const vcmd = ff.querySelector('.ymm4-ex__vcmd').value.trim();
     const acmd = ff.querySelector('.ymm4-ex__acmd').value.trim();
     ff.querySelector('[data-excmd="v"]').textContent = vcmd || `-b:v ${vbr * 1000} -c:v h264 -f mp4 -loglevel warning`;
-    ff.querySelector('[data-excmd="a"]').textContent = acmd || `-b:a ${abr * 1000} -c:a aac -f mp4 -loglevel warning`;
+    ff.querySelector('[data-excmd="a"]').textContent =
+      acmd || `${Number.isFinite(abr) ? `-b:a ${abr * 1000} ` : ''}-c:a aac -f mp4 -loglevel warning`;
   }
 
   // プリセットの内容を FFmpeg の各欄（コマンド・映像ビットレート）へ反映する
@@ -874,7 +882,7 @@ Season2</textarea>
         ${exSelect('ymm4-ex__w140 ymm4-ex__vkind', ['固定ビットレート', '平均ビットレート', '品質基準 VBR'], '固定ビットレート', true)}
         <input type="number" class="ymm4-text ymm4-ex__vbr" value="240000" min="1" disabled>
         <span class="ymm4-ex__unit">kbps</span>`)}
-      ${exRow('音声ビットレート', exSelect('ymm4-ex__abr', ['96 kbps', '128 kbps', '160 kbps', '192 kbps', '256 kbps', '320 kbps'], '192 kbps'))}
+      ${exRow('音声ビットレート', exSelect('ymm4-ex__abr', EX_ABR_OPTIONS, '192 kbps'))}
       ${exRow('映像コマンド', '<input type="text" class="ymm4-text ymm4-ex__vcmd" spellcheck="false">')}
       ${exRow('プレビュー', '<span class="ymm4-ex__cmd" data-excmd="v"></span>')}
       ${exRow('音声コマンド', '<input type="text" class="ymm4-text ymm4-ex__acmd" spellcheck="false">')}
