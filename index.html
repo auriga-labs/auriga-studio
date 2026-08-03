@@ -447,6 +447,65 @@
         </div>
     </div>
 
+    <!-- ===== 起動時オンボーディング（新規プロジェクト作成） ===== -->
+    <!-- 起動直後（スプラッシュのフェードアウト後）に表示し、プロジェクト名・解像度・
+         フレームレートを決めてから編集を始めてもらう。メニューの「プロジェクトを新規作成」からも開ける -->
+    <div class="modal" id="onboardModal" hidden>
+        <div class="modal__backdrop" data-onboard-close></div>
+        <div class="modal__dialog onboard-dialog" role="dialog" aria-modal="true" aria-labelledby="onboardTitle">
+            <button class="modal__close" id="onboardClose" type="button" title="閉じる" aria-label="閉じる">
+                <i class="ti ti-x"></i>
+            </button>
+            <div class="onboard__head">
+                <img class="onboard__mark" src="favicon-symbol.svg" alt="" width="44" height="44">
+                <div class="onboard__head-text">
+                    <h2 class="onboard__title" id="onboardTitle">Auriga Studio へようこそ</h2>
+                    <p class="onboard__tagline">新しいプロジェクトを作成して編集を始めましょう</p>
+                </div>
+            </div>
+            <div class="onboard__form">
+                <label class="onboard__field">
+                    <span class="onboard__label">プロジェクト名</span>
+                    <input class="onboard__input" id="onboardName" type="text" value="無題のプロジェクト" spellcheck="false">
+                </label>
+                <div class="onboard__row">
+                    <label class="onboard__field">
+                        <span class="onboard__label">解像度</span>
+                        <!-- 選択肢はプログラムモニターの #resSelect と同じ値にそろえる（同期に使う） -->
+                        <select class="onboard__input" id="onboardRes">
+                            <option>1920 × 1080 (16:9)</option>
+                            <option>1080 × 1920 (9:16)</option>
+                            <option>1080 × 1080 (1:1)</option>
+                            <option>3840 × 2160 (4K)</option>
+                        </select>
+                    </label>
+                    <label class="onboard__field">
+                        <span class="onboard__label">フレームレート</span>
+                        <select class="onboard__input" id="onboardFps">
+                            <option value="24">24 fps</option>
+                            <option value="25">25 fps</option>
+                            <option value="30" selected>30 fps</option>
+                            <option value="50">50 fps</option>
+                            <option value="60">60 fps</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+            <div class="onboard__actions">
+                <button class="btn btn--primary" id="onboardCreate" type="button">
+                    <i class="ti ti-file-plus"></i> プロジェクトを作成
+                </button>
+                <button class="btn" id="onboardOpen" type="button">
+                    <i class="ti ti-folder-open"></i> 既存のプロジェクトを開く…
+                </button>
+            </div>
+            <label class="onboard__foot">
+                <input type="checkbox" id="onboardShowOnStartup" checked>
+                <span>起動時にこの画面を表示する</span>
+            </label>
+        </div>
+    </div>
+
     <!-- トースト通知 -->
     <div class="toast" id="toast"></div>
 

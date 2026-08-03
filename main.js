@@ -13,6 +13,7 @@
     const PANELS_KEY = 'auriga.panels'; // ツールメニューで切り替えるパネル表示状態の保存キー
     const FLOATS_KEY = 'auriga.floats'; // 独立ウィンドウ化したパネルの状態（位置・サイズ）の保存キー
     const AUTOHIDE_KEY = 'auriga.autohide'; // 「自動的に隠す」中のパネルの保存キー
+    const ONBOARD_KEY = 'auriga.onboarding'; // 起動時オンボーディングの表示設定の保存キー（'off'=表示しない）
 
     // ---- OAuth（Google ログイン）----
     // Google の認可画面を新しいタブで直接開く。リダイレクト先の PHP バックエンド
@@ -171,7 +172,10 @@
         els.viewerCanvas.classList.add('program');   // 既定はプログラム（合成）モニター
         composite(state.playhead, false);
         hideSplash();   // 初期化が終わったのでスプラッシュを閉じる
-        toast('Auriga Studio へようこそ 🎬');
+        // 起動時オンボーディング（モーダルはスプラッシュより下なので、フェードアウトと同時に現れる）。
+        // 「表示しない」設定のときは従来どおり歓迎トーストだけ出す
+        if (shouldShowOnboard()) showOnboardModal();
+        else toast('Auriga Studio へようこそ 🎬');
     }
 
     // ======================================================
@@ -1186,6 +1190,109 @@
             if (f) openYmmpFile(f);
         });
         input.click();
+    }
+
+    // ======================================================
+    // 起動時オンボーディング（新規プロジェクト作成）
+    // ======================================================
+    // 起動直後にプロジェクト名・解像度・フレームレートを決めてもらうモーダル。
+    // 「起動時にこの画面を表示する」を外すと次回から出さない（保存値 'off'）。
+    // メニューの「プロジェクトを新規作成」（new-project）からはいつでも開ける。
+
+    // 起動時に表示すべきか（保存値が 'off' でなければ表示する）
+    function shouldShowOnboard() {
+        try { return localStorage.getItem(ONBOARD_KEY) !== 'off'; } catch (e) { return true; }
+    }
+
+    // モーダルを開く（チェック状態を保存値に合わせ、プロジェクト名は選択済みにしておく）
+    function showOnboardModal() {
+        const modal = $('#onboardModal');
+        if (!modal) return;
+        const chk = $('#onboardShowOnStartup');
+        if (chk) chk.checked = shouldShowOnboard();
+        modal.hidden = false;
+        const name = $('#onboardName');
+        if (name) { name.focus(); name.select(); }
+    }
+
+    // モーダルを閉じる（作成せずに閉じた場合はそのまま編集画面を使える）
+    function closeOnboardModal() {
+        const modal = $('#onboardModal');
+        if (modal) modal.hidden = true;
+    }
+
+    // フォームの値で新規プロジェクトを作成して編集を始める
+    function createProjectFromOnboard() {
+        const name = ($('#onboardName').value || '').trim() || '無題のプロジェクト';
+        const res = $('#onboardRes').value;
+        const fps = parseInt($('#onboardFps').value, 10);
+
+        // メニューから開き直した場合など、編集中のクリップがあれば確認してから破棄する
+        if (state.clips.length) {
+            if (!window.confirm(`現在の編集内容を破棄して「${name}」を作成しますか？`)) return;
+            pauseAllMedia();
+            state.clips = [];
+            state.selectedClipId = null;
+            // レイヤー設定（名前・音量・色・表示状態）も既定に戻す
+            TRACKS.forEach((t, i) => {
+                t.label = 'レイヤー ' + (i + 1);
+                t.volume = 100;
+                t.color = null;
+                setTrackVisible(t.id, true);
+            });
+            renderTrackHeaders();
+            renderTracks();
+            renderRuler();
+            renderClips();
+            updateProps();
+            recomputeDuration();
+            seek(0);
+        }
+
+        state.projectName = name;   // 書き出しファイル名などに使う
+        // 解像度は px 換算の基準（projectWidth/Height）にも反映する
+        const m = res.match(/(\d+)\s*[×x]\s*(\d+)/);
+        if (m) { state.projectWidth = +m[1]; state.projectHeight = +m[2]; }
+        // プログラムモニターの選択を切り替え、change イベント経由で適用・ブラウザ保存・
+        // テーマのステータスバー表示まで既存ハンドラーに任せる
+        const sel = $('#resSelect');
+        if (sel && Array.from(sel.options).some((o) => o.value === res)) {
+            sel.value = res;
+            sel.dispatchEvent(new Event('change'));
+        } else {
+            // 選択肢にない値だった場合の保険（通常はオンボーディング側と選択肢をそろえてある）
+            applyResolution(res, true);
+            try { localStorage.setItem(RES_KEY, res); } catch (e) {}
+        }
+        // フレームレート（コマ送り・書き出しの基準）
+        if (Number.isFinite(fps) && fps > 0) FPS = fps;
+
+        closeOnboardModal();
+        toast(`プロジェクト「${name}」を作成しました 🎬`);
+    }
+
+    // モーダルの開閉と各操作をバインドする
+    function bindOnboardModal() {
+        const modal = $('#onboardModal');
+        if (!modal) return;
+        $('#onboardCreate').addEventListener('click', createProjectFromOnboard);
+        // 既存プロジェクト（.ymmp）はファイル選択ダイアログへ引き継ぐ
+        $('#onboardOpen').addEventListener('click', () => { closeOnboardModal(); openProjectDialog(); });
+        $('#onboardClose').addEventListener('click', closeOnboardModal);
+        modal.querySelector('[data-onboard-close]').addEventListener('click', closeOnboardModal);
+        // プロジェクト名欄で Enter → そのまま作成（IME の変換確定は除く）
+        $('#onboardName').addEventListener('keydown', (e) => {
+            if (e.isComposing) return;
+            if (e.code === 'Enter' || e.code === 'NumpadEnter') createProjectFromOnboard();
+        });
+        // Esc で閉じる（スキップ扱い）
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape' && !modal.hidden) closeOnboardModal();
+        });
+        // 「起動時にこの画面を表示する」チェックは変更した時点で保存する
+        $('#onboardShowOnStartup').addEventListener('change', (e) => {
+            try { localStorage.setItem(ONBOARD_KEY, e.target.checked ? 'on' : 'off'); } catch (err) {}
+        });
     }
 
     // ======================================================
@@ -3280,6 +3387,7 @@
         bindContextMenu();
         bindMenuBar();
         bindAboutModal();   // バージョン情報モーダルの開閉
+        bindOnboardModal();   // 起動時オンボーディング（新規プロジェクト作成）の開閉
         bindAccountMenu();   // アカウント情報ポップオーバーの開閉
         bindMobileMenu();   // スマホ幅でヘッダー操作をネストする
         bindTimelineResizer();   // タイムラインの高さをドラッグで調整
@@ -4000,6 +4108,7 @@
     // メニュー項目のアクションを実行する
     function handleMenuAction(it) {
         switch (it.id) {
+            case 'new-project':     showOnboardModal(); return;
             case 'open-project':    openProjectDialog(); return;
             case 'export-auriproj': exportAuriproj(); return;
             case 'export-auripack': exportAuripack(); return;

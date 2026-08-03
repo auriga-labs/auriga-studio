@@ -880,6 +880,52 @@ body.is-no-preview .layout > .panel--props > .panel-resizer { display: none; }
     background: repeating-linear-gradient(45deg, rgba(0,0,0,.28) 0 8px, transparent 8px 16px);
 }
 
+/* ===== 起動時オンボーディング（新規プロジェクト作成） ===== */
+/* 配色はテーマが上書きする .modal__dialog を土台にし、ここでは文字色の継承と
+   半透明のニュートラル色だけを使う（ライト/ダーク両モードでテーマ側の追加上書きを不要にする） */
+.onboard-dialog { width: min(500px, calc(100vw - 40px)); }
+.onboard__head { display: flex; align-items: center; gap: 14px; margin: 0 26px 18px 0; }
+.onboard__mark {
+    width: 44px; height: 44px; border-radius: 11px; flex: none;
+    box-shadow: 0 4px 18px rgba(43, 174, 143, 0.35);
+}
+.onboard__head-text { min-width: 0; }
+.onboard__title { margin: 0 0 2px; font-size: 18px; font-weight: 700; }
+.onboard__tagline { margin: 0; font-size: 12px; opacity: .65; }
+
+.onboard__form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+.onboard__row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.onboard__field { display: flex; flex-direction: column; gap: 5px; min-width: 0; cursor: pointer; }
+.onboard__label { font-size: 11.5px; font-weight: 600; opacity: .75; }
+.onboard__input {
+    width: 100%;
+    padding: 7px 10px;
+    font: inherit; font-size: 12.5px;
+    color: inherit;
+    background: rgba(128, 138, 154, 0.14);
+    border: 1px solid rgba(128, 138, 154, 0.35);
+    border-radius: 5px;
+    outline: none;
+}
+.onboard__input:focus { border-color: #2bae8f; }
+select.onboard__input { cursor: pointer; }
+/* ドロップダウンの中身は OS 描画。ダークテーマの継承色で白背景に白文字にならないよう固定する */
+select.onboard__input option { color: #1c2330; background: #ffffff; }
+
+.onboard__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.onboard__actions .btn--primary { flex: 1; justify-content: center; }
+.onboard__foot {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 11.5px; opacity: .65;
+    cursor: pointer; user-select: none;
+}
+.onboard__foot input { accent-color: #2bae8f; }
+/* スマホ幅では解像度・フレームレートを縦に積む */
+@media (max-width: 480px) {
+    .onboard__row { grid-template-columns: 1fr; }
+    .onboard__actions { flex-direction: column; }
+}
+
 /* ===== トースト ===== */
 .toast {
     position: fixed; bottom: 24px; left: 50%;
