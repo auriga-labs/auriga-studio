@@ -66,6 +66,7 @@
         clips: [],                    // {id,type,name,track,start,dur,props}
         nextId: 1,
         menuLayoutKey: null,   // 現在のメニュー定義（初回 applyTheme で確定）
+        projectName: null,     // プロジェクト名（読み込んだファイル名由来。書き出しファイル名に使う）
         projectWidth: null,    // YMM4 プロジェクトの解像度（px 座標の換算基準。null=未読込）
         projectHeight: null,
         // ツールメニューのチェックリストで切り替えるパネルの表示状態
@@ -389,6 +390,10 @@
 
     // ---- OSからドロップされた実ファイルをトラックに追加 ----
     function dropFilesOnTrack(fileList, track, start) {
+        // .auriproj / .auripack が含まれていれば Auriga プロジェクトとして開く
+        const auriga = Array.from(fileList).find((f) => /\.(auriproj|auripack)$/i.test(f.name));
+        if (auriga) { importAurigaFile(auriga); return; }
+
         // .ymmp が含まれていればメディアではなく YMM4 プロジェクトとして開く
         const ymmp = Array.from(fileList).find((f) => /\.ymmp$/i.test(f.name));
         if (ymmp) { openYmmpFile(ymmp); return; }
@@ -1130,6 +1135,7 @@
         seek(0);
 
         const displayName = String(fileName || '').replace(/\.ymmp$/i, '') || project.name;
+        state.projectName = displayName;   // 書き出しファイル名に使う
         toast(`YMM4 プロジェクト「${displayName}」を読み込みました（${project.items.length} アイテム）`);
     }
 
@@ -1332,6 +1338,383 @@
         if (relinkDismissed) return;   // 閉じた後は次の読み込みまで再表示しない
         modal.hidden = false;
         renderRelinkTable();
+    }
+
+    // ======================================================
+    // プロジェクトの書き出し・読み込み（.auriproj / .auripack）
+    //   .auriproj : 素材のパス参照だけを含む JSON。軽量で、素材は再リンクで解決する
+    //   .auripack : 素材バイナリを同梱したコンテナを gzip 圧縮した単一パッケージ
+    // 圧縮は Chromium 内蔵の CompressionStream を使う（外部ライブラリ不要）。
+    // .auripack の構造: "AURIPACK1"(9バイト) + gzip( [マニフェスト長 uint32 LE][マニフェスト JSON][素材バイト列…] )
+    // ======================================================
+    const AURIPACK_MAGIC = 'AURIPACK1';   // .auripack 先頭の識別子
+    const AURIPROJ_VERSION = 1;           // 保存形式のバージョン（将来の互換判定に使う）
+
+    // フルエクスポート中の多重実行を防ぐフラグ（素材収集・圧縮が非同期のため）
+    let packExporting = false;
+
+    // 素材ファイルを持つクリップ種別か（テキスト・図形は持たない）
+    function isMediaClipType(type) {
+        return type === 'video' || type === 'audio' || type === 'image';
+    }
+
+    // 現在のプロジェクト状態を保存用の素の構造へ変換する。
+    // assetKeyBySrc（blob URL → アセットキー）を渡すと .auripack 用に素材参照を付与する。
+    function serializeProject(assetKeyBySrc) {
+        const assetOf = (src) => (assetKeyBySrc && src && assetKeyBySrc.has(src))
+            ? assetKeyBySrc.get(src) : null;
+        return {
+            name: state.projectName || null,
+            fps: FPS,
+            width: state.projectWidth,
+            height: state.projectHeight,
+            timelineSeconds: TIMELINE_SECONDS,
+            tracks: TRACKS.map((t) => ({
+                label: t.label,
+                volume: t.volume,
+                color: t.color || null,
+                hidden: !trackVisible(t.id),
+                muted: trackMuted(t.id),
+            })),
+            media: MEDIA.map((m) => ({
+                type: m.type,
+                name: m.name,
+                dur: m.dur,
+                asset: assetOf(m.src),
+            })),
+            clips: state.clips.map((c) => ({
+                type: c.type,
+                name: c.name,
+                track: c.track,
+                start: c.start,
+                dur: c.dur,
+                offset: c.offset || 0,
+                // パス参照：YMM4 由来のパスが無い素材クリップはファイル名を参照として残す
+                // （読み込み側は resolveClipsFromPool / 再リンクダイアログで解決する）
+                filePath: c.filePath || (isMediaClipType(c.type) && c.src ? c.name : null),
+                hidden: !!c.hidden,
+                fadeIn: c.fadeIn || 0,
+                fadeOut: c.fadeOut || 0,
+                looped: !!c.looped,
+                blend: c.blend || null,
+                flipH: !!c.flipH,
+                flipV: !!c.flipV,
+                anim: c.anim || null,
+                effects: c.effects || null,
+                text: c.text || null,
+                shape: c.shape || null,
+                ymm: !!c.ymm,
+                props: { ...(c.props || DEFAULT_PROPS) },
+                asset: assetOf(c.src),
+            })),
+        };
+    }
+
+    // Blob をファイルとしてダウンロード保存する
+    function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        // ダウンロード開始後に解放する（即時 revoke すると保存に失敗することがある）
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+
+    // 書き出しファイル名を作る（プロジェクト名＋日時。ファイル名に使えない文字は置換）
+    function exportFileName(ext) {
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+        const base = String(state.projectName || 'AurigaProject').replace(/[\\/:*?"<>|]/g, '_');
+        return `${base}_${stamp}.${ext}`;
+    }
+
+    // バイト列を gzip 圧縮する
+    async function gzipBytes(bytes) {
+        if (typeof CompressionStream === 'undefined') throw new Error('この環境は圧縮に対応していません');
+        const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+
+    // gzip 圧縮されたバイト列を展開する
+    async function gunzipBytes(bytes) {
+        if (typeof DecompressionStream === 'undefined') throw new Error('この環境は展開に対応していません');
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+
+    // プール・クリップが参照する素材（blob URL）を集めてバイト列化する。
+    // 戻り値: { list: [{key,name,type,mime,bytes}], keyBySrc: Map(src → key) }
+    async function collectPackAssets() {
+        const keyBySrc = new Map();
+        const list = [];
+        const add = async (src, name, type) => {
+            if (!src || keyBySrc.has(src)) return;
+            try {
+                const blob = await (await fetch(src)).blob();
+                const key = 'a' + list.length;
+                keyBySrc.set(src, key);
+                list.push({ key, name, type, mime: blob.type || '', bytes: new Uint8Array(await blob.arrayBuffer()) });
+            } catch (e) {
+                // 読み取れない素材は同梱をあきらめてパス参照のまま残す
+                console.warn('素材を読み取れないため同梱をスキップします:', name, e);
+            }
+        };
+        for (const m of MEDIA) await add(m.src, m.name, m.type);
+        for (const c of state.clips) {
+            if (isMediaClipType(c.type)) await add(c.src, c.name, c.type);
+        }
+        return { list, keyBySrc };
+    }
+
+    // 「プロジェクトのみ」書き出し：パス参照だけの JSON を保存する
+    function exportAuriproj() {
+        const data = {
+            format: 'auriproj',
+            version: AURIPROJ_VERSION,
+            app: 'Auriga Studio',
+            savedAt: new Date().toISOString(),
+            project: serializeProject(null),
+        };
+        downloadBlob(
+            new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }),
+            exportFileName('auriproj'));
+        toast('プロジェクトを書き出しました（.auriproj）📄');
+    }
+
+    // 「フルエクスポート」：素材バイナリを同梱した gzip パッケージを保存する
+    async function exportAuripack() {
+        if (packExporting) { toast('書き出し処理が進行中です…'); return; }
+        packExporting = true;
+        toast('素材を集めて圧縮しています… 📦');
+        try {
+            const assets = await collectPackAssets();
+            const manifest = {
+                format: 'auripack',
+                version: AURIPROJ_VERSION,
+                app: 'Auriga Studio',
+                savedAt: new Date().toISOString(),
+                project: serializeProject(assets.keyBySrc),
+                assets: assets.list.map((a) => ({
+                    key: a.key, name: a.name, type: a.type, mime: a.mime, size: a.bytes.length,
+                })),
+            };
+            // コンテナを組み立てる: [マニフェスト長(uint32 LE)][マニフェスト JSON][素材バイト列…]
+            const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
+            const total = 4 + manifestBytes.length + assets.list.reduce((s, a) => s + a.bytes.length, 0);
+            const container = new Uint8Array(total);
+            new DataView(container.buffer).setUint32(0, manifestBytes.length, true);
+            container.set(manifestBytes, 4);
+            let offset = 4 + manifestBytes.length;
+            assets.list.forEach((a) => { container.set(a.bytes, offset); offset += a.bytes.length; });
+
+            const compressed = await gzipBytes(container);
+            const magic = new TextEncoder().encode(AURIPACK_MAGIC);
+            downloadBlob(
+                new Blob([magic, compressed], { type: 'application/octet-stream' }),
+                exportFileName('auripack'));
+            const mb = (compressed.length / 1024 / 1024).toFixed(1);
+            toast(`フルエクスポートが完了しました（素材 ${assets.list.length} 件・約 ${mb} MB）📦`);
+        } catch (err) {
+            console.error('auripack 書き出しエラー:', err);
+            toast(`フルエクスポートに失敗しました（${err.message}）`);
+        } finally {
+            packExporting = false;
+        }
+    }
+
+    // インポートのファイル選択ダイアログ（.auriproj / .auripack 共通）
+    function importAurigaDialog() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.auriproj,.auripack';
+        input.addEventListener('change', () => {
+            const f = input.files && input.files[0];
+            if (f) importAurigaFile(f);
+        });
+        input.click();
+    }
+
+    // 拡張子で .auriproj / .auripack を振り分けて読み込む
+    function importAurigaFile(file) {
+        const reader = new FileReader();
+        reader.onerror = () => toast('ファイルを読み込めませんでした');
+        if (/\.auripack$/i.test(file.name)) {
+            reader.onload = () => importAuripack(reader.result, file.name);
+            reader.readAsArrayBuffer(file);
+        } else {
+            reader.onload = () => importAuriproj(reader.result, file.name);
+            reader.readAsText(file);
+        }
+    }
+
+    // .auriproj（JSON）を読み込んで復元する。素材は再リンクで解決する
+    function importAuriproj(text, fileName) {
+        try {
+            let t = String(text);
+            if (t.charCodeAt(0) === 0xFEFF) t = t.slice(1);   // BOM 除去
+            const data = JSON.parse(t);
+            if (!data || data.format !== 'auriproj' || !data.project) throw new Error('auriproj 形式ではありません');
+            restoreProject(data.project, null, fileName);
+            const n = unresolvedClipCount();
+            toast(n
+                ? `プロジェクトを読み込みました（素材 ${n} 件は再リンクが必要です）📄`
+                : 'プロジェクトを読み込みました 📄');
+        } catch (err) {
+            console.error('auriproj 読み込みエラー:', err);
+            toast(`プロジェクトを読み込めませんでした（${err.message}）`);
+        }
+    }
+
+    // .auripack（gzip パッケージ）を読み込んで素材ごと復元する
+    async function importAuripack(buffer, fileName) {
+        try {
+            const bytes = new Uint8Array(buffer);
+            const magic = new TextEncoder().encode(AURIPACK_MAGIC);
+            if (bytes.length < magic.length || !magic.every((b, i) => bytes[i] === b)) {
+                throw new Error('auripack 形式ではありません');
+            }
+            const container = await gunzipBytes(bytes.subarray(magic.length));
+            if (container.length < 4) throw new Error('データが壊れています');
+            const manifestLen = new DataView(container.buffer, container.byteOffset).getUint32(0, true);
+            if (4 + manifestLen > container.length) throw new Error('データが壊れています');
+            const manifest = JSON.parse(new TextDecoder().decode(container.subarray(4, 4 + manifestLen)));
+            if (!manifest || manifest.format !== 'auripack' || !manifest.project) throw new Error('auripack 形式ではありません');
+
+            // 素材バイト列を Blob 化して blob URL を割り当てる
+            const assetUrls = new Map();
+            let offset = 4 + manifestLen;
+            (Array.isArray(manifest.assets) ? manifest.assets : []).forEach((a) => {
+                const size = Math.max(0, Math.floor(Number(a.size) || 0));
+                if (offset + size > container.length) throw new Error('素材データが壊れています');
+                const blob = new Blob([container.subarray(offset, offset + size)], { type: a.mime || '' });
+                assetUrls.set(a.key, URL.createObjectURL(blob));
+                offset += size;
+            });
+
+            restoreProject(manifest.project, assetUrls, fileName);
+            toast(`フルパッケージを読み込みました（素材 ${assetUrls.size} 件を展開）📦`);
+        } catch (err) {
+            console.error('auripack 読み込みエラー:', err);
+            toast(`パッケージを読み込めませんでした（${err.message}）`);
+        }
+    }
+
+    // シリアライズ済みプロジェクトを現在の状態へ展開する（既存の内容は破棄）。
+    // assetUrls（アセットキー → blob URL）があれば素材も復元する。
+    function restoreProject(proj, assetUrls, fileName) {
+        pauseAllMedia();
+        state.clips = [];
+        state.selectedClipId = null;
+        state.selectedMediaId = null;
+        state.monitorSource = null;
+        state.monitorMode = 'program';
+        state.clipboard = null;
+
+        // プロジェクト名（保存されている名前 → ファイル名の順で採用する）
+        state.projectName = (typeof proj.name === 'string' && proj.name.trim())
+            ? proj.name.trim()
+            : String(fileName || '').replace(/\.(auriproj|auripack)$/i, '') || null;
+
+        // FPS・解像度・タイムライン長を復元する
+        if (Number(proj.fps) > 0) FPS = Number(proj.fps);
+        if (Number(proj.width) > 0 && Number(proj.height) > 0) {
+            state.projectWidth = Number(proj.width);
+            state.projectHeight = Number(proj.height);
+            applyProjectResolution(state.projectWidth, state.projectHeight);
+        }
+        ensureTimelineCapacity(Number(proj.timelineSeconds) || 60);
+
+        // トラックを既定へ戻してから保存値を反映する
+        const savedTracks = Array.isArray(proj.tracks) ? proj.tracks : [];
+        ensureLayerCount(savedTracks.length);
+        TRACKS.forEach((t, i) => { t.label = 'レイヤー ' + (i + 1); t.volume = 100; t.color = null; });
+        savedTracks.forEach((st, i) => {
+            const t = TRACKS[i];
+            if (!t || !st) return;
+            if (typeof st.label === 'string' && st.label.trim()) t.label = st.label.trim();
+            const vol = Number(st.volume);
+            if (isFinite(vol)) t.volume = clampNum(vol, 0, 200);
+            t.color = st.color || null;
+        });
+
+        // メディアプールを作り直す（素材が同梱されている場合のみ復元できる）
+        MEDIA.length = 0;
+        (Array.isArray(proj.media) ? proj.media : []).forEach((sm) => {
+            const url = assetUrls && sm && sm.asset != null ? assetUrls.get(sm.asset) : null;
+            if (!url) return;   // パスのみ保存ではプールは復元しない（クリップの再リンクで補う）
+            const dur = isFinite(Number(sm.dur)) && sm.dur !== null ? Number(sm.dur) : null;
+            const m = {
+                id: 'm' + (state.nextId++),
+                type: sm.type,
+                name: String(sm.name || '素材'),
+                src: url,
+                thumb: null,
+                dur,
+                badge: sm.type === 'image' ? 'IMG'
+                    : (dur ? formatRulerTime(Math.round(dur)) : String(sm.type || '').toUpperCase()),
+            };
+            MEDIA.push(m);
+            generateThumbnail(url, m.type, (thumb) => {
+                if (thumb) { m.thumb = thumb; renderMedia(); }
+            });
+        });
+
+        // クリップを復元する
+        (Array.isArray(proj.clips) ? proj.clips : []).forEach((sc) => {
+            if (!sc || !sc.type) return;
+            const track = TRACKS.some((t) => t.id === sc.track) ? sc.track : DEFAULT_TRACK;
+            const url = assetUrls && sc.asset != null ? assetUrls.get(sc.asset) : null;
+            state.clips.push({
+                id: 'c' + (state.nextId++),
+                type: sc.type,
+                name: String(sc.name || 'クリップ'),
+                track,
+                start: Math.max(0, Number(sc.start) || 0),
+                dur: Math.max(0.1, Number(sc.dur) || 0.1),
+                offset: Math.max(0, Number(sc.offset) || 0),
+                src: url,
+                filePath: sc.filePath || null,
+                hidden: sc.hidden === true,
+                fadeIn: Math.max(0, Number(sc.fadeIn) || 0),
+                fadeOut: Math.max(0, Number(sc.fadeOut) || 0),
+                looped: sc.looped === true,
+                blend: typeof sc.blend === 'string' ? sc.blend : null,
+                flipH: sc.flipH === true,
+                flipV: sc.flipV === true,
+                anim: sc.anim || null,
+                effects: Array.isArray(sc.effects) ? sc.effects : null,
+                text: sc.text || null,
+                shape: sc.shape || null,
+                ymm: sc.ymm === true,
+                props: { ...DEFAULT_PROPS, ...(sc.props || {}) },
+            });
+        });
+
+        // プールに同名素材があれば未解決クリップへ割り当てる（.auriproj 用）
+        resolveClipsFromPool();
+        relinkDismissed = false;   // 新しい読み込みでは不足ファイルダイアログを出し直す
+
+        // 画面全体を再構築する
+        renderTrackHeaders();
+        renderTracks();
+        renderRuler();
+        renderClips();
+        renderMedia();
+
+        // トラックの表示・ミュート状態を反映する（ヘッダー再生成後に行う）
+        savedTracks.forEach((st, i) => {
+            const t = TRACKS[i];
+            if (!t || !st) return;
+            setTrackVisible(t.id, st.hidden !== true);
+            const b = document.querySelector(`.track-header[data-track="${t.id}"] [data-act="mute"]`);
+            if (b) b.classList.toggle('is-off', st.muted === true);
+        });
+
+        updateProps();
+        recomputeDuration();   // 未解決素材があれば再リンクダイアログもここで開く
+        seek(0);
     }
 
     // ======================================================
@@ -3277,6 +3660,12 @@
             { id: 'about',             label: 'Auriga Studio について', icon: 'info-circle' },
             { id: 'whats-new',         label: '新着情報',               icon: 'sparkles' },
             { type: 'separator' },
+            { id: 'export-project',    label: 'エクスポート',           icon: 'package-export', type: 'submenu', items: [
+                { id: 'export-auriproj', label: 'プロジェクトのみ (.auriproj)', icon: 'file-description' },
+                { id: 'export-auripack', label: 'フルエクスポート (.auripack)', icon: 'file-zip' },
+            ] },
+            { id: 'import-project',    label: 'インポート…',           icon: 'package-import' },
+            { type: 'separator' },
             { id: 'theme',             label: 'テーマ',                 icon: 'palette',  type: 'submenu', items: THEME_MENU_ITEMS },
             { id: 'display-mode',      label: '表示モード',             icon: 'sun-moon', type: 'submenu', items: MODE_MENU_ITEMS },
             { id: 'preferences',       label: '環境設定…',             icon: 'settings',  shortcut: 'Ctrl+,' },
@@ -3538,6 +3927,9 @@
     function handleMenuAction(it) {
         switch (it.id) {
             case 'open-project':    openProjectDialog(); return;
+            case 'export-auriproj': exportAuriproj(); return;
+            case 'export-auripack': exportAuripack(); return;
+            case 'import-project':  importAurigaDialog(); return;
             case 'save-project':    toast('プロジェクトを保存しました 💾'); return;
             case 'save-project-as': toast('別名で保存しました 💾'); return;
             case 'undo':            toast('元に戻す（デモ）'); return;
