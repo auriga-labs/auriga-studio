@@ -3026,6 +3026,8 @@
             playing: () => state.playing,
             playhead: () => state.playhead,
             duration: () => state.duration,
+            // プロジェクトのフレームレート（動画出力ダイアログのフレーム換算が使う）
+            fps: () => FPS,
             toggle() { togglePlay(); },
             // 停止：再生を止めて再生開始位置へ戻す（本家 YMM4 の停止ボタンと同じ挙動）
             stop() {
@@ -3972,7 +3974,12 @@
             case 'save-project-as': toast('別名で保存しました 💾'); return;
             case 'undo':            toast('元に戻す（デモ）'); return;
             case 'redo':            toast('やり直し（デモ）'); return;
-            case 'export-video':    toast('書き出しを開始しました… 🎞️'); return;
+            case 'export-video': {
+                // アクティブテーマが専用の出力ダイアログを持つ場合はそちらへ委譲する（YMM4 など）
+                const th = themeHooks[activeThemeName];
+                if (th && th.exportVideo) { th.exportVideo(themeCtx); return; }
+                toast('書き出しを開始しました… 🎞️'); return;
+            }
             case 'play-pause':      togglePlay(); return;
             case 'stop':            if (state.playing) togglePlay(); seek(0); return;
             case 'go-to-start':     seek(0); return;

@@ -378,3 +378,21 @@ input[type="range"]::-webkit-slider-thumb { background: #c9c9cf; border: 1px sol
 .relink-table__status.is-missing { color: #e2685a; }
 .relink-table__status.is-found { color: #5fb96a; }
 .relink-dialog__status { color: #c9c9cf; }
+
+
+/* ===== 動画出力ダイアログ ===== */
+
+/* ウィンドウ面 */
+.ymm4-ex { background: #2e2e33; }
+/* エクスパンダー見出し（全般・エンコード設定 など） */
+.ymm4-ex__head { color: #f0f0f2; }
+/* 行ラベル・添え字（kbps・～）・トランスポートのアイコン */
+.ymm4-ex__label, .ymm4-ex__unit, .ymm4-ex__tilde, .ymm4-ex__tpico { color: #c9c9cf; }
+/* スライダー左の数値と右寄せの値表示 */
+.ymm4-ex__num, .ymm4-ex__val { color: #f0f0f2; }
+/* コマンドのプレビュー（本家の青いコマンド文字列） */
+.ymm4-ex__cmd { color: #8fa9ee; }
+/* 範囲指定のトランスポート（WPF ツールバー風の枠付きボタン） */
+.ymm4-ex__tp .tbtn { background: #3a3a41; border: 1px solid #55555c; color: #f0f0f2; }
+.ymm4-ex__tp .tbtn:hover { background: #47474f; border-color: #6a6a72; }
+.ymm4-ex__tp .tbtn.is-active { background: #2f3f66; border: 1px solid #4a6fe0; color: #f0f0f2; }

@@ -671,6 +671,416 @@ Season2</textarea>
     }
   }
 
+  // ---------------------------------------------------------
+  // 動画出力ダイアログ（本家 YMM4 の「動画出力」ウィンドウ）
+  // ---------------------------------------------------------
+  // メニュー「ファイル > 動画出力」から開くモーダル。main.js はテーマフック
+  // exportVideo() 経由でここへ委譲する。出力モード（FFmpeg / MediaFoundation /
+  // 連番PNG+WAV / その他）ごとにエンコード設定の内容を切り替え、
+  // 範囲指定・音量調整・その他の各セクションは全モード共通で表示する。
+  // 実際のエンコード処理は未実装（デモ）で、見た目と操作感の再現が目的。
+
+  let exDlg = null;        // 生成済みダイアログのルート要素（テーマ内で使い回す）
+  let exRaf = 0;           // プレビュー転写ループの requestAnimationFrame ID
+  let exKeyHandler = null; // Esc で閉じるキー購読（開いている間だけ）
+
+  // ラベル + 任意の部品を 1 行に並べる
+  function exRow(label, body) {
+    return `<div class="ymm4-ex__row"><span class="ymm4-ex__label">${label}</span>${body}</div>`;
+  }
+
+  // セレクトボックス。sel と一致する項目を選択状態にする
+  function exSelect(cls, options, sel, disabled) {
+    const opts = options.map((t) => `<option${t === sel ? ' selected' : ''}>${t}</option>`).join('');
+    return `<select class="ymm4-select${cls ? ' ' + cls : ''}"${disabled ? ' disabled' : ''}>${opts}</select>`;
+  }
+
+  // 2 列グリッド用：ラベル + セレクトのセル
+  function exCellSelect(label, options, sel) {
+    return `<div class="ymm4-ex__cell"><span class="ymm4-ex__label">${label}</span>${exSelect('', options, sel)}</div>`;
+  }
+
+  // 2 列グリッド用：ラベル + 数値表示 + スライダーのセル。
+  // data-dec / data-unit は数値表示の整形（syncExSlider）が読む
+  function exCellSlider(label, o) {
+    return `
+      <div class="ymm4-ex__cell">
+        <span class="ymm4-ex__label">${label}</span>
+        <span class="ymm4-ex__num"></span>
+        <input type="range" min="${o.min}" max="${o.max}" step="${o.step || 1}" value="${o.value}"
+               data-dec="${o.dec || 0}" data-unit="${o.unit || ''}">
+      </div>`;
+  }
+
+  // 2 列グリッド用：ラベル + トグルスイッチのセル（スイッチはセル右端へ寄せる）
+  function exCellToggle(label, on) {
+    return `
+      <div class="ymm4-ex__cell ymm4-ex__cell--tg">
+        <span class="ymm4-ex__label">${label}</span>
+        <button class="ymm4-switch${on ? ' is-on' : ''}" type="button" role="switch" aria-checked="${!!on}"></button>
+      </div>`;
+  }
+
+  // エクスパンダー（丸囲みシェブロンの見出し + 折りたたみ本文）を 1 つ組む。
+  // mode を渡したグループは該当する出力モードのときだけ表示される
+  function exGroup(title, body, mode) {
+    return `
+      <section class="ymm4-ex__group"${mode ? ` data-exmode="${mode}"` : ''}>
+        <button class="ymm4-ex__head" type="button"><span class="ymm4-ex__chev"></span>${title}</button>
+        <div class="ymm4-ex__grp">${body}</div>
+      </section>`;
+  }
+
+  // 範囲指定のトランスポートのアイコンボタン
+  function exTpBtn(action, title, icon, extra) {
+    return `<button class="tbtn${extra ? ' ' + extra : ''}" type="button" data-ex="${action}" title="${title}"><i class="${icon}"></i></button>`;
+  }
+
+  // 秒数を本家の「00:00:00.0333333」形式（.NET TimeSpan 風）へ整形する
+  function exFormatLen(sec) {
+    const s = Math.max(0, sec);
+    const whole = Math.floor(s % 60);
+    const frac = (s % 60 - whole).toFixed(7).slice(2);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(whole)}.${frac}`;
+  }
+
+  // スライダーの数値表示（「-18.0 dB」「50」など）を隣の .ymm4-ex__num へ反映する
+  function syncExSlider(input) {
+    const num = input.parentElement && input.parentElement.querySelector('.ymm4-ex__num');
+    if (!num) return;
+    const body = Number(input.value).toFixed(Number(input.dataset.dec || 0));
+    num.textContent = input.dataset.unit ? `${body} ${input.dataset.unit}` : body;
+  }
+
+  // FFmpeg のコマンドプレビューを組み立て直す（手入力があればそちらを見せる）
+  function updateExCmds() {
+    if (!exDlg) return;
+    const ff = exDlg.querySelector('[data-exmode="ffmpeg"]');
+    const vbr = Number(ff.querySelector('.ymm4-ex__vbr').value) || 0;
+    const abr = parseInt(ff.querySelector('.ymm4-ex__abr').value, 10) || 0;
+    const vcmd = ff.querySelector('.ymm4-ex__vcmd').value.trim();
+    const acmd = ff.querySelector('.ymm4-ex__acmd').value.trim();
+    ff.querySelector('[data-excmd="v"]').textContent = vcmd || `-b:v ${vbr * 1000} -c:v h264 -f mp4 -loglevel warning`;
+    ff.querySelector('[data-excmd="a"]').textContent = acmd || `-b:a ${abr * 1000} -c:a aac -f mp4 -loglevel warning`;
+  }
+
+  // 出力モードに応じてエンコード設定グループの表示を切り替える
+  function applyExMode() {
+    if (!exDlg) return;
+    const mode = exDlg.querySelector('.ymm4-ex__mode').value;
+    exDlg.querySelectorAll('[data-exmode]').forEach((g) => { g.hidden = g.dataset.exmode !== mode; });
+  }
+
+  // ズーム（%）に合わせてプレビューの表示幅を変える（出力解像度 1920px 基準）
+  function applyExZoom() {
+    if (!exDlg) return;
+    const pct = parseInt(exDlg.querySelector('.ymm4-ex__zoomsel').value, 10) || 18;
+    exDlg.querySelector('.ymm4-ex__canvas').style.width = `${Math.round(1920 * pct / 100)}px`;
+  }
+
+  // 動画範囲（開始・終了フレーム）から「動画の長さ」を計算し直す
+  function updateExRangeLen(ctx) {
+    if (!exDlg) return;
+    const s = Number(exDlg.querySelector('[data-exval="start"]').value) || 0;
+    const e = Number(exDlg.querySelector('[data-exval="end"]').value) || 0;
+    exDlg.querySelector('[data-exval="len"]').textContent = exFormatLen(Math.max(0, e - s) / ctx.transport.fps());
+  }
+
+  // プレビュー転写ループ：メインのコンポジターの画と現在フレームを追従させる
+  function exPreviewLoop(ctx) {
+    exRaf = 0;
+    if (!exDlg || exDlg.hidden) return;
+    // 現在のフレーム表示（変化したときだけ書き換える）
+    const cur = exDlg.querySelector('[data-exval="cur"]');
+    const txt = String(Math.round(ctx.transport.playhead() * ctx.transport.fps()));
+    if (cur.textContent !== txt) cur.textContent = txt;
+    // コンポジターの画を転写する（WebGL 側の都合で写せない場合は黒のまま）
+    const canvas = exDlg.querySelector('.ymm4-ex__canvas');
+    const src = document.getElementById('compositor');
+    if (canvas && src) {
+      const g = canvas.getContext('2d');
+      g.fillStyle = '#000';
+      g.fillRect(0, 0, canvas.width, canvas.height);
+      try { g.drawImage(src, 0, 0, canvas.width, canvas.height); } catch (e) {}
+    }
+    exRaf = requestAnimationFrame(() => exPreviewLoop(ctx));
+  }
+
+  // ダイアログの DOM を組み立てて body 直下へ追加する（初回のみ）
+  function buildExportDialog(ctx) {
+    exDlg = document.createElement('div');
+    exDlg.className = 'ymm4-export';
+    exDlg.hidden = true;
+
+    // --- エンコード設定（FFmpeg 出力） ---
+    const ffmpegGroup = exGroup('エンコード設定', `
+      ${exRow('FFmpegフォルダ', `
+        <input type="text" class="ymm4-text ymm4-ex__dir" value=".\\user\\resource\\ffmpeg\\" spellcheck="false">
+        <button class="ymm4-mini ymm4-mini--icon" type="button" data-ex="dir" title="フォルダを選択"><i class="ti ti-folder"></i></button>`)}
+      ${exRow('プリセット', `
+        ${exSelect('', ['カスタム', 'YouTube（1080p）', 'ニコニコ動画', '低容量'], 'カスタム')}
+        <button class="ymm4-mini ymm4-mini--icon" type="button" data-ex="preset-save" title="プリセットを保存"><i class="ti ti-device-floppy"></i></button>`)}
+      ${exRow('映像ビットレート', `
+        ${exSelect('ymm4-ex__w120 ymm4-ex__vauto', ['自動', '手動'], '自動')}
+        ${exSelect('ymm4-ex__w140 ymm4-ex__vkind', ['固定ビットレート', '平均ビットレート', '品質基準 VBR'], '固定ビットレート', true)}
+        <input type="number" class="ymm4-text ymm4-ex__vbr" value="240000" min="1" disabled>
+        <span class="ymm4-ex__unit">kbps</span>`)}
+      ${exRow('音声ビットレート', exSelect('ymm4-ex__abr', ['96 kbps', '128 kbps', '160 kbps', '192 kbps', '256 kbps', '320 kbps'], '192 kbps'))}
+      ${exRow('映像コマンド', '<input type="text" class="ymm4-text ymm4-ex__vcmd" spellcheck="false">')}
+      ${exRow('プレビュー', '<span class="ymm4-ex__cmd" data-excmd="v"></span>')}
+      ${exRow('音声コマンド', '<input type="text" class="ymm4-text ymm4-ex__acmd" spellcheck="false">')}
+      ${exRow('プレビュー', '<span class="ymm4-ex__cmd" data-excmd="a"></span>')}
+      <div class="ymm4-ex__cols">${exCellToggle('ハードウェアエンコード', true)}</div>
+    `, 'ffmpeg');
+
+    // --- エンコード設定 + 詳細設定（MediaFoundation出力） ---
+    const mfGroup = exGroup('エンコード設定', `
+      ${exRow('映像ビットレート', `
+        ${exSelect('ymm4-ex__w120 ymm4-ex__vauto', ['自動', '手動'], '自動')}
+        ${exSelect('ymm4-ex__w140 ymm4-ex__vkind', ['平均ビットレート', '固定ビットレート'], '平均ビットレート', true)}
+        <input type="number" class="ymm4-text ymm4-ex__vbr" value="300000" min="1" disabled>
+        <span class="ymm4-ex__unit">kbps</span>`)}
+      ${exRow('音声ビットレート', exSelect('', ['96 kbps', '128 kbps', '160 kbps', '192 kbps', '256 kbps', '320 kbps'], '192 kbps'))}
+    `, 'mf');
+    const mfDetailGroup = exGroup('詳細設定', `
+      <div class="ymm4-ex__cols">
+        ${exCellSelect('H.264 プロファイル', ['デフォルト（High）', 'Baseline', 'Main', 'High'], 'デフォルト（High）')}
+        ${exCellSelect('H.264 レベル', ['自動', '3.0', '3.1', '3.2', '4.0', '4.1', '4.2', '5.0', '5.1', '5.2'], '自動')}
+        ${exCellSelect('AAC プロファイル', ['AAC Level 2', 'AAC Level 4', 'HE-AAC v1', 'HE-AAC v2'], 'AAC Level 2')}
+        <div class="ymm4-ex__cell"></div>
+        ${exCellSlider('エンコード速度', { min: 0, max: 100, value: 50 })}
+        ${exCellSlider('スレッド数（0：自動）', { min: 0, max: 64, value: 0 })}
+        ${exCellSlider('量子化最小値', { min: 0, max: 51, value: 0 })}
+        ${exCellSlider('量子化最大値', { min: 0, max: 51, value: 51 })}
+        ${exCellSlider('最大キーフレーム間隔（0：自動）', { min: 0, max: 300, value: 0 })}
+        ${exCellSlider('最大Bフレーム連続数', { min: 0, max: 16, value: 2 })}
+        ${exCellToggle('ハードウェアエンコード', false)}
+        ${exCellToggle('CABAC', true)}
+        ${exCellToggle('ノイズ対策', true)}
+      </div>
+    `, 'mf');
+
+    // --- エンコード設定（連番PNG + WAV出力） ---
+    const pngGroup = exGroup('エンコード設定', `
+      <div class="ymm4-ex__cols">
+        ${exCellToggle('連番PNG出力', true)}
+        ${exCellToggle('WAV出力', true)}
+      </div>
+      ${exRow('ファイル名', '<input type="text" class="ymm4-text" value="無題" spellcheck="false">')}
+    `, 'png');
+
+    // --- 範囲指定（全モード共通） ---
+    const rangeGroup = exGroup('範囲指定', `
+      <div class="ymm4-ex__stage"><canvas class="ymm4-ex__canvas" width="960" height="540"></canvas></div>
+      <div class="ymm4-ex__tp">
+        ${exTpBtn('play', '再生/停止', 'ti ti-fi ti-player-play')}
+        ${exTpBtn('stop', '停止', 'ti ti-fi ti-player-stop')}
+        <select class="ymm4-speed ymm4-ex__speed" title="再生速度">${SPEED_OPTIONS.map((v) => `<option value="${v}"${v === 1 ? ' selected' : ''}>${speedLabel(v)}</option>`).join('')}</select>
+        ${exTpBtn('sync', 'プレビューの更新', 'ti ti-refresh')}
+        ${exTpBtn('fit', '映像を画面サイズに合わせる', 'ti ti-arrows-diagonal', 'is-active')}
+        <span class="ymm4-ex__tpico"><i class="ti ti-zoom-in"></i></span>
+        <select class="ymm4-speed ymm4-ex__zoomsel" title="ズーム">${[10, 18, 25, 33, 50, 100].map((v) => `<option${v === 18 ? ' selected' : ''}>${v}%</option>`).join('')}</select>
+        ${exTpBtn('rangefit', '表示範囲を映像に合わせる', 'ti ti-maximize')}
+        ${exTpBtn('start', '先頭へ', 'ti ti-fi ti-player-skip-back')}
+        ${exTpBtn('prev-item', '前のアイテムへ', 'ti ti-fi ti-player-track-prev')}
+        ${exTpBtn('prev-frame', '前のフレームへ', 'ti ti-fi ti-caret-left')}
+        ${exTpBtn('next-frame', '次のフレームへ', 'ti ti-fi ti-caret-right')}
+        ${exTpBtn('next-item', '次のアイテムへ', 'ti ti-fi ti-player-track-next')}
+        ${exTpBtn('end', '末尾へ', 'ti ti-fi ti-player-skip-forward')}
+        <span class="ymm4-ex__tpico ymm4-ex__tpvol"><i class="ti ti-volume"></i></span>
+        <span class="ymm4-volnum ymm4-ex__volnum">100.0 %</span>
+        <input type="range" class="ymm4-ex__vol" min="0" max="100" value="100" title="音量">
+      </div>
+      ${exRow('現在のフレーム', '<span class="ymm4-ex__val" data-exval="cur">0</span>')}
+      ${exRow('動画範囲（フレーム）', `
+        <button class="ymm4-mini" type="button" data-ex="range-start" title="現在のフレームを開始位置にする">[..</button>
+        <input type="number" class="ymm4-text ymm4-ex__frame" data-exval="start" value="0" min="0">
+        <span class="ymm4-ex__tilde">～</span>
+        <input type="number" class="ymm4-text ymm4-ex__frame" data-exval="end" value="1" min="0">
+        <button class="ymm4-mini" type="button" data-ex="range-end" title="現在のフレームを終了位置にする">..]</button>`)}
+      ${exRow('動画の長さ', '<span class="ymm4-ex__val" data-exval="len">00:00:00.0000000</span>')}
+    `);
+
+    // --- 音量調整 / 音割れ対策（全モード共通） ---
+    const compGroup = exGroup('音量調整 / 音割れ対策（コンプレッサー）', `
+      ${exRow('音量調整', exSelect('ymm4-ex__w220', ['何もしない', '最大音量を0dBにする', '最大音量を0dB以下にする'], '最大音量を0dB以下にする'))}
+      ${exRow('コンプレッサー', exSelect('', ['無効', '自動', '手動'], '自動'))}
+      <div class="ymm4-ex__cols">
+        ${exCellSlider('閾値', { min: -60, max: 0, step: 0.1, value: -18, dec: 1, unit: 'dB' })}
+        ${exCellSlider('最大音量', { min: -10, max: 0, step: 0.1, value: -0.2, dec: 1, unit: 'dB' })}
+        ${exCellSlider('アタックタイム', { min: 0, max: 0.5, step: 0.001, value: 0.006, dec: 3, unit: '秒' })}
+        ${exCellSlider('リリースタイム', { min: 0, max: 1, step: 0.001, value: 0.06, dec: 3, unit: '秒' })}
+        ${exCellToggle('先読み', true)}
+      </div>
+    `);
+
+    // --- その他（全モード共通） ---
+    const etcGroup = exGroup('その他', `
+      <div class="ymm4-ex__cols">
+        ${exCellToggle('字幕ファイル（.sub）を出力', false)}
+        ${exCellToggle('字幕にキャラクター名を含める', true)}
+        ${exCellToggle('ボイス一覧（.csv）を出力', false)}
+        ${exCellToggle('素材一覧（.csv）を出力', false)}
+        ${exCellToggle('親作品ID一覧（.txt）を出力', true)}
+      </div>
+    `);
+
+    exDlg.innerHTML = `
+      <div class="ymm4-export__backdrop"></div>
+      <div class="ymm4-ex" role="dialog" aria-modal="true" aria-label="動画出力">
+        <header class="ymm4-ex__title">
+          <img class="ymm4-ex__mark" src="favicon-symbol.svg" alt="" width="16" height="16">
+          <span class="ymm4-ex__name">動画出力</span>
+          <button class="ymm4-ex__wbtn" type="button" data-ex="min" title="最小化"><i class="ti ti-minus"></i></button>
+          <button class="ymm4-ex__wbtn" type="button" data-ex="max" title="最大化"><i class="ti ti-square"></i></button>
+          <button class="ymm4-ex__wbtn ymm4-ex__wbtn--close" type="button" data-ex="close" title="閉じる"><i class="ti ti-x"></i></button>
+        </header>
+        <div class="ymm4-ex__body">
+          ${exGroup('全般', exRow('動画出力', `
+            <select class="ymm4-select ymm4-ex__mode">
+              <option value="ffmpeg">FFmpeg 出力</option>
+              <option value="mf">MediaFoundation出力</option>
+              <option value="png">連番PNG + WAV出力</option>
+              <option value="other">その他のファイルのみ</option>
+            </select>`))}
+          ${ffmpegGroup}
+          ${mfGroup}
+          ${mfDetailGroup}
+          ${pngGroup}
+          ${rangeGroup}
+          ${compGroup}
+          ${etcGroup}
+          <div class="ymm4-ex__foot"><button type="button" class="btn ymm4-ex__run" data-ex="run">出力</button></div>
+        </div>
+      </div>`;
+    document.body.appendChild(exDlg);
+
+    // スライダーの数値表示を初期値で整形する
+    exDlg.querySelectorAll('.ymm4-ex__cell input[type="range"]').forEach(syncExSlider);
+    updateExCmds();
+    applyExMode();
+
+    // --- クリック（トグル・エクスパンダー・各ボタン） ---
+    exDlg.addEventListener('click', (e) => {
+      // 背景クリックで閉じる
+      if (e.target.classList.contains('ymm4-export__backdrop')) { closeExportDialog(); return; }
+      // トグルスイッチ
+      const sw = e.target.closest('.ymm4-switch');
+      if (sw) {
+        const on = sw.classList.toggle('is-on');
+        sw.setAttribute('aria-checked', String(on));
+        return;
+      }
+      // エクスパンダーの開閉
+      const head = e.target.closest('.ymm4-ex__head');
+      if (head) { head.parentElement.classList.toggle('is-closed'); return; }
+      // data-ex 属性のボタン
+      const btn = e.target.closest('[data-ex]');
+      if (!btn) return;
+      const fps = ctx.transport.fps();
+      switch (btn.dataset.ex) {
+        case 'close': closeExportDialog(); break;
+        case 'min': ctx.toast('最小化（未実装）'); break;
+        case 'max': {
+          // 最大化 ⇔ 元のサイズ の切り替え
+          const on = exDlg.classList.toggle('is-max');
+          btn.title = on ? '元に戻す' : '最大化';
+          break;
+        }
+        case 'play': ctx.transport.toggle(); break;
+        case 'stop': ctx.transport.stop(); break;
+        case 'sync': ctx.toast('プレビューの更新（未実装）'); break;
+        case 'fit': btn.classList.toggle('is-active'); break;
+        case 'rangefit': ctx.toast('表示範囲の変更（未実装）'); break;
+        case 'start': ctx.transport.seek(0); break;
+        case 'prev-item': ctx.transport.prevItem(); break;
+        case 'prev-frame': ctx.transport.seek(ctx.transport.playhead() - 1 / fps); break;
+        case 'next-frame': ctx.transport.seek(ctx.transport.playhead() + 1 / fps); break;
+        case 'next-item': ctx.transport.nextItem(); break;
+        case 'end': ctx.transport.seek(ctx.transport.duration()); break;
+        // 現在のフレームを動画範囲の開始/終了へ書き込む
+        case 'range-start':
+        case 'range-end': {
+          const which = btn.dataset.ex === 'range-start' ? 'start' : 'end';
+          exDlg.querySelector(`[data-exval="${which}"]`).value = String(Math.round(ctx.transport.playhead() * fps));
+          updateExRangeLen(ctx);
+          break;
+        }
+        case 'dir': ctx.toast('FFmpeg フォルダの選択（未実装）'); break;
+        case 'preset-save': ctx.toast('プリセットの保存（未実装）'); break;
+        case 'run':
+          closeExportDialog();
+          ctx.toast('書き出しを開始しました… 🎞️');
+          break;
+      }
+    });
+
+    // --- 変更（モード・ビットレート自動/手動・ズーム・再生速度・音声ビットレート） ---
+    exDlg.addEventListener('change', (e) => {
+      const t = e.target;
+      if (t.classList.contains('ymm4-ex__mode')) { applyExMode(); return; }
+      if (t.classList.contains('ymm4-ex__vauto')) {
+        // 「手動」のときだけビットレートの種類と数値を編集できる
+        const row = t.closest('.ymm4-ex__row');
+        const manual = t.value === '手動';
+        row.querySelector('.ymm4-ex__vkind').disabled = !manual;
+        row.querySelector('.ymm4-ex__vbr').disabled = !manual;
+        return;
+      }
+      if (t.classList.contains('ymm4-ex__zoomsel')) { applyExZoom(); return; }
+      if (t.classList.contains('ymm4-ex__speed')) { ctx.transport.setRate(t.value); return; }
+      if (t.classList.contains('ymm4-ex__abr')) { updateExCmds(); }
+    });
+
+    // --- 入力（スライダーの数値表示・音量 %・コマンドプレビュー・動画範囲） ---
+    exDlg.addEventListener('input', (e) => {
+      const t = e.target;
+      if (t.type === 'range' && t.closest('.ymm4-ex__cell')) { syncExSlider(t); return; }
+      if (t.classList.contains('ymm4-ex__vol')) {
+        exDlg.querySelector('.ymm4-ex__volnum').textContent = `${Number(t.value).toFixed(1)} %`;
+        return;
+      }
+      if (t.classList.contains('ymm4-ex__vbr') || t.classList.contains('ymm4-ex__vcmd') || t.classList.contains('ymm4-ex__acmd')) {
+        updateExCmds();
+        return;
+      }
+      if (t.dataset.exval === 'start' || t.dataset.exval === 'end') updateExRangeLen(ctx);
+    });
+  }
+
+  // ダイアログを開く（メニュー「ファイル > 動画出力」から）
+  function openExportDialog(ctx) {
+    if (!exDlg) buildExportDialog(ctx);
+    // 動画範囲は開くたびにプロジェクトの長さで初期化し直す
+    const frames = Math.max(1, Math.round(ctx.transport.duration() * ctx.transport.fps()));
+    exDlg.querySelector('[data-exval="start"]').value = '0';
+    exDlg.querySelector('[data-exval="end"]').value = String(frames);
+    updateExRangeLen(ctx);
+    applyExZoom();
+    exDlg.hidden = false;
+    // Esc で閉じる（開いている間だけ・アプリ側のキー処理より先に受ける）
+    exKeyHandler = (e) => {
+      if (e.key === 'Escape') { e.stopPropagation(); closeExportDialog(); }
+    };
+    window.addEventListener('keydown', exKeyHandler, true);
+    exPreviewLoop(ctx);
+  }
+
+  // ダイアログを閉じる（DOM は残して設定値を保つ）
+  function closeExportDialog() {
+    if (!exDlg) return;
+    exDlg.hidden = true;
+    if (exKeyHandler) { window.removeEventListener('keydown', exKeyHandler, true); exKeyHandler = null; }
+    if (exRaf) { cancelAnimationFrame(exRaf); exRaf = 0; }
+  }
+
+  // ダイアログを DOM ごと取り除く（他テーマへの切替時）
+  function destroyExportDialog() {
+    closeExportDialog();
+    if (exDlg) { exDlg.remove(); exDlg = null; }
+  }
+
   window.registerTheme && window.registerTheme('ymm4', {
     // テーマ適用時：本家 YMM4 に合わせて各部のラベルを差し替え、
     // アイテムパネルを組み直し、下部にステータスバー（時刻 / 解像度）を追加する。
@@ -728,6 +1138,11 @@ Season2</textarea>
       syncSeekbar(ctx);
     },
 
+    // メニュー「ファイル > 動画出力」からの委譲先（main.js の handleMenuAction が呼ぶ）
+    exportVideo(ctx) {
+      openExportDialog(ctx);
+    },
+
     // 他テーマへの切替時：このテーマ専用の状態を片付ける
     cleanup(ctx) {
       document.body.classList.remove('theme-js--ymm4');
@@ -743,6 +1158,8 @@ Season2</textarea>
       restoreTransport(ctx);
       // タイムライン上部（シーンタブ・ツールバー）を既定の構成へ戻す
       restoreTimelineToolbar(ctx);
+      // 動画出力ダイアログを DOM ごと取り除く
+      destroyExportDialog();
       // ステータスバーと監視を取り除く
       if (timeObserver) { timeObserver.disconnect(); timeObserver = null; }
       const res = ctx.$('#resSelect');

@@ -464,3 +464,124 @@ body.theme-js--ymm4 .tl-zoom { display: none; }
 
 /* 背景の暗幕 */
 .modal__backdrop { background: rgba(0, 0, 0, .5); }
+
+
+/* ===== 動画出力ダイアログ（ymm4.js が生成する本家の出力ウィンドウ） ===== */
+
+/* 画面全体を覆うモーダル層 */
+.ymm4-export { position: fixed; inset: 0; z-index: 950; display: grid; place-items: center; }
+.ymm4-export[hidden] { display: none; }
+.ymm4-export__backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); }
+
+/* ウィンドウ本体（WPF ウィンドウ風） */
+.ymm4-ex {
+  position: relative; display: flex; flex-direction: column;
+  width: 586px; max-width: calc(100vw - 24px); max-height: calc(100vh - 24px);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, .45);
+}
+/* 最大化中は画面いっぱいへ広げる */
+.ymm4-export.is-max .ymm4-ex { width: 100vw; height: 100vh; max-width: none; max-height: none; }
+
+/* タイトルバー（本家と同じ黒帯。配色モードによらず固定） */
+.ymm4-ex__title {
+  flex: none; display: flex; align-items: center; gap: 8px;
+  height: 32px; padding-left: 10px;
+  background: #161616; color: #fff;
+}
+.ymm4-ex__name { flex: 1 1 auto; font-size: 12px; }
+.ymm4-ex__wbtn {
+  flex: none; width: 44px; height: 32px;
+  border: none; background: transparent; color: #fff; cursor: pointer;
+}
+.ymm4-ex__wbtn .ti { font-size: 13px; }
+.ymm4-ex__wbtn:hover { background: #2f2f2f; }
+.ymm4-ex__wbtn--close:hover { background: #e81123; }
+
+/* 本文（縦に長いのでスクロール） */
+.ymm4-ex__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 10px 10px; }
+
+/* エクスパンダー（丸囲みシェブロンの見出し + 折りたたみ本文） */
+.ymm4-ex__group[hidden] { display: none; }
+.ymm4-ex__head {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%; padding: 6px 2px;
+  font: inherit; font-size: 11.5px; font-weight: 600; text-align: left;
+  border: none; background: transparent; cursor: pointer;
+}
+/* 見出し左の丸囲みシェブロン（開いている間は ∧、閉じている間は ∨） */
+.ymm4-ex__chev {
+  flex: none; position: relative;
+  width: 15px; height: 15px;
+  border: 1px solid currentColor; border-radius: 50%; opacity: .75;
+}
+.ymm4-ex__chev::after {
+  content: ""; position: absolute; left: 4px; top: 5px;
+  width: 5px; height: 5px;
+  border-left: 1.4px solid currentColor; border-top: 1.4px solid currentColor;
+  transform: rotate(45deg);
+}
+.ymm4-ex__group.is-closed .ymm4-ex__chev::after { top: 3px; left: 4px; transform: rotate(225deg); }
+.ymm4-ex__group.is-closed .ymm4-ex__grp { display: none; }
+.ymm4-ex__grp { display: flex; flex-direction: column; gap: 5px; padding: 2px 0 8px 4px; }
+
+/* 1 行 = 左のラベル + 右の部品 */
+.ymm4-ex__row { display: flex; align-items: center; gap: 6px; min-height: 24px; }
+.ymm4-ex__label { flex: none; width: 150px; font-size: 11px; line-height: 1.3; }
+
+/* アイテムパネルの部品（ymm4-select 等）を使い回すため、
+   あちらの order 指定と寸法をこの中では上書きする */
+.ymm4-ex .ymm4-select { order: 0; height: 22px; font-size: 11px; }
+.ymm4-ex .ymm4-text { order: 0; height: 22px; font-size: 11px; }
+.ymm4-ex .ymm4-mini { order: 0; min-width: 22px; height: 22px; font-size: 9px; }
+.ymm4-ex input[type="range"] { order: 0; flex: 1 1 auto; min-width: 40px; }
+
+/* 幅を固定する部品（ビットレートの自動/種類・音量調整） */
+.ymm4-ex .ymm4-ex__w120 { flex: 0 0 120px; }
+.ymm4-ex .ymm4-ex__w140 { flex: 0 0 140px; }
+.ymm4-ex .ymm4-ex__w220 { flex: 0 0 220px; }
+
+/* 数値入力のスピンボタンは本家に無いので隠す */
+.ymm4-ex input[type="number"] { appearance: textfield; }
+.ymm4-ex input[type="number"]::-webkit-inner-spin-button,
+.ymm4-ex input[type="number"]::-webkit-outer-spin-button { display: none; }
+
+/* 無効中の部品（ビットレート自動時など）は薄く見せる */
+.ymm4-ex select:disabled, .ymm4-ex input:disabled { opacity: .5; }
+
+/* FFmpeg フォルダのパス（本家は右寄せ表示） */
+.ymm4-ex .ymm4-ex__dir { text-align: right; }
+/* 「kbps」「～」などの添え字 */
+.ymm4-ex__unit, .ymm4-ex__tilde { flex: none; font-size: 11px; }
+/* コマンドのプレビュー（生成した FFmpeg 引数の表示） */
+.ymm4-ex__cmd { flex: 1 1 auto; text-align: center; font-size: 11px; word-break: break-all; }
+/* 右寄せの値表示（現在のフレーム・動画の長さ） */
+.ymm4-ex__val { flex: 1 1 auto; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; }
+/* 動画範囲のフレーム入力 */
+.ymm4-ex .ymm4-ex__frame { flex: 1 1 auto; text-align: right; }
+
+/* 2 列グリッド（詳細設定・コンプレッサー・その他のトグル群） */
+.ymm4-ex__cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 5px; }
+.ymm4-ex__cell { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 22px; }
+.ymm4-ex__cell .ymm4-ex__label { width: auto; min-width: 96px; }
+/* スライダー左の数値表示 */
+.ymm4-ex__num { flex: none; min-width: 40px; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; }
+/* トグルのセルはラベルを伸ばし、スイッチをセル右端へ寄せる */
+.ymm4-ex__cell--tg .ymm4-ex__label { flex: 1 1 auto; }
+
+/* 範囲指定のプレビュー（ズーム % に応じて canvas の表示幅が変わる） */
+.ymm4-ex__stage { display: grid; place-items: center; height: 264px; overflow: hidden; }
+.ymm4-ex__canvas { width: 346px; height: auto; background: #000; }
+
+/* 範囲指定のトランスポート（WPF ツールバー風の小さなボタン列） */
+.ymm4-ex__tp { display: flex; align-items: center; gap: 2px; padding: 2px 0; }
+.ymm4-ex__tp .tbtn { width: 24px; height: 22px; border-radius: 2px; }
+.ymm4-ex__tp .tbtn .ti { font-size: 13px; }
+.ymm4-ex__tpico { flex: none; display: inline-flex; margin-left: 4px; font-size: 13px; }
+.ymm4-ex .ymm4-ex__zoomsel { flex: 0 0 58px; }
+/* 音量は右端へ寄せる */
+.ymm4-ex__tpvol { margin-left: auto; }
+.ymm4-ex .ymm4-ex__vol { flex: 0 0 80px; }
+
+/* 右下の「出力」ボタン */
+.ymm4-ex__foot { display: flex; justify-content: flex-end; padding: 8px 2px 2px; }
+.ymm4-ex__run { min-width: 88px; padding: 5px 12px; font-size: 11.5px; }
