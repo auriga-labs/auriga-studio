@@ -820,7 +820,7 @@ Season2</textarea>
         <input type="text" class="ymm4-text ymm4-ex__dir" value=".\\user\\resource\\ffmpeg\\" spellcheck="false">
         <button class="ymm4-mini ymm4-mini--icon" type="button" data-ex="dir" title="フォルダを選択"><i class="ti ti-folder"></i></button>`)}
       ${exRow('プリセット', `
-        ${exSelect('', ['カスタム', 'YouTube（1080p）', 'ニコニコ動画', '低容量'], 'カスタム')}
+        ${exSelect('', ['カスタム', 'AVI', 'GIF', 'MP3', 'MP4 / AV1+AAC', 'MP4 / H.264+AAC', 'MP4 / VP9+AAC', 'WebP'], 'カスタム')}
         <button class="ymm4-mini ymm4-mini--icon" type="button" data-ex="preset-save" title="プリセットを保存"><i class="ti ti-device-floppy"></i></button>`)}
       ${exRow('映像ビットレート', `
         ${exSelect('ymm4-ex__w120 ymm4-ex__vauto', ['自動', '手動'], '自動')}
