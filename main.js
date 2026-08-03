@@ -2869,6 +2869,19 @@
         return Array.from(set).sort((a, b) => a - b);
     }
 
+    // マウス位置が要素のスクロールバー上かどうかを判定する
+    // （overflow:auto の要素はスクロールバーを掴んだときも要素自身に mousedown が届くため）
+    function isOnScrollbar(el, e) {
+        const rect = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        const bl = parseFloat(cs.borderLeftWidth) || 0;
+        const bt = parseFloat(cs.borderTopWidth) || 0;
+        const x = e.clientX - rect.left - bl;   // パディングボックス基準の座標
+        const y = e.clientY - rect.top - bt;
+        // clientWidth / clientHeight はスクロールバーを含まないので、それを超えたらバー上
+        return x >= el.clientWidth || y >= el.clientHeight;
+    }
+
     // タイムライン上のマウス位置から時間を求めてシークする（ドラッグ継続対応）
     function startScrub(e) {
         const scrub = (ev) => {
@@ -3303,6 +3316,8 @@
         // タイムラインの空白をクリック/ドラッグで連続シーク（スクラブ）
         els.tracksArea.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;   // 右クリックは無視
+            // スクロールバーを掴んだときはシークしない（再生位置がずれるのを防ぐ）
+            if (isOnScrollbar(els.tracksArea, e)) return;
             if (e.target.closest('.clip')) return;
             // 赤線（再生ヘッド）上は専用ハンドラに任せる
             if (e.target.closest('.playhead')) return;
