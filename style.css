@@ -5,6 +5,8 @@
 :root {
     --radius: 8px;
     --radius-sm: 5px;
+    /* 「自動的に隠す」で画面端に残るタブの幅（タブを置く余白もこの値で確保する） */
+    --strip-w: 24px;
     font-size: 13px;
 }
 .menubar__center { display: none !important; } /* いったんけす */
@@ -954,22 +956,34 @@ body.is-no-preview .layout > .panel--props > .panel-resizer { display: none; }
 /* パネル内の .appmenu は fixed にせず、パネルに沿わせる（縦線 ::before の基準にもなる） */
 .mobile-panel .appmenu { position: relative; }
 
-/* ===== フローティングパネル（プレビュー / アイテム / タイムラインの独立ウィンドウ化） ===== */
-/* ヘッダー右端の「独立 / 戻す」切り替えボタン */
-.float-btn {
+/* ===== パネルのツールボタン（メニュー / 自動的に隠す / ウィンドウ化 / 非表示） ===== */
+/* ヘッダー右端に Visual Studio 風の小さなボタンを並べる */
+.panel-tools {
     flex: none;
-    width: 24px; height: 22px; max-height: 100%;
+    display: flex; align-items: center; gap: 1px;
+    max-height: 100%;
+}
+/* 配色はテーマ CSS を増やさずに済むよう、ヘッダーの文字色（currentColor）から作る */
+.panel-tool {
+    flex: none;
+    width: 22px; height: 22px; max-height: 100%;
     display: inline-flex; align-items: center; justify-content: center;
     background: none; border: none; border-radius: 4px;
-    color: #5a6373; cursor: pointer; font-size: 13px;
-    transition: background-color .15s, color .15s;
+    color: inherit; opacity: .65;
+    cursor: pointer; font-size: 13px;
+    transition: background-color .15s, opacity .15s;
 }
-.float-btn:hover { background: #e3e6ec; color: #1c2330; }
+.panel-tool:hover { opacity: 1; background: color-mix(in srgb, currentColor 16%, transparent); }
+.panel-tool.is-active,
+.panel-tool.is-on { opacity: 1; background: color-mix(in srgb, currentColor 22%, transparent); }
+.panel-tool--close:hover { background: #d64b4b; color: #ffffff; opacity: 1; }
 /* ボタンをヘッダー右端へ寄せるための調整（既存の並びは崩さない） */
 .stage__head { gap: 8px; }
 .stage__label { flex: 1 1 auto; }
 .panel__head { display: flex; align-items: center; }
 .panel__tabs { flex: 1 1 auto; }
+
+/* ===== フローティングパネル（プレビュー / アイテム / タイムラインの独立ウィンドウ化） ===== */
 
 /* 独立ウィンドウ本体。位置・サイズは JS がインラインスタイルで与える */
 .is-floating {
@@ -1013,6 +1027,48 @@ body.is-tl-floating .tl-resizer { display: none; }
 .float-grip--ne { top: 0; right: 0; width: 12px; height: 12px; cursor: nesw-resize; }
 .float-grip--sw { bottom: 0; left: 0; width: 12px; height: 12px; cursor: nesw-resize; }
 .float-grip--se { bottom: 0; right: 0; width: 12px; height: 12px; cursor: nwse-resize; }
+
+/* ===== 自動的に隠す（画面端のタブへ畳む） ===== */
+/* 畳んでいる間はレイアウトから外し、端のタブだけを残す */
+.stage.is-autohide:not(.is-peek),
+.panel--props.is-autohide:not(.is-peek) { display: none; }
+
+/* せり出し表示。位置・サイズは JS がインラインスタイルで与える */
+.is-peek {
+    display: flex !important;
+    position: fixed !important;
+    z-index: 880;   /* 独立ウィンドウ(〜850)より上、メニュー層(900)より下 */
+    border: 1px solid #ccd2dc;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 24px 70px rgba(15, 20, 30, .35);
+}
+/* せり出し中は幅をタブ側で決めるので、ドック用のリサイズつかみしろは隠す */
+.panel--props.is-peek > .panel-resizer { display: none; }
+
+/* 画面端に残るタブ。縦書きでラベルを出す。
+   配色はテーマ CSS を増やさずに済むよう、body の文字色（currentColor）から作る */
+.autohide-strip {
+    position: fixed; z-index: 870;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: var(--strip-w); padding: 10px 0;
+    writing-mode: vertical-rl;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    color: inherit; font-size: 11.5px; font-family: inherit;
+    cursor: pointer; overflow: hidden;
+    transition: background-color .15s;
+}
+.autohide-strip[hidden] { display: none; }
+.autohide-strip:hover { background: color-mix(in srgb, currentColor 24%, transparent); }
+.autohide-strip .ti { writing-mode: horizontal-tb; font-size: 14px; }
+.autohide-strip--left  { left: 0;  border-left: none;  border-radius: 0 var(--radius) var(--radius) 0; }
+.autohide-strip--right { right: 0; border-right: none; border-radius: var(--radius) 0 0 var(--radius); }
+
+/* タブを置く余白を画面端に確保して、ドック中のパネルのボタンを隠さないようにする
+   （* の padding: 0 より詳細度を上げるため body に付けたクラスで指定する） */
+body.has-strip-left  { padding-left: var(--strip-w); }
+body.has-strip-right { padding-right: var(--strip-w); }
 
 /* ===== レスポンシブ ===== */
 @media (max-width: 1100px) {

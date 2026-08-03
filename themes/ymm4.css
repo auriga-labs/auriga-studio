@@ -72,8 +72,10 @@ body.is-no-items { grid-template-columns: minmax(0, 1fr); }
 /* プレビューを隠したら .layout と境界バーごと畳み、タイムラインを上まで伸ばす。
    タイムラインの高さは境界バーのドラッグでインライン指定されるため !important で外す。
    ただしプレビューが独立ウィンドウ中は .layout の中に居続けるため、
-   :has() で除外して巻き添えに消さない（タイムラインの高さも独立側の指定を優先する） */
-body.is-no-preview .layout:not(:has(> .stage.is-floating)),
+   :has() で除外して巻き添えに消さない（タイムラインの高さも独立側の指定を優先する）。
+   「自動的に隠す」中も同様で、せり出し（.is-peek）を表示できるよう .layout は残す
+   （行の高さは下の grid-template-rows で 0 に潰れるので場所は取らない） */
+body.is-no-preview .layout:not(:has(> .stage.is-floating)):not(:has(> .stage.is-autohide)),
 body.is-no-preview .tl-resizer { display: none; }
 body.is-no-preview { grid-template-rows: auto 0 0 minmax(0, 1fr) auto; }
 body.is-no-preview .timeline:not(.is-floating) { height: auto !important; }

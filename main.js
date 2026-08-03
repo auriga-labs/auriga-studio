@@ -12,6 +12,7 @@
     const USER_KEY = 'auriga.user';     // ログイン中ユーザー情報の保存キー
     const PANELS_KEY = 'auriga.panels'; // ツールメニューで切り替えるパネル表示状態の保存キー
     const FLOATS_KEY = 'auriga.floats'; // 独立ウィンドウ化したパネルの状態（位置・サイズ）の保存キー
+    const AUTOHIDE_KEY = 'auriga.autohide'; // 「自動的に隠す」中のパネルの保存キー
 
     // ---- OAuth（Google ログイン）----
     // Google の認可画面を新しいタブで直接開く。リダイレクト先の PHP バックエンド
@@ -73,6 +74,8 @@
         panels: { preview: true, items: true },
         // 独立ウィンドウ化（フローティング）したパネルの状態。{ on, x, y, w, h } を持つ
         floats: { preview: null, items: null, timeline: null },
+        // 「自動的に隠す」中のパネル（画面端のタブへ畳み、ホバーでせり出す）
+        autoHide: { preview: false, items: false },
     };
 
     // ---- トラック定義（上から） ----
@@ -3183,9 +3186,13 @@
             const el = $(def.selector);
             const visible = state.panels[id] !== false;
             if (el) el.classList.toggle('is-hidden', !visible);
-            // 非表示のときだけでなく、独立ウィンドウ中もドックの空きを詰める
-            document.body.classList.toggle(def.bodyClass, !visible || isPanelFloating(id));
+            // 非表示のときだけでなく、独立ウィンドウ中・自動的に隠す中もドックの空きを詰める
+            document.body.classList.toggle(def.bodyClass, !visible || isPanelFloating(id) || isPanelAutoHidden(id));
         });
+        // メニュー側のチェック（ロゴメニュー「パネル」・メニューバーのツール）を追従させる
+        syncPanelMenuChecks(PANEL_MENU_ITEMS);
+        syncPanelMenuChecks(menuBarMenus);
+        updatePanelTools();
     }
 
     // パネルの表示/非表示を切り替える（ツールメニューのチェックから呼ぶ）
@@ -3193,6 +3200,8 @@
         const def = TOGGLEABLE_PANELS[id];
         if (!def) return;
         state.panels[id] = !!visible;
+        // 隠すときは「自動的に隠す」も解除する（タブだけ残ると戻し方が分からなくなるため）
+        if (!visible && isPanelAutoHidden(id)) setPanelAutoHide(id, false, true);
         applyPanelVisibility();
         savePanelVisibility();
         // プレビューを出し直したときは表示サイズが変わっているので描き直す
@@ -3240,6 +3249,7 @@
         bindTimelineResizer();   // タイムラインの高さをドラッグで調整
         bindItemsResizer();   // アイテムパネルの幅をドラッグで調整
         bindFloatingPanels();   // プレビュー / アイテム / タイムラインの独立ウィンドウ化
+        bindAutoHidePanels();   // プレビュー / アイテムを画面端のタブへ畳む（自動的に隠す）
 
         // ファイルがトラック外に落ちてもブラウザがファイルを開かないようにする
         ['dragover', 'drop'].forEach((evt) => {
@@ -3667,6 +3677,14 @@
         label: THEME_LABELS[t], checked: false,
     }));
 
+    // パネルの表示/非表示（プレビュー・アイテム）のチェック項目。
+    // メニューバー側の定義はテーマごとに有無が違うので、テーマ非依存のロゴメニューにも置いて
+    // 「非表示」にしたパネルをどのテーマからでも戻せるようにする。
+    // チェック状態は applyPanelVisibility() が現在の表示状態に同期する。
+    const PANEL_MENU_ITEMS = Object.keys(TOGGLEABLE_PANELS).map((id) => ({
+        id, type: 'checkbox', label: TOGGLEABLE_PANELS[id].label, checked: true,
+    }));
+
     // ロゴ文字のメニュー（全テーマ共通のアプリメニュー）。
     // メニューバーは対応ソフトごとに切り替わるが、これはテーマに依存せず常に同じ内容。
     const LOGO_MENU = {
@@ -3681,6 +3699,7 @@
             ] },
             { id: 'import-project',    label: 'インポート…',           icon: 'package-import' },
             { type: 'separator' },
+            { id: 'panels',            label: 'パネル',                 icon: 'layout-board-split', type: 'submenu', items: PANEL_MENU_ITEMS },
             { id: 'theme',             label: 'テーマ',                 icon: 'palette',  type: 'submenu', items: THEME_MENU_ITEMS },
             { id: 'display-mode',      label: '表示モード',             icon: 'sun-moon', type: 'submenu', items: MODE_MENU_ITEMS },
             { id: 'preferences',       label: '環境設定…',             icon: 'settings',  shortcut: 'Ctrl+,' },
@@ -3798,6 +3817,8 @@
         // スマホパネルの1階層目のハイライトも消す
         const mp = $('#mobilePanel');
         if (mp) mp.querySelectorAll('.appmenu__item').forEach((b) => b.classList.remove('is-active', 'is-open'));
+        // パネルのツールメニューボタンの押下状態も戻す
+        $$('.panel-tool').forEach((b) => b.classList.remove('is-active', 'is-open'));
         const logo = $('#appLogoMenu');
         if (logo) logo.classList.remove('is-active');
     }
@@ -3916,6 +3937,8 @@
                     it.checked = !it.checked;
                 }
                 closeMenuBar();
+                // action を持つ項目（パネルのツールメニューなど）はその場で実行する
+                if (typeof it.action === 'function') { it.action(it); return; }
                 handleMenuAction(it);
             });
         }
@@ -4036,7 +4059,9 @@
         bindLogoMenu();   // ロゴ文字のメニューも同じ機構で開閉する
         document.addEventListener('mousedown', (e) => {
             if (!activeMenuId) return;
-            if (e.target.closest('.appmenu') || e.target.closest('#appMenu') || e.target.closest('#appLogoMenu')) return;
+            // パネルのツールメニューボタンは自前で開閉を切り替えるので、ここでは閉じない
+            if (e.target.closest('.appmenu') || e.target.closest('#appMenu') || e.target.closest('#appLogoMenu')
+                || e.target.closest('.panel-tool--menu')) return;
             closeMenuBar();
         });
         document.addEventListener('keydown', (e) => {
@@ -4539,14 +4564,15 @@
         }
         // タイムラインが独立中は境界バー（tl-resizer）を畳む
         if (id === 'timeline') document.body.classList.toggle('is-tl-floating', on);
-        applyPanelVisibility();   // ドックの空きを詰める body クラスを同期する
-        updateFloatButtons();
+        applyPanelVisibility();   // ドックの空きを詰める body クラスを同期する（ツールボタンもここで更新される）
     }
 
     // パネルの独立ウィンドウ化を切り替える（ヘッダーのボタンから呼ぶ）
     function setPanelFloating(id, on) {
         const def = FLOATABLE_PANELS[id];
         if (!def) return;
+        // 独立ウィンドウにするなら「自動的に隠す」は解除する（両立しない）
+        if (on && isPanelAutoHidden(id)) setPanelAutoHide(id, false, true);
         if (!state.floats[id]) state.floats[id] = {};
         state.floats[id].on = !!on;
         applyFloating(id);
@@ -4576,26 +4602,96 @@
         });
     }
 
-    // ヘッダー右端に「独立/戻す」切り替えボタンを差し込む
-    function makeFloatButton(id, def, el) {
+    // ヘッダー右端にツールボタンを差し込む。
+    // プレビュー / アイテムは Visual Studio 風に「メニュー・自動的に隠す・ウィンドウ化・非表示」の
+    // 4 つを並べ、タイムラインは独立ウィンドウ化の切り替えだけを置く。
+    function makePanelTools(id, def, el) {
         const host = el.querySelector(def.handle);
-        if (!host || host.querySelector('.float-btn')) return;
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'float-btn';
-        btn.dataset.float = id;
-        btn.addEventListener('click', () => setPanelFloating(id, !isPanelFloating(id)));
-        host.appendChild(btn);
+        if (!host || host.querySelector('.panel-tools')) return;
+        const box = document.createElement('div');
+        box.className = 'panel-tools';
+
+        // ボタン1つを作る（kind は見た目とアイコン更新の目印）
+        const addTool = (kind, icon, title, onClick) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `panel-tool panel-tool--${kind}`;
+            btn.dataset.panel = id;
+            btn.title = title;
+            btn.setAttribute('aria-label', title);
+            btn.innerHTML = `<i class="ti ti-${icon}"></i>`;
+            btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(btn); });
+            box.appendChild(btn);
+            return btn;
+        };
+
+        // ドッキング操作の一覧（2枚目のスクリーンショット相当のメニュー）
+        if (TOGGLEABLE_PANELS[id]) {
+            addTool('menu', 'menu-2', 'ウィンドウの位置', (btn) => togglePanelMenu(btn, id));
+            addTool('pin', 'pin', '自動的に隠す', () => setPanelAutoHide(id, !isPanelAutoHidden(id)));
+        }
+        // 独立ウィンドウ化 / 元に戻す（アイコンは updatePanelTools が状態に合わせて差し替える）
+        const floatBtn = addTool('float', 'external-link', '独立ウィンドウにする',
+            () => setPanelFloating(id, !isPanelFloating(id)));
+        floatBtn.dataset.float = id;
+        if (TOGGLEABLE_PANELS[id]) {
+            addTool('close', 'x', '非表示', () => setPanelVisible(id, false));
+        }
+
+        host.appendChild(box);
     }
 
     // 全ボタンのアイコンとツールチップを現在の状態に合わせる
-    function updateFloatButtons() {
-        $$('.float-btn').forEach((btn) => {
+    function updatePanelTools() {
+        $$('.panel-tool--float').forEach((btn) => {
             const on = isPanelFloating(btn.dataset.float);
             btn.innerHTML = on
                 ? '<i class="ti ti-arrows-diagonal-minimize-2"></i>'
                 : '<i class="ti ti-external-link"></i>';
             btn.title = on ? '元の位置に戻す' : '独立ウィンドウにする';
+            btn.setAttribute('aria-label', btn.title);
+        });
+        $$('.panel-tool--pin').forEach((btn) => {
+            const on = isPanelAutoHidden(btn.dataset.panel);
+            btn.innerHTML = on
+                ? '<i class="ti ti-pinned-off"></i>'
+                : '<i class="ti ti-pin"></i>';
+            btn.title = on ? 'ドッキング（自動的に隠すを解除）' : '自動的に隠す';
+            btn.setAttribute('aria-label', btn.title);
+            btn.classList.toggle('is-on', on);
+        });
+    }
+
+    // ツールメニュー（ウィンドウ化 / ドッキング / 自動的に隠す / 非表示）を開閉する
+    function togglePanelMenu(btn, id) {
+        const menuId = `__panel_${id}__`;
+        if (activeMenuId === menuId) { closeMenuBar(); return; }
+        const floating = isPanelFloating(id);
+        const autoHidden = isPanelAutoHidden(id);
+        openTopMenu(btn, {
+            id: menuId,
+            items: [
+                {
+                    id: 'panel-float', type: 'radio', group: 'panel-dock', label: 'ウィンドウ化',
+                    checked: floating,
+                    action: () => { if (!floating) setPanelFloating(id, true); },
+                },
+                {
+                    id: 'panel-dock', type: 'radio', group: 'panel-dock', label: 'ドッキング',
+                    checked: !floating && !autoHidden,
+                    action: () => {
+                        if (autoHidden) setPanelAutoHide(id, false);
+                        else if (floating) setPanelFloating(id, false);
+                    },
+                },
+                { type: 'separator' },
+                {
+                    id: 'panel-autohide', type: 'checkbox', label: '自動的に隠す',
+                    checked: autoHidden,
+                    action: (it) => setPanelAutoHide(id, it.checked),
+                },
+                { id: 'panel-hide', label: '非表示', icon: 'x', action: () => setPanelVisible(id, false) },
+            ],
         });
     }
 
@@ -4715,7 +4811,7 @@
             const def = FLOATABLE_PANELS[id];
             const el = $(def.selector);
             if (!el) return;
-            makeFloatButton(id, def, el);
+            makePanelTools(id, def, el);
             bindFloatDrag(id, def, el);
             bindFloatResize(id, def, el);
             // どこかをつかんだら最前面へ出す
@@ -4725,6 +4821,200 @@
         });
         window.addEventListener('resize', reclampFloats);
         restoreFloatingPanels();
+    }
+
+    // ======================================================
+    // 自動的に隠す（パネルを画面端のタブへ畳む）
+    // ======================================================
+    // ヘッダーのピンボタン（またはツールメニュー）で有効にすると、パネルはドックから外れて
+    // 画面端の細いタブだけになる。タブにポインタを乗せている間だけパネルがせり出し、
+    // 離すとまた畳まれる。ピンをもう一度押すとドックへ戻る。
+    const AUTOHIDE_PANELS = {
+        preview: { selector: '.stage',        edge: 'left',  label: 'プレビュー', icon: 'player-play' },
+        items:   { selector: '.panel--props', edge: 'right', label: 'アイテム',   icon: 'adjustments' },
+    };
+    const STRIP_OFFSET = 12;   // タブを端の上から少し下げる余白(px)
+    const PEEK_CLOSE_DELAY = 260;   // ポインタが離れてから畳むまでの猶予(ms)
+    const autoHideStrips = {};   // id → タブ要素
+    const peekTimers = {};       // id → 畳むまでのタイマー
+
+    // 指定パネルが「自動的に隠す」中か
+    function isPanelAutoHidden(id) {
+        return state.autoHide[id] === true;
+    }
+
+    // せり出し（ピーク）表示中か
+    function isPanelPeeking(id) {
+        const def = AUTOHIDE_PANELS[id];
+        const el = def && $(def.selector);
+        return !!(el && el.classList.contains('is-peek'));
+    }
+
+    // 画面端のタブを（なければ作って）返す
+    function ensureAutoHideStrip(id) {
+        if (autoHideStrips[id]) return autoHideStrips[id];
+        const def = AUTOHIDE_PANELS[id];
+        const strip = document.createElement('button');
+        strip.type = 'button';
+        strip.className = `autohide-strip autohide-strip--${def.edge}`;
+        strip.dataset.strip = id;
+        strip.hidden = true;
+        strip.innerHTML = `<i class="ti ti-${def.icon}"></i><span>${escapeHtml(def.label)}</span>`;
+        // ホバーでせり出し、離れると畳む（クリックはタッチ操作用）
+        strip.addEventListener('pointerenter', () => { cancelClosePeek(id); openPeek(id); });
+        strip.addEventListener('pointerleave', () => scheduleClosePeek(id));
+        strip.addEventListener('click', () => openPeek(id));
+        document.body.appendChild(strip);
+        autoHideStrips[id] = strip;
+        return strip;
+    }
+
+    // タブの位置を画面端に合わせる（メニューバーの下・ステータスバーの上に収める）
+    function layoutAutoHideStrip(id) {
+        const strip = autoHideStrips[id];
+        if (!strip || strip.hidden) return;
+        strip.style.top = (snapAreaTop() + STRIP_OFFSET) + 'px';
+        strip.style.maxHeight = Math.max(60, snapAreaBottom() - snapAreaTop() - STRIP_OFFSET * 2) + 'px';
+    }
+
+    // せり出し中のパネルの位置・サイズを決める
+    function applyPeekGeometry(id) {
+        const def = AUTOHIDE_PANELS[id];
+        const el = $(def.selector);
+        if (!el) return;
+        const strip = autoHideStrips[id];
+        const stripW = strip ? Math.round(strip.getBoundingClientRect().width) : 26;
+        const top = snapAreaTop();
+        const height = Math.max(160, snapAreaBottom() - top);
+        // アイテムはドック時の幅、プレビューは画面幅の半分強を目安にする
+        const w = id === 'items'
+            ? Math.max(ITEMS_MIN_WIDTH, itemsWidth || 300)
+            : Math.max(320, Math.min(760, Math.round(window.innerWidth * 0.55)));
+        const width = Math.min(w, Math.max(240, window.innerWidth - stripW - 8));
+        el.style.top = top + 'px';
+        el.style.height = height + 'px';
+        el.style.width = width + 'px';
+        el.style.left = (def.edge === 'right' ? window.innerWidth - width - stripW : stripW) + 'px';
+    }
+
+    // せり出し表示にする
+    function openPeek(id) {
+        if (!isPanelAutoHidden(id) || state.panels[id] === false) return;
+        const el = $(AUTOHIDE_PANELS[id].selector);
+        if (!el || el.classList.contains('is-peek')) return;
+        el.classList.add('is-peek');
+        applyPeekGeometry(id);
+        if (id === 'preview') composite(state.playhead, false);
+    }
+
+    // せり出しを畳む
+    function closePeek(id) {
+        const el = $(AUTOHIDE_PANELS[id].selector);
+        if (!el || !el.classList.contains('is-peek')) return;
+        el.classList.remove('is-peek');
+        el.style.left = el.style.top = el.style.width = el.style.height = '';
+    }
+
+    // 少し待ってから畳む（タブとパネルの間をポインタが通るときに閉じないようにする）
+    function scheduleClosePeek(id) {
+        cancelClosePeek(id);
+        peekTimers[id] = setTimeout(() => {
+            // パネル内から開いたメニューの操作中は畳まない
+            if (activeMenuId) { scheduleClosePeek(id); return; }
+            closePeek(id);
+        }, PEEK_CLOSE_DELAY);
+    }
+
+    function cancelClosePeek(id) {
+        clearTimeout(peekTimers[id]);
+    }
+
+    // 「自動的に隠す」状態を DOM へ反映する
+    function applyAutoHide(id) {
+        const def = AUTOHIDE_PANELS[id];
+        const el = $(def.selector);
+        if (!el) return;
+        const on = isPanelAutoHidden(id);
+        el.classList.toggle('is-autohide', on);
+        if (!on) closePeek(id);
+        const strip = ensureAutoHideStrip(id);
+        strip.hidden = !(on && state.panels[id] !== false);
+        layoutAutoHideStrip(id);
+        updateStripGutters();
+        applyPanelVisibility();   // ドックの空きを詰める body クラスを同期する
+    }
+
+    // タブを置く余白（画面端）を、表示中のタブに合わせて確保する
+    function updateStripGutters() {
+        ['left', 'right'].forEach((edge) => {
+            const used = Object.keys(AUTOHIDE_PANELS).some((id) =>
+                AUTOHIDE_PANELS[id].edge === edge && autoHideStrips[id] && !autoHideStrips[id].hidden);
+            document.body.classList.toggle(`has-strip-${edge}`, used);
+        });
+    }
+
+    // 「自動的に隠す」を切り替える（ピンボタン・ツールメニューから呼ぶ）
+    // silent = true のときはトーストを出さない（他の操作からの内部呼び出し用）
+    function setPanelAutoHide(id, on, silent) {
+        const def = AUTOHIDE_PANELS[id];
+        if (!def) return;
+        // 独立ウィンドウ中に隠す指定をされたら、まずドックへ戻す
+        if (on && isPanelFloating(id)) setPanelFloating(id, false);
+        state.autoHide[id] = !!on;
+        applyAutoHide(id);
+        saveAutoHide();
+        if (id === 'preview') composite(state.playhead, false);
+        if (!silent) toast(on ? `${def.label}を自動的に隠すようにしました` : `${def.label}をドッキングしました`);
+    }
+
+    // 状態をブラウザに保存する
+    function saveAutoHide() {
+        try { localStorage.setItem(AUTOHIDE_KEY, JSON.stringify(state.autoHide)); } catch (e) {}
+    }
+
+    // 保存済みの状態を復元して反映する
+    function restoreAutoHide() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(AUTOHIDE_KEY)) || {};
+            Object.keys(AUTOHIDE_PANELS).forEach((id) => {
+                // 独立ウィンドウ中のパネルは畳まない（両立しないため）
+                if (saved[id] === true && !isPanelFloating(id)) state.autoHide[id] = true;
+            });
+        } catch (e) { /* 壊れた保存値は既定値のまま無視する */ }
+        Object.keys(AUTOHIDE_PANELS).forEach(applyAutoHide);
+    }
+
+    // 自動的に隠す一式の初期化（bindUI から呼ぶ）
+    function bindAutoHidePanels() {
+        Object.keys(AUTOHIDE_PANELS).forEach((id) => {
+            const el = $(AUTOHIDE_PANELS[id].selector);
+            if (!el) return;
+            // パネル上にポインタがある間はせり出したままにする
+            el.addEventListener('pointerenter', () => {
+                if (isPanelAutoHidden(id)) cancelClosePeek(id);
+            });
+            el.addEventListener('pointerleave', () => {
+                if (isPanelPeeking(id)) scheduleClosePeek(id);
+            });
+        });
+        // 外側をクリックしたら畳む（タブとメニューの中は除く）
+        document.addEventListener('mousedown', (e) => {
+            Object.keys(AUTOHIDE_PANELS).forEach((id) => {
+                if (!isPanelPeeking(id)) return;
+                if (e.target.closest(AUTOHIDE_PANELS[id].selector)
+                    || e.target.closest('.autohide-strip')
+                    || e.target.closest('.appmenu')) return;
+                closePeek(id);
+            });
+        });
+        // 画面サイズが変わったらタブとせり出しの位置を計算し直す
+        window.addEventListener('resize', () => {
+            Object.keys(AUTOHIDE_PANELS).forEach((id) => {
+                layoutAutoHideStrip(id);
+                if (isPanelPeeking(id)) applyPeekGeometry(id);
+            });
+        });
+        restoreAutoHide();
     }
 
     // ======================================================
