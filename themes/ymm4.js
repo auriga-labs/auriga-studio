@@ -684,45 +684,26 @@ Season2</textarea>
   let exRaf = 0;           // プレビュー転写ループの requestAnimationFrame ID
   let exKeyHandler = null; // Esc で閉じるキー購読（開いている間だけ）
 
-  // FFmpeg プリセット定義（本家 YMM4 と同じコマンド）。
-  // 選択すると映像/音声コマンドへ書き込み、映像ビットレートは -b:v の値から求める。
+  // FFmpeg プリセット定義（本家 YMM4 と同じ内容）。
+  // v / a はコマンド欄に入るコーデック・フォーマット指定のみで、
+  // ビットレート（-b:v / -b:a）と -loglevel はプレビュー生成時に組み立てる。
+  // vbr は kbps、abr は音声ビットレートの選択肢の表記。
   // 「カスタム」は定義を持たず、選択しても現在の設定を保つ
   const EX_FF_PRESETS = {
-    'AVI': {
-      v: '-b:v 2097151000 -c:v rawvideo -f avi -loglevel warning',
-      a: '-b:a 192000 -c:a mp3 -f avi -loglevel warning',
-    },
-    'GIF': {
-      v: '-b:v 2097151000 -c:v gif -f gif -loglevel warning',
-      a: '-b:a 192000 -f null -c:a aac -loglevel warning',
-    },
-    'MP3': {
-      v: '-b:v 240000000 -f null -c:v h264 -loglevel warning',
-      a: '-b:a 192000 -c:a mp3 -f mp3 -loglevel warning',
-    },
-    'MP4 / AV1+AAC': {
-      v: '-b:v 10000000 -c:v libsvtav1 -f mp4 -loglevel warning',
-      a: '-b:a 192000 -c:a aac -f mp4 -loglevel warning',
-    },
-    'MP4 / H.264+AAC': {
-      v: '-b:v 240000000 -c:v h264 -f mp4 -loglevel warning',
-      a: '-b:a 192000 -c:a aac -f mp4 -loglevel warning',
-    },
-    'MP4 / VP9+AAC': {
-      v: '-b:v 2097151000 -c:v vp9 -f mp4 -loglevel warning',
-      a: '-b:a 192000 -c:a aac -f mp4 -loglevel warning',
-    },
-    'WebP': {
-      v: '-b:v 2097151000 -c:v webp -f webp -loglevel warning',
-      a: '-b:a 192000 -f null -c:a aac -loglevel warning',
-    },
+    'AVI':             { vbr: 2097151, abr: '192 kbps', v: '-c:v rawvideo -f avi', a: '-c:a mp3 -f avi' },
+    'GIF':             { vbr: 2097151, abr: '192 kbps', v: '-c:v gif -f gif',      a: '-f null -c:a aac' },
+    'MP3':             { vbr: 240000,  abr: '192 kbps', v: '-f null -c:v h264',    a: '-c:a mp3 -f mp3' },
+    'MP4 / AV1+AAC':   { vbr: 10000,   abr: '192 kbps', v: '-c:v libsvtav1 -f mp4', a: '-c:a aac -f mp4' },
+    'MP4 / H.264+AAC': { vbr: 240000,  abr: '192 kbps', v: '-c:v h264 -f mp4',     a: '-c:a aac -f mp4' },
+    'MP4 / VP9+AAC':   { vbr: 2097151, abr: '192 kbps', v: '-c:v vp9 -f mp4',      a: '-c:a aac -f mp4' },
+    'WebP':            { vbr: 2097151, abr: '192 kbps', v: '-c:v webp -f webp',    a: '-f null -c:a aac' },
   };
 
   // 音声ビットレートの選択肢（本家 YMM4 の一覧）。
   // 「指定しない」を選ぶとコマンドから -b:a を省く
   const EX_ABR_OPTIONS = [
     '指定しない', '32 kbps', '96 kbps', '128 kbps', '160 kbps', '192 kbps',
-    '256 kbps', '320 kbps', '384 kbps', '512 kbps', '576 kbps', '640 kbps',
+    '256 kbps', '320 kbps', '384 kbps', '512 kbps', '576 kbps',
   ];
 
   // ラベル + 任意の部品を 1 行に並べる
@@ -801,11 +782,13 @@ Season2</textarea>
     const ff = exDlg.querySelector('[data-exmode="ffmpeg"]');
     const vbr = Number(ff.querySelector('.ymm4-ex__vbr').value) || 0;
     const abr = parseInt(ff.querySelector('.ymm4-ex__abr').value, 10);   // 「指定しない」は NaN になる
-    const vcmd = ff.querySelector('.ymm4-ex__vcmd').value.trim();
-    const acmd = ff.querySelector('.ymm4-ex__acmd').value.trim();
-    ff.querySelector('[data-excmd="v"]').textContent = vcmd || `-b:v ${vbr * 1000} -c:v h264 -f mp4 -loglevel warning`;
+    // コマンド欄はコーデック・フォーマット部分のみ（空なら既定の H.264 / AAC）。
+    // ビットレートと -loglevel はここで足してプレビューを組み立てる
+    const vcmd = ff.querySelector('.ymm4-ex__vcmd').value.trim() || '-c:v h264 -f mp4';
+    const acmd = ff.querySelector('.ymm4-ex__acmd').value.trim() || '-c:a aac -f mp4';
+    ff.querySelector('[data-excmd="v"]').textContent = `-b:v ${vbr * 1000} ${vcmd} -loglevel warning`;
     ff.querySelector('[data-excmd="a"]').textContent =
-      acmd || `${Number.isFinite(abr) ? `-b:a ${abr * 1000} ` : ''}-c:a aac -f mp4 -loglevel warning`;
+      `${Number.isFinite(abr) ? `-b:a ${abr * 1000} ` : ''}${acmd} -loglevel warning`;
   }
 
   // プリセットの内容を FFmpeg の各欄（コマンド・映像ビットレート）へ反映する
@@ -815,9 +798,8 @@ Season2</textarea>
     const ff = exDlg.querySelector('[data-exmode="ffmpeg"]');
     ff.querySelector('.ymm4-ex__vcmd').value = p.v;
     ff.querySelector('.ymm4-ex__acmd').value = p.a;
-    // 映像ビットレートはコマンドの -b:v（bps）を kbps に直して追従させる
-    const m = p.v.match(/-b:v (\d+)/);
-    if (m) ff.querySelector('.ymm4-ex__vbr').value = String(Math.round(Number(m[1]) / 1000));
+    ff.querySelector('.ymm4-ex__vbr').value = String(p.vbr);
+    ff.querySelector('.ymm4-ex__abr').value = p.abr;
     updateExCmds();
   }
 
