@@ -3397,7 +3397,11 @@
         bindTimelineResizer();   // タイムラインの高さをドラッグで調整
         // タイムラインの表示領域を監視し、広がったら収まる数だけレイヤーを追加する
         // （ドックのドラッグだけでなく、独立ウィンドウ化中のリサイズも拾える）
-        new ResizeObserver(() => fitLayersToTimeline()).observe(els.tracksArea);
+        const tlFitObserver = new ResizeObserver(() => fitLayersToTimeline());
+        tlFitObserver.observe(els.tracksArea);
+        // テーマ CSS の読み込み・切り替えで行の高さが変わった時も数え直す
+        // （行の高さの変化は #tracks 自体の高さの変化として現れる）
+        tlFitObserver.observe(els.tracks);
         bindItemsResizer();   // アイテムパネルの幅をドラッグで調整
         bindFloatingPanels();   // プレビュー / アイテム / タイムラインの独立ウィンドウ化
         bindAutoHidePanels();   // プレビュー / アイテムを画面端のタブへ畳む（自動的に隠す）
@@ -4461,15 +4465,16 @@
         return clamped;
     }
 
-    // 行の高さとルーラーの高さ（style.css の .track / .ruler と合わせる）
-    const TRACK_ROW_H = 56;
-    const TL_RULER_H = 28;
-
     // タイムラインの表示領域に収まる行数までレイヤーを連番で増やす（減らすことはしない）
     function fitLayersToTimeline() {
-        const h = els.tracksArea.clientHeight;
-        if (!h) return;   // タイムライン非表示中などは何もしない
-        const fit = Math.floor((h - TL_RULER_H) / TRACK_ROW_H);
+        const areaH = els.tracksArea.clientHeight;
+        if (!areaH) return;   // タイムライン非表示中などは何もしない
+        // 行の高さはテーマ CSS が上書きするため、実際のレイヤー行から測る
+        const row = els.tracks.querySelector('.track');
+        const rowH = row ? row.getBoundingClientRect().height : 0;
+        if (!rowH) return;
+        // ルーラーや TRIBE v2 レーンなど、レイヤー行より上にある要素の分を除いて数える
+        const fit = Math.floor((areaH - els.tracks.offsetTop) / rowH);
         if (fit <= TRACKS.length) return;
 
         // ヘッダーを作り直すと表示/ミュートのボタン状態が消えるため退避しておく
