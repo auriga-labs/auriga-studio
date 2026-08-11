@@ -468,6 +468,8 @@ body.is-no-preview.is-no-items .layout { grid-template-columns: 1fr; }
     min-height: 0;
     /* コンテナクエリ単位(cqw/cqh)で内側のモニターサイズを計算するための基準にする */
     container-type: size;
+    /* Ctrl+ホイールで拡大したプレビューがパネル外へはみ出さないように切り抜く */
+    overflow: hidden;
 }
 .viewer__canvas {
     position: relative;

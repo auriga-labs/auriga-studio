@@ -92,6 +92,12 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => mainWindow.show());
 
   mainWindow.loadFile('index.html');
+
+  // ピンチ操作などによるページ全体のビジュアルズームを無効化する
+  // （Ctrl+ホイールのページズームはレンダラー側で preventDefault して抑止する）
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.setVisualZoomLevelLimits(1, 1);
+  });
   // mainWindow.webContents.openDevTools({ mode: 'bottom' });
 
   // リサイズ・移動のたびに書き込むと重いので、変化を貯めてから間引いて保存する

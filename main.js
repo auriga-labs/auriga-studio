@@ -77,6 +77,7 @@
         floats: { preview: null, items: null, timeline: null },
         // 「自動的に隠す」中のパネル（画面端のタブへ畳み、ホバーでせり出す）
         autoHide: { preview: false, items: false },
+        previewScale: 1,       // 映像プレビューの表示倍率（Ctrl+ホイールで変更。1=等倍）
     };
 
     // ---- トラック定義（上から） ----
@@ -3478,6 +3479,9 @@
             updatePlayhead();
         });
 
+        // Ctrl+ホイールの割り当て（既定のページズームは全面無効化）
+        bindCtrlWheelZoom();
+
         // タイムラインの空白をクリック/ドラッグで連続シーク（スクラブ）
         els.tracksArea.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;   // 右クリックは無視
@@ -4230,6 +4234,43 @@
         const z = $('#zoom');
         z.value = Math.max(Number(z.min), Math.min(Number(z.max), v));
         z.dispatchEvent(new Event('input'));
+    }
+
+    // 映像プレビューの表示倍率の範囲（25%〜400%）
+    const PREVIEW_SCALE_MIN = 0.25;
+    const PREVIEW_SCALE_MAX = 4;
+
+    // 映像プレビューの表示倍率を反映する（等倍のときは transform を外して通常レイアウトに戻す）
+    function applyPreviewScale() {
+        els.viewerCanvas.style.transform =
+            state.previewScale === 1 ? '' : `scale(${state.previewScale})`;
+    }
+
+    // Ctrl+ホイールの割り当てをまとめてバインドする。
+    // ブラウザ既定のページ全体ズームはウインドウ全域で無効化し、
+    // タイムライン上では時間スケール、プレビュー上では映像の拡大縮小として扱う。
+    function bindCtrlWheelZoom() {
+        window.addEventListener('wheel', (e) => {
+            if (!e.ctrlKey) return;
+            // どこで回してもページズーム（既定動作）は発動させない
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+
+            if (e.target.closest('.timeline')) {
+                // タイムライン：カーソル位置の時刻を固定点にして時間スケールを拡縮する
+                const rect = els.tracksArea.getBoundingClientRect();
+                const cursorX = e.clientX - rect.left;
+                const anchorSec = (els.tracksArea.scrollLeft + cursorX) / state.zoom;
+                setZoom(state.zoom * factor);
+                els.tracksArea.scrollLeft = Math.max(0, anchorSec * state.zoom - cursorX);
+            } else if (e.target.closest('.viewer')) {
+                // プレビュー：映像プレビューの表示倍率を拡縮する
+                state.previewScale = Math.max(PREVIEW_SCALE_MIN,
+                    Math.min(PREVIEW_SCALE_MAX, state.previewScale * factor));
+                applyPreviewScale();
+            }
+            // それ以外の場所では何もしない（既定ズームの無効化のみ）
+        }, { passive: false, capture: true });
     }
 
     // メニューを閉じる操作をまとめてバインド
