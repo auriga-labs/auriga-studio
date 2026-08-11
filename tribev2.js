@@ -23,7 +23,7 @@
 
   // 読み込み済みの解析結果。{ data, anchor } anchor はタイムライン上の開始秒
   let dataset = null;
-  let visible = true;      // レーンの表示状態（ヘッダーの👁で切り替える）
+  let visible = false;     // レーンの表示状態（既定は非表示。メニュー「Aurigaツール」かヘッダーの👁で切り替える）
   let lane = null;         // レーン本体（#tribeLane）
   let view = null;         // 左端に貼り付く表示領域（.tribe-lane__view）
   let canvas = null;
@@ -76,6 +76,9 @@
 
     mountHeader();
     relayout();
+
+    // メニュー（main.js の「Aurigaツール」）から表示切り替えできるように公開する
+    window.aurigaTribe = { setVisible, visible: () => visible };
   }
 
   // ------------------------------------------------------
@@ -105,16 +108,21 @@
     row.querySelector('[data-tribe="load"]').addEventListener('click', () => fileInput.click());
     const toggle = row.querySelector('[data-tribe="toggle"]');
     toggle.classList.toggle('is-off', !visible);
-    toggle.addEventListener('click', () => {
-      visible = !visible;
-      toggle.classList.toggle('is-off', !visible);
-      relayout();
-    });
+    toggle.addEventListener('click', () => setVisible(!visible));
 
     // スペーサー（ルーラーと高さを合わせる要素）の直後＝レイヤー1 の上に置く
     const spacer = headers.querySelector('.track-headers__spacer');
     if (spacer && spacer.nextSibling) headers.insertBefore(row, spacer.nextSibling);
     else headers.appendChild(row);
+  }
+
+  // 表示状態を切り替えて反映する。メニュー側（main.js）にもイベントで知らせる
+  function setVisible(v) {
+    visible = !!v;
+    const toggle = document.querySelector('.tribe-header [data-tribe="toggle"]');
+    if (toggle) toggle.classList.toggle('is-off', !visible);
+    relayout();
+    document.dispatchEvent(new CustomEvent('auriga:tribe-visibility', { detail: { visible } }));
   }
 
   // ------------------------------------------------------
@@ -205,9 +213,9 @@
     const anchor = clip ? clip.start : 0;
     dataset = { data: json, tr, anchor };
 
-    visible = true;
+    // 結果を読み込んだらレーンを自動で表示する（メニューのチェックも通知で追従する）
     mountHeader();
-    relayout();
+    setVisible(true);
     const where = anchor > 0 ? `（${anchor.toFixed(1)} 秒から）` : '';
     t && t.toast(`TRIBE v2: ${json.source || '解析結果'} を読み込みました${where}`);
   }

@@ -3829,6 +3829,12 @@
         id, type: 'checkbox', label: TOGGLEABLE_PANELS[id].label, checked: true,
     }));
 
+    // Auriga ツール（Auriga Studio 独自機能）のチェック項目。
+    // TRIBE タイムラインは既定で非表示。チェック状態は tribev2.js からの通知で同期する。
+    const TRIBE_TIMELINE_ITEM = {
+        id: 'tribe-timeline', type: 'checkbox', label: 'TRIBEタイムライン', checked: false,
+    };
+
     // ロゴ文字のメニュー（全テーマ共通のアプリメニュー）。
     // メニューバーは対応ソフトごとに切り替わるが、これはテーマに依存せず常に同じ内容。
     const LOGO_MENU = {
@@ -3846,6 +3852,7 @@
             { id: 'panels',            label: 'パネル',                 icon: 'layout-board-split', type: 'submenu', items: PANEL_MENU_ITEMS },
             { id: 'theme',             label: 'テーマ',                 icon: 'palette',  type: 'submenu', items: THEME_MENU_ITEMS },
             { id: 'display-mode',      label: '表示モード',             icon: 'sun-moon', type: 'submenu', items: MODE_MENU_ITEMS },
+            { id: 'auriga-tools',      label: 'Aurigaツール',           icon: 'tools',    type: 'submenu', items: [TRIBE_TIMELINE_ITEM] },
             { id: 'preferences',       label: '環境設定…',             icon: 'settings',  shortcut: 'Ctrl+,' },
             { id: 'keyboard-shortcuts', label: 'キーボードショートカット', icon: 'keyboard' },
             { type: 'separator' },
@@ -3855,6 +3862,12 @@
             { id: 'quit',              label: '終了',                  icon: 'power',     shortcut: 'Ctrl+Q' },
         ],
     };
+
+    // TRIBE レーン側（👁ボタンや解析結果の読み込み）で表示状態が変わったら、
+    // メニューのチェックを追従させる
+    document.addEventListener('auriga:tribe-visibility', (e) => {
+        TRIBE_TIMELINE_ITEM.checked = !!(e.detail && e.detail.visible);
+    });
 
     // メニュー定義を読み込んでバーを生成する
     async function loadMenuBar(key) {
@@ -4179,6 +4192,10 @@
             // ---- ツールメニュー（パネルの表示/非表示） ----
             case 'preview':
             case 'items':           setPanelVisible(it.id, it.checked); return;
+            // ---- Auriga ツール ----
+            case 'tribe-timeline':
+                if (window.aurigaTribe) window.aurigaTribe.setVisible(it.checked);
+                return;
             case 'about':           showAboutModal(); return;
             case 'whats-new':       toast('新着情報（準備中）'); return;
             case 'preferences':     toast('環境設定（準備中）⚙️'); return;
