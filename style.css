@@ -314,7 +314,7 @@ body {
     flex: 1 1 auto;
     display: grid;
     /* 右列（アイテム）の幅は左辺のドラッグで決まる（JS が :root へ --items-w を書く） */
-    grid-template-columns: 290px 1fr var(--items-w, 280px);
+    grid-template-columns: 290px 1fr var(--items-w, 449px);
     min-height: 0;
     background: #e9ebf0;
     gap: 1px;
@@ -651,7 +651,7 @@ body.is-no-preview .layout > .panel--props > .panel-resizer { display: none; }
 
 .timeline {
     flex: none;
-    height: 270px;
+    height: 1024px;
     background: #f4f5f8;
     display: flex; flex-direction: column;
     min-height: 0;

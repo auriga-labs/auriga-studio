@@ -4459,9 +4459,9 @@
         const timeline = $('.timeline');
         if (!resizer || !timeline) return;
 
-        // 保存済みの高さがあれば復元する
+        // 保存済みの高さがあれば復元する（なければ CSS 初期値を上限内に収める）
         const stored = parseInt(localStorage.getItem(TL_HEIGHT_KEY), 10);
-        if (Number.isFinite(stored)) setTimelineHeight(stored);
+        setTimelineHeight(Number.isFinite(stored) ? stored : timeline.getBoundingClientRect().height);
 
         let startY = 0;
         let startHeight = 0;
