@@ -388,7 +388,7 @@ body.theme-js--ymm4 .tl-zoom { display: none; }
 /* レイヤー欄は本家の細い行（名前だけ）に合わせる */
 .track-headers { width: 118px; }
 .track-headers__spacer { height: 20px; }
-.track-header { height: 26px; padding: 0 6px; gap: 6px; }
+.track-header { height: 38px; padding: 0 6px; gap: 6px; }
 /* 行頭のドラッグ用グリップ（⋮⋮）。色は各モード側で塗る */
 .track-header::before { content: "⋮⋮"; font-size: 9px; letter-spacing: -2px; line-height: 1; }
 .track-header__label {
@@ -402,7 +402,7 @@ body.theme-js--ymm4 .tl-zoom { display: none; }
 
 /* トラック行の縦じま（1 目盛りごとの目安線） */
 .track {
-  height: 26px;
+  height: 38px;
   background:
     repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(128, 128, 128, .08) 49px, rgba(128, 128, 128, .08) 50px);
 }
