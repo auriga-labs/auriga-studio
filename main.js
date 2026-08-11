@@ -80,14 +80,18 @@
     };
 
     // ---- トラック定義（上から） ----
-    // YMM4 ライクに種類を設けず「レイヤー1」のような連番にする。
+    // YMM4 ライクに種類を設けず「レイヤー00」からの連番にする。
     // どのレイヤーにも映像・音声・テキストを置ける。
     // 重なり順は YMM4 と同じで、番号が大きい（下の行の）レイヤーほど手前に描画する。
-    const LAYER_COUNT = 5;             // 既定のレイヤー数（上から レイヤー1…）
+    const LAYER_COUNT = 5;             // 起動直後の最低レイヤー数（タイムラインの高さに応じて増える）
     const DEFAULT_TRACK = 'L1';        // 新規クリップの既定レイヤー
+    // レイヤー番号（0 始まり）を「00」のような 2 桁ゼロ埋めにする
+    function layerNo(i) { return String(i).padStart(2, '0'); }
+    // レイヤーの既定表示名（レイヤー00 …）
+    function layerLabel(i) { return 'レイヤー' + layerNo(i); }
     const TRACKS = Array.from({ length: LAYER_COUNT }, (_, i) => ({
         id: 'L' + (i + 1),
-        label: 'レイヤー ' + (i + 1),
+        label: layerLabel(i),
         volume: 100,                   // レイヤー音量(%)（YMM4 の LayerSettings.Volume）
         color: null,                   // レイヤー色（YMM4 の LayerSettings.Color。null=なし）
     }));
@@ -299,7 +303,7 @@
             const tint = t.color ? ` style="background:${rgbaStr(t.color)};color:#fff"` : '';
             return `
             <div class="track-header" data-track="${t.id}">
-                <div class="track-header__icon"${tint}>${i + 1}</div>
+                <div class="track-header__icon"${tint}>${layerNo(i)}</div>
                 <div class="track-header__label">${t.label}</div>
                 <div class="track-header__ctrl">
                     <button class="track-header__btn" data-act="mute" title="ミュート">M</button>
@@ -1069,11 +1073,11 @@
         };
     }
 
-    // レイヤー数を count 以上に拡張する（既存の5本より多いプロジェクト用）
+    // レイヤー数を count 以上に拡張する（既定本数より多いプロジェクト用）
     function ensureLayerCount(count) {
         while (TRACKS.length < count) {
-            const n = TRACKS.length + 1;
-            TRACKS.push({ id: 'L' + n, label: 'レイヤー ' + n, volume: 100, color: null });
+            const i = TRACKS.length;
+            TRACKS.push({ id: 'L' + (i + 1), label: layerLabel(i), volume: 100, color: null });
         }
     }
 
@@ -1101,7 +1105,7 @@
         applyProjectResolution(project.width, project.height);
 
         // レイヤー設定を既定に戻してから、YMM4 の LayerSettings を反映する
-        TRACKS.forEach((t, i) => { t.label = 'レイヤー ' + (i + 1); t.volume = 100; t.color = null; });
+        TRACKS.forEach((t, i) => { t.label = layerLabel(i); t.volume = 100; t.color = null; });
         project.layerSettings.forEach((ls) => {
             const t = TRACKS[Number(ls.Layer)];
             if (!t) return;
@@ -1235,7 +1239,7 @@
             state.selectedClipId = null;
             // レイヤー設定（名前・音量・色・表示状態）も既定に戻す
             TRACKS.forEach((t, i) => {
-                t.label = 'レイヤー ' + (i + 1);
+                t.label = layerLabel(i);
                 t.volume = 100;
                 t.color = null;
                 setTrackVisible(t.id, true);
@@ -1758,7 +1762,7 @@
         // トラックを既定へ戻してから保存値を反映する
         const savedTracks = Array.isArray(proj.tracks) ? proj.tracks : [];
         ensureLayerCount(savedTracks.length);
-        TRACKS.forEach((t, i) => { t.label = 'レイヤー ' + (i + 1); t.volume = 100; t.color = null; });
+        TRACKS.forEach((t, i) => { t.label = layerLabel(i); t.volume = 100; t.color = null; });
         savedTracks.forEach((st, i) => {
             const t = TRACKS[i];
             if (!t || !st) return;
@@ -3391,6 +3395,9 @@
         bindAccountMenu();   // アカウント情報ポップオーバーの開閉
         bindMobileMenu();   // スマホ幅でヘッダー操作をネストする
         bindTimelineResizer();   // タイムラインの高さをドラッグで調整
+        // タイムラインの表示領域を監視し、広がったら収まる数だけレイヤーを追加する
+        // （ドックのドラッグだけでなく、独立ウィンドウ化中のリサイズも拾える）
+        new ResizeObserver(() => fitLayersToTimeline()).observe(els.tracksArea);
         bindItemsResizer();   // アイテムパネルの幅をドラッグで調整
         bindFloatingPanels();   // プレビュー / アイテム / タイムラインの独立ウィンドウ化
         bindAutoHidePanels();   // プレビュー / アイテムを画面端のタブへ畳む（自動的に隠す）
@@ -4450,7 +4457,34 @@
         if (timeline && timeline.classList.contains('is-floating')) return h;
         const clamped = Math.min(timelineMaxHeight(), Math.max(TL_MIN_HEIGHT, Math.round(h)));
         if (timeline) timeline.style.height = clamped + 'px';
+        fitLayersToTimeline();   // 広がった分だけレイヤーを連番で追加する
         return clamped;
+    }
+
+    // 行の高さとルーラーの高さ（style.css の .track / .ruler と合わせる）
+    const TRACK_ROW_H = 56;
+    const TL_RULER_H = 28;
+
+    // タイムラインの表示領域に収まる行数までレイヤーを連番で増やす（減らすことはしない）
+    function fitLayersToTimeline() {
+        const h = els.tracksArea.clientHeight;
+        if (!h) return;   // タイムライン非表示中などは何もしない
+        const fit = Math.floor((h - TL_RULER_H) / TRACK_ROW_H);
+        if (fit <= TRACKS.length) return;
+
+        // ヘッダーを作り直すと表示/ミュートのボタン状態が消えるため退避しておく
+        const states = TRACKS.map((t) => ({
+            id: t.id, visible: trackVisible(t.id), muted: trackMuted(t.id),
+        }));
+        ensureLayerCount(fit);
+        renderTrackHeaders();
+        renderTracks();
+        renderClips();
+        states.forEach((s) => {
+            setTrackVisible(s.id, s.visible);
+            const b = document.querySelector(`.track-header[data-track="${s.id}"] [data-act="mute"]`);
+            if (b) b.classList.toggle('is-off', s.muted);
+        });
     }
 
     // 境界バーのドラッグでタイムラインの高さを変える
