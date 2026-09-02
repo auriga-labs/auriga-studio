@@ -2,9 +2,9 @@
 /**
  * 新規登録ページ（/signup）の見た目。
  *
- * ⚠ 現時点ではメールアドレス登録と GitHub / X(Twitter) はダミー。
- *    ユーザー DB が無く、GitHub / X の OAuth アプリも未作成のため、動くのは
- *    Google の認可リンクと reCAPTCHA ウィジェットだけ。
+ * ⚠ 現時点ではメールアドレス登録はダミー（ユーザー DB が無いため）。
+ *    ソーシャル登録は config.php にキーが入っているプロバイダーだけが有効で、
+ *    未設定のものは disabled のまま表示される。
  *    メール登録を実装するときは auriga_verify_recaptcha() を通すこと。
  */
 
@@ -17,10 +17,10 @@ require_once __DIR__ . '/recaptcha.php';
 /**
  * 新規登録ページを出力する。
  *
- * @param string      $redirectTo ログインページへ引き継ぐ戻り先
- * @param string|null $googleUrl  Google 認可 URL。null なら Google も押せない（未設定環境）
+ * @param string                     $redirectTo ログインページへ引き継ぐ戻り先
+ * @param array<string, string|null> $socialUrls プロバイダーキー => 認可 URL。空配列なら全部押せない
  */
-function auriga_render_signup_html(string $redirectTo, ?string $googleUrl): void
+function auriga_render_signup_html(string $redirectTo, array $socialUrls): void
 {
     $loginHref = '/login?redirect_to=' . rawurlencode($redirectTo);
 
@@ -74,10 +74,10 @@ function auriga_render_signup_html(string $redirectTo, ?string $googleUrl): void
             </div>
         </section>
 
-        <!-- 右: ソーシャル登録。動くのは Google のみ -->
+        <!-- 右: ソーシャル登録。キーが設定済みのプロバイダーだけ押せる -->
         <section>
             <h2 class="col__title">ソーシャルアカウントで新規登録</h2>
-            <?php auriga_social_buttons('登録', $googleUrl); ?>
+            <?php auriga_social_buttons('登録', $socialUrls); ?>
             <p class="social-note">Auriga Labsが許可無くX(Twitter)に投稿することはありません。</p>
             <p class="social-note">X(Twitter)ログインに制限が生じる可能性がございます。他のログイン方法の併用をお願いします。</p>
         </section>

@@ -14,6 +14,16 @@ if (!isset($_SESSION['user'])) {
 }
 
 $user = $_SESSION['user'];
+
+// どのプロバイダーでログインしたかを表示に使う
+$providerLabels = [
+    'google' => 'Google',
+    'github' => 'GitHub',
+    'x'      => 'X(Twitter)',
+    'apple'  => 'Apple',
+    'line'   => 'LINE',
+];
+$providerLabel = $providerLabels[$user['provider'] ?? ''] ?? 'アカウント';
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -86,17 +96,21 @@ $user = $_SESSION['user'];
 </head>
 <body>
     <div class="card">
-        <img
-            src="<?= htmlspecialchars($user['picture']) ?>"
-            alt="プロフィール画像"
-            class="avatar"
-        >
-        <h1><?= htmlspecialchars($user['name']) ?></h1>
-        <p class="email"><?= htmlspecialchars($user['email']) ?></p>
+        <?php if (($user['picture'] ?? '') !== ''): ?>
+            <!-- Apple はアイコンを提供しないので、無いときは出さない -->
+            <img
+                src="<?= htmlspecialchars($user['picture']) ?>"
+                alt="プロフィール画像"
+                class="avatar"
+            >
+        <?php endif; ?>
+        <h1><?= htmlspecialchars($user['name'] ?? '') ?></h1>
+        <!-- X はメールアドレスを返さないので空になることがある -->
+        <p class="email"><?= htmlspecialchars($user['email'] ?? '') ?></p>
 
         <table class="info-table">
             <tr>
-                <td>Google ID</td>
+                <td><?= htmlspecialchars($providerLabel) ?> ID</td>
                 <td><?= htmlspecialchars($user['id']) ?></td>
             </tr>
             <tr>

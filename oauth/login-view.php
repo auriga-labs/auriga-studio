@@ -2,9 +2,9 @@
 /**
  * ログインページ（/login）の見た目。
  *
- * ⚠ 現時点ではメールアドレスでのログインと GitHub / X(Twitter) はダミー。
- *    ユーザー DB が無く、GitHub / X の OAuth アプリも未作成のため、動くのは
- *    Google の認可リンクだけ。
+ * ⚠ 現時点ではメールアドレスでのログインはダミー（ユーザー DB が無いため）。
+ *    ソーシャルログインは config.php にキーが入っているプロバイダーだけが有効で、
+ *    未設定のものは disabled のまま表示される。
  */
 
 declare(strict_types=1);
@@ -15,11 +15,11 @@ require_once __DIR__ . '/social-buttons.php';
 /**
  * ログインページを出力する。
  *
- * @param string      $redirectTo 新規登録・パスワード再設定へ引き継ぐ戻り先
- * @param string|null $googleUrl  Google 認可 URL。null なら Google も押せない（未設定環境）
- * @param string      $message    利用不可の理由（$googleUrl が null のとき表示）
+ * @param string                     $redirectTo 新規登録・パスワード再設定へ引き継ぐ戻り先
+ * @param array<string, string|null> $socialUrls プロバイダーキー => 認可 URL。空配列なら全部押せない
+ * @param string                     $message    利用不可の理由（認可 URL が無いとき表示）
  */
-function auriga_render_login_html(string $redirectTo, ?string $googleUrl, string $message = ''): void
+function auriga_render_login_html(string $redirectTo, array $socialUrls, string $message = ''): void
 {
     $signupHref = '/signup?redirect_to=' . rawurlencode($redirectTo);
     $forgotHref = '/sessions/forgot_password?redirect_to=' . rawurlencode($redirectTo);
@@ -39,7 +39,7 @@ function auriga_render_login_html(string $redirectTo, ?string $googleUrl, string
 <div class="sheet">
     <h1 class="sheet__title">Auriga Labs にログイン</h1>
 
-    <?php if ($googleUrl === null && $message !== ''): ?>
+    <?php if ($socialUrls === [] && $message !== ''): ?>
         <p class="error" style="margin-bottom:24px"><?= htmlspecialchars($message) ?></p>
     <?php endif; ?>
 
@@ -66,10 +66,10 @@ function auriga_render_login_html(string $redirectTo, ?string $googleUrl, string
             </div>
         </section>
 
-        <!-- 右: ソーシャルログイン。動くのは Google のみ -->
+        <!-- 右: ソーシャルログイン。キーが設定済みのプロバイダーだけ押せる -->
         <section>
             <h2 class="col__title">ソーシャルアカウントでログイン</h2>
-            <?php auriga_social_buttons('ログイン', $googleUrl); ?>
+            <?php auriga_social_buttons('ログイン', $socialUrls); ?>
             <p class="social-note">X(Twitter)ログインに制限が生じる可能性がございます。他のログイン方法の併用をお願いします。</p>
         </section>
     </div>

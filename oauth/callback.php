@@ -64,6 +64,7 @@ $_SESSION['user'] = [
     'name'    => $user['name'],
     'picture' => $user['picture'],
     'verified'=> $user['email_verified'] ?? false,
+    'provider'=> 'google',              // 他プロバイダーは callback-handler.php が入れる
 ];
 
 // アプリ（index.html）が oauth/me.php で拾えるようにトークンも保持する。

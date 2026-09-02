@@ -4,7 +4,7 @@
  *
  * ルートの login.php / signup.php と sessions/forgot_password.php から呼ぶ。
  * 見た目は login-view.php / signup-view.php / forgot-password-view.php が持つ。
- * 実際に動く認証は Google OAuth のみで、新規登録も同じ認可フローを使う
+ * 実際に動く認証はソーシャルログインのみで、新規登録も同じ認可フローを使う
  * （初回ログイン時にそのままアカウントが作られる）。
  */
 
@@ -32,14 +32,14 @@ function auriga_render_auth_page(string $mode): void
     if (!file_exists($configPath)) {
         http_response_code(503);
         $isSignUp
-            ? auriga_render_signup_html($redirectTo, null)
-            : auriga_render_login_html($redirectTo, null, '認証は準備中です。しばらくお待ちください。');
+            ? auriga_render_signup_html($redirectTo, [])
+            : auriga_render_login_html($redirectTo, [], '認証は準備中です。しばらくお待ちください。');
         exit;
     }
 
     // セッションの cookie 設定は config.php で行うので、session_start より先に読む
     require_once $configPath;
-    require_once __DIR__ . '/oauth.php';
+    require_once __DIR__ . '/oauth-providers.php';
 
     session_start();
 
@@ -52,15 +52,17 @@ function auriga_render_auth_page(string $mode): void
     // 認可後に callback.php が読む戻り先を預けておく
     $_SESSION['oauth_redirect_to'] = $redirectTo;
 
-    $auth = new GoogleOAuth();
+    // 認可 URL の生成は state / PKCE をセッションに書くので session_start の後で行う
+    $socialUrls = auriga_social_login_urls();
+
     $isSignUp
-        ? auriga_render_signup_html($redirectTo, $auth->getAuthorizationUrl())
-        : auriga_render_login_html($redirectTo, $auth->getAuthorizationUrl());
+        ? auriga_render_signup_html($redirectTo, $socialUrls)
+        : auriga_render_login_html($redirectTo, $socialUrls);
 }
 
 /**
  * パスワード再設定ページを表示する。
- * Google 認可 URL は使わないので、config.php の有無にかかわらず同じ画面を出す。
+ * 認可 URL は使わないので、config.php の有無にかかわらず同じ画面を出す。
  */
 function auriga_render_forgot_password_page(): void
 {
