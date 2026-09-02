@@ -1,15 +1,17 @@
 <?php
 /**
- * ログイン／新規登録ページの共通処理と描画。
+ * ログイン／新規登録ページの共通処理。
  *
  * ルートの login.php / signup.php から $mode を指定して読み込む。
- * 認証は Google OAuth のみなので、ログインも新規登録も同じ認可フローを使う
- * （初回ログイン時にそのままアカウントが作られる）。$mode は文言の出し分けに使う。
+ * ログインの見た目はこのファイル、新規登録の見た目は signup-view.php が持つ。
+ * 実際に動く認証は Google OAuth のみで、新規登録も同じ認可フローを使う
+ * （初回ログイン時にそのままアカウントが作られる）。
  */
 
 declare(strict_types=1);
 
 require_once __DIR__ . '/redirect.php';
+require_once __DIR__ . '/signup-view.php';
 
 /**
  * ログイン／新規登録ページを表示する。
@@ -27,7 +29,9 @@ function auriga_render_auth_page(string $mode): void
     $configPath = __DIR__ . '/config.php';
     if (!file_exists($configPath)) {
         http_response_code(503);
-        auriga_render_auth_html($isSignUp, $redirectTo, null, '認証は準備中です。しばらくお待ちください。');
+        $isSignUp
+            ? auriga_render_signup_html($redirectTo, null)
+            : auriga_render_auth_html($redirectTo, null, '認証は準備中です。しばらくお待ちください。');
         exit;
     }
 
@@ -47,26 +51,25 @@ function auriga_render_auth_page(string $mode): void
     $_SESSION['oauth_redirect_to'] = $redirectTo;
 
     $auth = new GoogleOAuth();
-    auriga_render_auth_html($isSignUp, $redirectTo, $auth->getAuthorizationUrl(), '');
+    $isSignUp
+        ? auriga_render_signup_html($redirectTo, $auth->getAuthorizationUrl())
+        : auriga_render_auth_html($redirectTo, $auth->getAuthorizationUrl(), '');
 }
 
 /**
- * ページ本体を出力する。
+ * ログインページ本体を出力する。
  *
- * @param bool        $isSignUp   新規登録として表示するか
- * @param string      $redirectTo 戻り先（もう一方のページへのリンクに引き継ぐ）
+ * @param string      $redirectTo 戻り先（新規登録ページへのリンクに引き継ぐ）
  * @param string|null $loginUrl   Google 認可 URL。null なら利用不可の表示にする
  * @param string      $message    利用不可の理由（$loginUrl が null のとき表示）
  */
-function auriga_render_auth_html(bool $isSignUp, string $redirectTo, ?string $loginUrl, string $message): void
+function auriga_render_auth_html(string $redirectTo, ?string $loginUrl, string $message): void
 {
-    $title      = $isSignUp ? '新規登録' : 'ログイン';
-    $lead       = $isSignUp
-        ? 'Google アカウントで Auriga Studio をはじめましょう'
-        : '続けるには Google アカウントでログインしてください';
-    $buttonText = $isSignUp ? 'Google で新規登録' : 'Google でログイン';
-    $switchHref = ($isSignUp ? '/login' : '/signup') . '?redirect_to=' . rawurlencode($redirectTo);
-    $switchText = $isSignUp ? 'すでにアカウントをお持ちですか？ ログイン' : 'アカウントをお持ちでない方は 新規登録';
+    $title      = 'ログイン';
+    $lead       = '続けるには Google アカウントでログインしてください';
+    $buttonText = 'Google でログイン';
+    $switchHref = '/signup?redirect_to=' . rawurlencode($redirectTo);
+    $switchText = 'アカウントをお持ちでない方は 新規登録';
 
     header('Content-Type: text/html; charset=UTF-8');
     ?>
