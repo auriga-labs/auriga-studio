@@ -2,20 +2,23 @@
 /**
  * ソーシャルアカウントのボタン列（ログイン／新規登録で共用）。
  *
- * ⚠ GitHub と X(Twitter) は OAuth アプリが未作成のためダミー（disabled）。
+ * ⚠ GitHub / X(Twitter) / Apple / LINE は OAuth アプリが未作成のためダミー（disabled）。
  *    動くのは Google だけ。実装したら disabled を外してリンクに差し替えること。
  */
 
 declare(strict_types=1);
 
 /**
- * GitHub / Google / X(Twitter) のボタンを出力する。
+ * GitHub / Google / X(Twitter) / Apple / LINE のボタンを出力する。
  *
  * @param string      $verb      ボタン文言の動詞。'登録' か 'ログイン'
  * @param string|null $googleUrl Google 認可 URL。null なら Google も押せない
  */
 function auriga_social_buttons(string $verb, ?string $googleUrl): void
 {
+    // Apple は HIG で使える文言が決まっており「ログイン」は不可。
+    // 「Appleでサインイン」「Appleで登録」「Appleで続ける」から選ぶ。
+    $appleVerb = ($verb === 'ログイン') ? 'サインイン' : $verb;
     ?>
     <div class="social">
         <button class="btn-social" type="button" disabled title="準備中">
@@ -48,6 +51,22 @@ function auriga_social_buttons(string $verb, ?string $googleUrl): void
                 <path d="M18.9 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.152h7.594l5.243 6.932zm-1.29 19.5h2.039L6.486 3.24H4.298z"/>
             </svg>
             X(Twitter)で<?= htmlspecialchars($verb) ?>
+        </button>
+
+        <button class="btn-social" type="button" disabled title="準備中">
+            <!-- Apple ロゴ -->
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M17.05 12.04c-.02-2.29 1.87-3.39 1.95-3.44-1.06-1.55-2.71-1.77-3.3-1.79-1.4-.14-2.74.83-3.46.83-.72 0-1.81-.81-2.98-.79-1.53.02-2.95.89-3.74 2.26-1.6 2.77-.41 6.86 1.14 9.1.76 1.1 1.66 2.33 2.84 2.29 1.14-.05 1.57-.74 2.95-.74 1.38 0 1.77.74 2.98.71 1.23-.02 2.01-1.12 2.76-2.22.87-1.27 1.23-2.5 1.25-2.57-.03-.01-2.4-.92-2.42-3.64M14.77 5.2c.63-.76 1.05-1.82.93-2.87-.9.04-1.99.6-2.64 1.36-.58.67-1.09 1.75-.95 2.78 1 .08 2.03-.51 2.66-1.27"/>
+            </svg>
+            Appleで<?= htmlspecialchars($appleVerb) ?>
+        </button>
+
+        <button class="btn-social" type="button" disabled title="準備中">
+            <!-- LINE ロゴ -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#06C755" aria-hidden="true">
+                <path d="M12 2C6.48 2 2 5.64 2 10.13c0 4.02 3.55 7.39 8.35 8.03.32.07.77.21.88.49.1.25.07.64.03.89l-.14.85c-.04.25-.2.98.86.53s5.72-3.37 7.8-5.77c1.44-1.58 2.13-3.18 2.13-4.99C22 5.64 17.52 2 12 2M8.1 12.9H6.2c-.28 0-.5-.22-.5-.5V8.6c0-.28.22-.5.5-.5s.5.22.5.5v3.3h1.4c.28 0 .5.22.5.5s-.22.5-.5.5m2.2-.5c0 .28-.22.5-.5.5s-.5-.22-.5-.5V8.6c0-.28.22-.5.5-.5s.5.22.5.5v3.8m4.5 0c0 .22-.14.41-.35.48-.05.02-.1.02-.15.02-.16 0-.31-.07-.4-.2l-1.95-2.65v2.35c0 .28-.22.5-.5.5s-.5-.22-.5-.5V8.6c0-.22.14-.41.34-.48.05-.02.11-.02.16-.02.16 0 .31.08.4.2l1.95 2.66V8.6c0-.28.22-.5.5-.5s.5.22.5.5v3.8m3-2.4c.28 0 .5.22.5.5s-.22.5-.5.5h-1.4v.9h1.4c.28 0 .5.22.5.5s-.22.5-.5.5h-1.9c-.28 0-.5-.22-.5-.5V8.6c0-.28.22-.5.5-.5h1.9c.28 0 .5.22.5.5s-.22.5-.5.5h-1.4v.9h1.4z"/>
+            </svg>
+            LINEで<?= htmlspecialchars($verb) ?>
         </button>
     </div>
     <?php
