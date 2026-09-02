@@ -5567,9 +5567,15 @@
         const nameEl = $('#accountName');
         const mailEl = $('#accountMail');
         const signBtn = $('#btnSignIn');
+        const avatarBtn = $('#avatarBtn');
+        const authBox = $('#accountAuth');
 
-        renderAvatar($('#avatarBtn'), currentUser, 26);
+        renderAvatar(avatarBtn, currentUser, 26);
         renderAvatar($('#accountAvatarLg'), currentUser, 56);
+
+        // 未ログインはログイン／新規登録ボタン、ログイン後はアバターを出す
+        if (avatarBtn) avatarBtn.hidden = !currentUser;
+        if (authBox) authBox.hidden = !!currentUser;
 
         if (currentUser) {
             if (nameEl) nameEl.textContent = currentUser.name || 'ユーザー';
@@ -5605,8 +5611,10 @@
         return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
     }
 
-    // Google の認可画面を新しいタブで直接開く
-    function startGoogleLogin() {
+    // Google の認可画面を新しいタブで直接開く。
+    // 認証は Google OAuth のみなので、新規登録も同じ認可フローを使う
+    // （初回ログイン時にそのままアカウントが作られる）。isSignUp は文言の出し分けだけに使う。
+    function startGoogleLogin(isSignUp) {
         // 既存のログインタブがあれば前面化するだけ
         if (authPopup && !authPopup.closed) { authPopup.focus(); return; }
 
@@ -5629,7 +5637,7 @@
         // 結果は postMessage で受け取るため opener を残す必要があり、noopener は付けない。
         authPopup = window.open(url, 'auriga-oauth');
         if (!authPopup) { toast('タブを開けませんでした 🚫'); return; }
-        toast('Google でログイン中…🔑');
+        toast(isSignUp ? 'Google アカウントで登録中…🔑' : 'Google でログイン中…🔑');
     }
 
     // ログアウトする（サーバーのセッションも破棄する）
@@ -5723,9 +5731,15 @@
 
         // ログイン中はログアウト、未ログインはログインを実行する
         $('#btnSignIn').addEventListener('click', () => {
-            if (currentUser) signOut();
-            else startGoogleLogin();
+            if (currentUser) { signOut(); close(); }
+            else startGoogleLogin(false);
         });
+
+        // 未ログイン時にメニューバーへ出るログイン／新規登録ボタン
+        const loginBtn = $('#btnLogin');
+        const signUpBtn = $('#btnSignUp');
+        if (loginBtn) loginBtn.addEventListener('click', () => startGoogleLogin(false));
+        if (signUpBtn) signUpBtn.addEventListener('click', () => startGoogleLogin(true));
     }
 
     // ======================================================

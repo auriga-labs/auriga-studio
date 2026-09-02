@@ -114,9 +114,15 @@
         </div>
         <div class="menubar__right">
             <!-- テーマ切り替えはロゴメニュー内（表示 > テーマ）へ移動した -->
-            <!-- アカウント。未ログインは Unknown ユーザーアイコン。クリックでアカウント情報を開く -->
+            <!-- アカウント。未ログイン時はログイン／新規登録ボタン、
+                 ログイン後はアバターアイコン。クリックでアカウント情報を開く -->
             <div class="account">
-                <button class="avatar" id="avatarBtn" type="button" title="アカウント" aria-haspopup="true" aria-expanded="false">
+                <!-- 未ログイン時だけ出す導線（applyAccountUI が表示を切り替える） -->
+                <div class="account-auth" id="accountAuth">
+                    <button class="btn btn--sm" id="btnLogin" type="button">ログイン</button>
+                    <button class="btn btn--sm btn--primary" id="btnSignUp" type="button">新規登録</button>
+                </div>
+                <button class="avatar" id="avatarBtn" type="button" title="アカウント" aria-haspopup="true" aria-expanded="false" hidden>
                     <i class="ti ti-user"></i>
                 </button>
                 <!-- アカウント情報ポップオーバー（Auriga Cloud の使用容量つき） -->
