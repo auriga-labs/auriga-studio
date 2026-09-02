@@ -6,6 +6,7 @@
 
 require_once 'config.php';
 require_once 'oauth.php';
+require_once 'redirect.php';
 
 session_start();
 
@@ -65,6 +66,11 @@ $_SESSION['user'] = [
     'verified'=> $user['email_verified'] ?? false,
 ];
 
+// アプリ（index.html）が oauth/me.php で拾えるようにトークンも保持する。
+// 短命（通常1時間）なので期限も一緒に持つ。
+$_SESSION['access_token']     = $tokens['access_token'] ?? null;
+$_SESSION['token_expires_at'] = time() + (int) ($tokens['expires_in'] ?? 0);
+
 // ── 6. 遷移先の振り分け ─────────────────────────────────────────────────
 // アプリ（Electron）起点のログインなら、ダッシュボードではなく
 // ブリッジページを返してログインタブから親ウィンドウへ結果を渡す。
@@ -74,6 +80,10 @@ if ($isApp) {
     exit;
 }
 
-// 通常（Webブラウザ）はダッシュボードへリダイレクト
-header('Location: dashboard.php');
+// 通常（Webブラウザ）は /login?redirect_to=... で預かった戻り先へ返す。
+// 預かっていなければ従来どおりダッシュボードへ。
+$back = $_SESSION['oauth_redirect_to'] ?? '';
+unset($_SESSION['oauth_redirect_to']);   // 使い捨て
+
+header('Location: ' . ($back !== '' ? auriga_safe_redirect_to($back) : 'dashboard.php'));
 exit;

@@ -3,10 +3,15 @@
  * ログアウト処理
  */
 
+require_once __DIR__ . '/redirect.php';
+
 session_start();
 
 // アプリ（Electron）起点のログアウトか
 $isApp = isset($_GET['app']);
+
+// ブラウザからのログアウトは、指定があればその画面へ戻す
+$back = auriga_safe_redirect_to($_GET['redirect_to'] ?? '');
 
 // セッションデータをすべて削除
 $_SESSION = [];
@@ -37,5 +42,6 @@ if ($isApp) {
     exit;
 }
 
-header('Location: index.php');
+// redirect_to の指定が無ければ従来どおり index.php へ
+header('Location: ' . (isset($_GET['redirect_to']) ? $back : 'index.php'));
 exit;

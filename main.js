@@ -25,7 +25,13 @@
     const OAUTH_REDIRECT_URI = OAUTH_ORIGIN + '/oauth/callback.php';  // 承認済みリダイレクトURI
     // ⚠ oauth/config.php の GOOGLE_SCOPES と一致させること
     const OAUTH_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive'];
-    const OAUTH_LOGOUT_URL = OAUTH_ORIGIN + '/oauth/logout.php?app=1'; // ログアウトURL
+    const OAUTH_LOGOUT_URL = OAUTH_ORIGIN + '/oauth/logout.php?app=1'; // ログアウトURL（Electron 用）
+    // Web（app.auriga.studio）で開かれているときに使う PHP の認証ページ。
+    // Electron は file: で動くので遷移先が無く、従来どおりタブで Google を開く。
+    const AUTH_LOGIN_PATH  = '/login';        // /login?redirect_to=%2F
+    const AUTH_SIGNUP_PATH = '/signup';       // /signup?redirect_to=%2F
+    const AUTH_ME_URL      = '/oauth/me.php'; // セッションのログイン状態を返す
+    const AUTH_LOGOUT_PATH = '/oauth/logout.php';
     const THEMES = ['auriga', 'ymm4', 'davinci', 'premiere', 'capcut', 'alightmotion'];
     const THEME_LABELS = { auriga: 'Aurigaオリジナル', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere', capcut: 'CapCut', alightmotion: 'Alight Motion' };
 
@@ -5611,10 +5617,47 @@
         return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('');
     }
 
-    // Google の認可画面を新しいタブで直接開く。
+    // Web（http/https）で配信されているか。Electron は file: なので false。
+    function isWebHosted() {
+        return location.protocol === 'http:' || location.protocol === 'https:';
+    }
+
+    // 現在の画面を戻り先に指定して、PHP の認証ページへ遷移する
+    function gotoAuthPage(path) {
+        const back = location.pathname + location.search + location.hash;
+        location.href = path + '?redirect_to=' + encodeURIComponent(back || '/');
+    }
+
+    // サーバーセッションのログイン状態を取り込む（/login から戻った直後に使う）
+    async function fetchSessionUser() {
+        try {
+            const res = await fetch(AUTH_ME_URL, { credentials: 'same-origin' });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (!data || !data.user) return;
+            setUser(data.user, true);
+            // トークンを受け取れたら Drive の容量とファイル一覧も取得する
+            if (data.access_token) {
+                accessToken = data.access_token;
+                fetchDriveStorage();
+                fetchCloudFiles(true);
+            }
+        } catch (e) {
+            // PHP バックエンドが無い配信（静的ホスティング等）では何もしない
+        }
+    }
+
+    // ログイン／新規登録を開始する。
     // 認証は Google OAuth のみなので、新規登録も同じ認可フローを使う
-    // （初回ログイン時にそのままアカウントが作られる）。isSignUp は文言の出し分けだけに使う。
+    // （初回ログイン時にそのままアカウントが作られる）。isSignUp は遷移先と文言の出し分けに使う。
     function startGoogleLogin(isSignUp) {
+        // Web 配信時は PHP の /login ・ /signup へ遷移する（戻り先つき）
+        if (isWebHosted()) {
+            gotoAuthPage(isSignUp ? AUTH_SIGNUP_PATH : AUTH_LOGIN_PATH);
+            return;
+        }
+
+        // 以降は Electron（file:）向け。Google の認可画面を新しいタブで直接開く。
         // 既存のログインタブがあれば前面化するだけ
         if (authPopup && !authPopup.closed) { authPopup.focus(); return; }
 
@@ -5655,7 +5698,15 @@
         cloudFilesLoaded = false;
         cloudLoading = false;
         renderCloudList();
-        // サーバー側セッションも破棄（自動で閉じるポップアップ）
+
+        // Web 配信時はサーバーセッションを破棄して同じ画面に戻る
+        if (isWebHosted()) {
+            const back = location.pathname + location.search + location.hash;
+            location.href = AUTH_LOGOUT_PATH + '?redirect_to=' + encodeURIComponent(back || '/');
+            return;
+        }
+
+        // Electron はサーバー側セッションを破棄するだけ（自動で閉じるポップアップ）
         const out = window.open(OAUTH_LOGOUT_URL, 'auriga-oauth-out', 'width=420,height=520');
         if (out) setTimeout(() => { try { out.close(); } catch (e) {} }, 1500);
         toast('ログアウトしました 👋');
@@ -5708,6 +5759,8 @@
         // ログイン中なら、トークンが無い間でも最後に取得した容量を表示する
         if (stored) applyStoredQuota();
         setUser(stored, false);
+        // Web 配信時は、/login から戻ってきた直後のセッションを拾い直す
+        if (isWebHosted()) fetchSessionUser();
 
         const open = () => {
             // トークンが生きていれば開くたびに最新の容量へ更新する
