@@ -32,7 +32,7 @@ function auriga_render_auth_page(string $mode): void
     if (!file_exists($configPath)) {
         http_response_code(503);
         $isSignUp
-            ? auriga_render_signup_html($redirectTo, [])
+            ? auriga_render_signup_html($redirectTo, [], '認証は準備中です。しばらくお待ちください。')
             : auriga_render_login_html($redirectTo, [], '認証は準備中です。しばらくお待ちください。');
         exit;
     }
@@ -51,13 +51,19 @@ function auriga_render_auth_page(string $mode): void
 
     // 認可後に callback.php が読む戻り先を預けておく
     $_SESSION['oauth_redirect_to'] = $redirectTo;
+    // 認可に失敗したときにログインと新規登録のどちらへ戻すかも覚えておく
+    $_SESSION['oauth_auth_mode'] = $mode;
+
+    // 認可がキャンセル・失敗して戻ってきたときのメッセージ（一度出したら消す）
+    $error = (string) ($_SESSION['oauth_error'] ?? '');
+    unset($_SESSION['oauth_error']);
 
     // 認可 URL の生成は state / PKCE をセッションに書くので session_start の後で行う
     $socialUrls = auriga_social_login_urls();
 
     $isSignUp
-        ? auriga_render_signup_html($redirectTo, $socialUrls)
-        : auriga_render_login_html($redirectTo, $socialUrls);
+        ? auriga_render_signup_html($redirectTo, $socialUrls, $error)
+        : auriga_render_login_html($redirectTo, $socialUrls, $error);
 }
 
 /**

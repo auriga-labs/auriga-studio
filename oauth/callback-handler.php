@@ -12,6 +12,32 @@ declare(strict_types=1);
 require_once __DIR__ . '/redirect.php';
 
 /**
+ * プロバイダーが返した error コードを画面に出す日本語メッセージへ変換する。
+ * 同意画面でキャンセルされただけのときは、生のコードを見せない。
+ *
+ * @param string $label プロバイダーの表示名
+ * @param string $code  error パラメータの値
+ */
+function auriga_oauth_error_message(string $label, string $code): string
+{
+    // キャンセル時のコードはプロバイダーごとに違うのでまとめて判定する
+    $cancelled = [
+        'access_denied',
+        'user_cancelled_authorize',
+        'user_cancelled_login',
+        'user_denied',
+        'user_cancel',
+        'consent_required',
+    ];
+
+    if (in_array(strtolower($code), $cancelled, true)) {
+        return $label . 'でのログインをキャンセルしました。もう一度お試しください。';
+    }
+
+    return $label . 'でのログインに失敗しました（' . $code . '）。時間をおいてお試しください。';
+}
+
+/**
  * 認可後のリダイレクトを受け取り、セッションにユーザーを保存して戻す。
  * この関数の中で session_start() まで行うので、呼び出し側では不要。
  */
@@ -27,18 +53,18 @@ function auriga_handle_oauth_callback(AurigaOAuthProvider $provider): void
     $reqState = (string) ($request['state'] ?? '');
     $isApp    = str_starts_with($reqState, 'app.');
 
-    // アプリ起点ならブリッジでエラーを返し、通常は die する共通ハンドラ
+    // アプリ起点ならブリッジでエラーを返し、通常は操作前のページへ戻す共通ハンドラ
     $failAuth = function (string $message) use ($isApp, $reqState): void {
         if ($isApp) {
             render_app_bridge(null, $message, $reqState);
             exit;
         }
-        die(htmlspecialchars($message));
+        auriga_redirect_to_auth_page($message);
     };
 
     // ── 1. エラーチェック ────────────────────────────────────────────────
     if (isset($request['error'])) {
-        $failAuth($provider->label() . 'ログインがキャンセルされました: ' . (string) $request['error']);
+        $failAuth(auriga_oauth_error_message($provider->label(), (string) $request['error']));
     }
 
     // ── 2. 必須パラメータの確認 ──────────────────────────────────────────

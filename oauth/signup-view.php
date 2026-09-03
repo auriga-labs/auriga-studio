@@ -19,8 +19,9 @@ require_once __DIR__ . '/recaptcha.php';
  *
  * @param string                     $redirectTo ログインページへ引き継ぐ戻り先
  * @param array<string, string|null> $socialUrls プロバイダーキー => 認可 URL。空配列なら全部押せない
+ * @param string                     $message    リード文の下に赤く出す通知（キャンセル理由など）。空なら出さない
  */
-function auriga_render_signup_html(string $redirectTo, array $socialUrls): void
+function auriga_render_signup_html(string $redirectTo, array $socialUrls, string $message = ''): void
 {
     $loginHref = '/login?redirect_to=' . rawurlencode($redirectTo);
 
@@ -39,6 +40,9 @@ function auriga_render_signup_html(string $redirectTo, array $socialUrls): void
 <div class="sheet">
     <h1 class="sheet__title">Auriga Labsへようこそ!</h1>
     <p class="sheet__lead">新規登録(無料)して利用を開始しましょう。</p>
+
+    <!-- 認可のキャンセル・失敗、または認証自体が未設定のときの通知 -->
+    <?php auriga_auth_notice($message); ?>
 
     <div class="cols">
         <!-- 左: メールアドレス登録（ダミー。ユーザー DB が無いので送信先を持たない） -->

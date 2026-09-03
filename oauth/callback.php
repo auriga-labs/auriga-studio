@@ -7,6 +7,7 @@
 require_once 'config.php';
 require_once 'oauth.php';
 require_once 'redirect.php';
+require_once 'callback-handler.php';   // auriga_oauth_error_message() を借りる
 
 session_start();
 
@@ -16,18 +17,18 @@ session_start();
 $reqState = $_GET['state'] ?? '';
 $isApp = str_starts_with($reqState, 'app.');
 
-// アプリ起点ならブリッジでエラーを返し、通常は die する共通ハンドラ
+// アプリ起点ならブリッジでエラーを返し、通常は操作前のページへ戻す共通ハンドラ
 $failAuth = function (string $message) use ($isApp, $reqState) {
     if ($isApp) {
         render_app_bridge(null, $message, $reqState);
         exit;
     }
-    die(htmlspecialchars($message));
+    auriga_redirect_to_auth_page($message);
 };
 
 // ── 1. エラーチェック ────────────────────────────────────────────────────
 if (isset($_GET['error'])) {
-    $failAuth('Googleログインがキャンセルされました: ' . $_GET['error']);
+    $failAuth(auriga_oauth_error_message('Google', (string) $_GET['error']));
 }
 
 // ── 2. 必須パラメータの確認 ──────────────────────────────────────────────

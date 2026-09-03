@@ -17,7 +17,7 @@ require_once __DIR__ . '/social-buttons.php';
  *
  * @param string                     $redirectTo 新規登録・パスワード再設定へ引き継ぐ戻り先
  * @param array<string, string|null> $socialUrls プロバイダーキー => 認可 URL。空配列なら全部押せない
- * @param string                     $message    利用不可の理由（認可 URL が無いとき表示）
+ * @param string                     $message    見出し下に赤く出す通知（キャンセル理由など）。空なら出さない
  */
 function auriga_render_login_html(string $redirectTo, array $socialUrls, string $message = ''): void
 {
@@ -39,9 +39,8 @@ function auriga_render_login_html(string $redirectTo, array $socialUrls, string 
 <div class="sheet">
     <h1 class="sheet__title">Auriga Labs にログイン</h1>
 
-    <?php if ($socialUrls === [] && $message !== ''): ?>
-        <p class="error" style="margin-bottom:24px"><?= htmlspecialchars($message) ?></p>
-    <?php endif; ?>
+    <!-- 認可のキャンセル・失敗、または認証自体が未設定のときの通知 -->
+    <?php auriga_auth_notice($message); ?>
 
     <div class="cols">
         <!-- 左: メールアドレスでログイン（ダミー。ユーザー DB が無いので送信先を持たない） -->

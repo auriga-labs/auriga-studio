@@ -34,3 +34,22 @@ function auriga_safe_redirect_to(?string $raw): string
 
     return $path;
 }
+
+/**
+ * 認可に失敗（キャンセル含む）したとき、操作前のログイン／新規登録ページへ戻す。
+ *
+ * エラー本文はクエリに載せるとそのまま画面に出せてしまうので、セッションで渡す。
+ * 受け取り側は auth-page.php で、oauth_error を読んで捨てる。
+ * 呼び出し前に session_start() が済んでいること。
+ */
+function auriga_redirect_to_auth_page(string $message): void
+{
+    $_SESSION['oauth_error'] = $message;
+
+    // 直前に開いていたのがログインか新規登録かで戻り先を変える
+    $page = (($_SESSION['oauth_auth_mode'] ?? 'login') === 'signup') ? '/signup' : '/login';
+    $back = auriga_safe_redirect_to($_SESSION['oauth_redirect_to'] ?? '/');
+
+    header('Location: ' . $page . '?redirect_to=' . rawurlencode($back));
+    exit;
+}

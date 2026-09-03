@@ -6,6 +6,26 @@
 
 declare(strict_types=1);
 
+/**
+ * ログイン失敗・キャンセルの通知を出す。
+ * ログインページは見出しの下、新規登録ページはリード文の下に置く。
+ * メッセージが空なら何も出力しない。
+ */
+function auriga_auth_notice(string $message): void
+{
+    if ($message === '') {
+        return;
+    }
+    ?>
+    <div class="notice-error" role="alert">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20m-1 5h2v7h-2zm0 9h2v2h-2z"/>
+        </svg>
+        <span><?= htmlspecialchars($message) ?></span>
+    </div>
+    <?php
+}
+
 // 共通の <style> ブロックを出力する
 function auriga_auth_styles(): void
 {
@@ -109,6 +129,17 @@ function auriga_auth_styles(): void
         .foot a { color: #1a73e8; }
 
         .error { font-size: 14px; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px; }
+
+        /* ログインのキャンセル・失敗を知らせる赤い通知 */
+        .notice-error {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 14px; font-weight: 500;
+            color: #fff; background: #d93025;
+            border-radius: 4px;
+            padding: 12px 16px;
+            margin-bottom: 26px;
+        }
+        .notice-error svg { flex: none; }
 
         @media (max-width: 720px) {
             .sheet { padding: 28px 20px; }
