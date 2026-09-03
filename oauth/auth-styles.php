@@ -108,14 +108,25 @@ function auriga_auth_styles(): void
         /* ---- ソーシャルアカウント ---- */
         .social { display: flex; flex-direction: column; gap: 12px; }
         .btn-social {
-            display: flex; align-items: center; justify-content: center; gap: 10px;
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
             width: 100%;
-            padding: 11px 16px;
+            /* 左右を同じだけ空け、アイコンを絶対配置しても文言が中央に残るようにする */
+            padding: 11px 44px;
             font-size: 14.5px; font-weight: 600; font-family: inherit;
             color: #1a1a1a; background: #fff;
             border: 1px solid #cfd4d9; border-radius: 4px;
             text-decoration: none;
             cursor: pointer;
+        }
+        /* アイコンは行の流れから外して左端に固定し、5つとも縦に揃える。
+           ロゴごとに最適なサイズが違う（16〜18px）ので、20px の枠の中央に置く */
+        .btn-social__icon {
+            position: absolute;
+            left: 16px; top: 50%;
+            transform: translateY(-50%);
+            display: flex; align-items: center; justify-content: center;
+            width: 20px; height: 20px;
         }
         .btn-social:hover { background: #f5f6f7; }
         .btn-social:disabled { color: #9aa0a6; background: #fafbfc; cursor: not-allowed; }
