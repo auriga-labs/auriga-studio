@@ -73,7 +73,7 @@ function auriga_render_signup_html(string $redirectTo, array $socialUrls, string
                     <div class="recaptcha g-recaptcha" data-sitekey="<?= htmlspecialchars(RECAPTCHA_SITE_KEY) ?>"></div>
 
                     <button class="btn-submit" type="submit" disabled>登録する</button>
-                    <p class="form-note">※ メールアドレスでの新規登録は準備中です。</p>
+                    <!-- <p class="form-note">※ メールアドレスでの新規登録は準備中です。</p> -->
                 </form>
             </div>
         </section>

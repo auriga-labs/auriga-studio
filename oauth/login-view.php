@@ -60,7 +60,7 @@ function auriga_render_login_html(string $redirectTo, array $socialUrls, string 
                     <a class="link-sub" href="<?= htmlspecialchars($forgotHref) ?>">パスワードを忘れた場合</a>
 
                     <button class="btn-submit" type="submit" disabled>Auriga Labs にログイン</button>
-                    <p class="form-note">※ メールアドレスでのログインは準備中です。</p>
+                    <!-- <p class="form-note">※ メールアドレスでのログインは準備中です。</p> -->
                 </form>
             </div>
         </section>
