@@ -112,7 +112,7 @@ function auriga_auth_styles(): void
             display: flex; align-items: center; justify-content: center;
             width: 100%;
             /* 左右を同じだけ空け、アイコンを絶対配置しても文言が中央に残るようにする */
-            padding: 11px 52px;
+            padding: 11px 60px;
             font-size: 14.5px; font-weight: 600; font-family: inherit;
             color: #1a1a1a; background: #fff;
             border: 1px solid #cfd4d9; border-radius: 4px;
@@ -123,7 +123,7 @@ function auriga_auth_styles(): void
            ロゴごとに最適なサイズが違う（16〜18px）ので、20px の枠の中央に置く */
         .btn-social__icon {
             position: absolute;
-            left: 24px; top: 50%;
+            left: 32px; top: 50%;
             transform: translateY(-50%);
             display: flex; align-items: center; justify-content: center;
             width: 20px; height: 20px;
