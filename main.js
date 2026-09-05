@@ -4772,9 +4772,11 @@
     // 幅の下限（px）と保存キー。実際の幅は :root の --items-w に書き込み、
     // style.css（3カラム）と themes/ymm4.css（body 2カラム）の両方がこれを見る。
     const ITEMS_MIN_WIDTH = 448;
+    // 保存値（auriga.itemsWidth）がないときの既定の幅（px）。
+    // CSS 側の var(--items-w, …) の既定値（style.css / themes/ymm4.css）もこれに合わせてある
+    const ITEMS_DEFAULT_WIDTH = 452;
     const ITEMS_WIDTH_KEY = 'auriga.itemsWidth';
-    // itemsWidth = 448
-    let itemsWidth = 0;   // 現在適用中の幅（0 = 未指定でテーマ既定のまま）
+    let itemsWidth = 0;   // 現在適用中の幅（0 = 未適用）
 
     // ウィンドウ幅に応じた幅の上限を求める（左隣のプレビューを潰しきらない）
     function itemsMaxWidth() {
@@ -4795,9 +4797,9 @@
         const panel = $('.panel--props');
         if (!resizer || !panel) return;
 
-        // 保存済みの幅があれば復元する（なければテーマ既定の幅のまま）
+        // 保存済みの幅があれば復元し、なければ既定の幅を適用する
         const stored = parseInt(localStorage.getItem(ITEMS_WIDTH_KEY), 10);
-        if (Number.isFinite(stored)) setItemsWidth(stored);
+        setItemsWidth(Number.isFinite(stored) ? stored : ITEMS_DEFAULT_WIDTH);
 
         let startX = 0;
         let startWidth = 0;
@@ -5326,7 +5328,7 @@
         const height = Math.max(160, snapAreaBottom() - top);
         // アイテムはドック時の幅、プレビューは画面幅の半分強を目安にする
         const w = id === 'items'
-            ? Math.max(ITEMS_MIN_WIDTH, itemsWidth || 300)
+            ? Math.max(ITEMS_MIN_WIDTH, itemsWidth || ITEMS_DEFAULT_WIDTH)
             : Math.max(320, Math.min(760, Math.round(window.innerWidth * 0.55)));
         const width = Math.min(w, Math.max(240, window.innerWidth - stripW - 8));
         el.style.top = top + 'px';

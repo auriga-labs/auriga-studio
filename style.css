@@ -363,8 +363,9 @@ body {
 .layout {
     flex: 1 1 auto;
     display: grid;
-    /* 右列（アイテム）の幅は左辺のドラッグで決まる（JS が :root へ --items-w を書く） */
-    grid-template-columns: 290px 1fr var(--items-w, 449px);
+    /* 右列（アイテム）の幅は左辺のドラッグで決まる（JS が :root へ --items-w を書く）。
+       既定の 452px は main.js の ITEMS_DEFAULT_WIDTH と同じ値にしておく */
+    grid-template-columns: 290px 1fr var(--items-w, 452px);
     min-height: 0;
     background: #e9ebf0;
     gap: 1px;

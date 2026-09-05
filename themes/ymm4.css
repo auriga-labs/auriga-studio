@@ -50,8 +50,9 @@ body { font-family: "Yu Gothic UI", "Segoe UI", "Hiragino Sans", system-ui, sans
    main.js をプレビュー固定モードにし、境界バーのドラッグは :root の --preview-h を書き換える */
 body {
   display: grid;
-  /* 右列（アイテム）の幅は左辺のドラッグで決まる（JS が :root へ --items-w を書く） */
-  grid-template-columns: minmax(0, 1fr) var(--items-w, 480px);
+  /* 右列（アイテム）の幅は左辺のドラッグで決まる（JS が :root へ --items-w を書く）。
+     既定の 452px は main.js の ITEMS_DEFAULT_WIDTH と同じ値にしておく */
+  grid-template-columns: minmax(0, 1fr) var(--items-w, 452px);
   /* 行: ステータスタイトル / メニューバー / プレビュー / 境界バー / タイムライン / ステータスバー
      プレビューの行は境界バーのドラッグで決まる固定の高さ（--preview-h）、
      タイムラインの行が残りを全て使う（ウィンドウの高さの変化はタイムラインが受ける） */
