@@ -4771,7 +4771,7 @@
     // ======================================================
     // 幅の下限（px）と保存キー。実際の幅は :root の --items-w に書き込み、
     // style.css（3カラム）と themes/ymm4.css（body 2カラム）の両方がこれを見る。
-    const ITEMS_MIN_WIDTH = 200;
+    const ITEMS_MIN_WIDTH = 448;
     const ITEMS_WIDTH_KEY = 'auriga.itemsWidth';
     // itemsWidth = 448
     let itemsWidth = 0;   // 現在適用中の幅（0 = 未指定でテーマ既定のまま）
