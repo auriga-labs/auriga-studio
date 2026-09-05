@@ -18,7 +18,7 @@
 
 
 
-.menubar__left ,.menubar, .menu__item, .menu__item > span { height: 20px !important; }
+.menubar__left ,.menubar, .menu__item, .menu__item > span { height: 20px !important; box-sizing: content-box !important; }
 /* ===== スプラッシュ画面 ===== */
 /* 起動直後に最前面で表示し、初期化完了後に .is-hide でフェードアウトする */
 .splash {
