@@ -48,9 +48,9 @@ body { background: #e8e8ec; color: #1e1e24; }
 /* ===== メニューバー ===== */
 
 /* 画面最上部のメニューバー */
-.menubar { background: #f5f5f7; border-bottom: 1px solid #d4d4da; }
+.menubar { background: #f0f0f0; border-bottom: 1px solid #d4d4da; }
 /* メニューバーの上のステータスタイトル（帯はメニューバーと同じ配色、文字は控えめに） */
-.status-title { background: #f5f5f7; border-bottom: 1px solid #d4d4da; color: #75757e; }
+.status-title { background: #eef4f9; border-bottom: 1px solid #d4d4da; color: #75757e; }
 .status-title__project { color: #1e1e24; }
 .status-title__theme { color: #75757e; }
 /* ロゴボタン：ホバー/展開中の背景 */
@@ -64,7 +64,7 @@ body { background: #e8e8ec; color: #1e1e24; }
 /* メニュー項目（ファイル・編集 などの見出し） */
 .menu__item { color: #1e1e24; }
 /* メニュー項目：ホバー/選択中（WPF メニューの淡い青ハイライト） */
-.menu__item:hover, .menu__item.is-active { background: #dbe4f9; color: #1e1e24; }
+.menu__item:hover, .menu__item.is-active { background: #c0ddeb; color: #1e1e24; }
 .menu__item .ti { color: #75757e; }
 .menu__item:hover .ti, .menu__item.is-active .ti { color: #1e1e24; }
 
