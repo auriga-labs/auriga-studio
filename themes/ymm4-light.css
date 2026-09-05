@@ -64,7 +64,7 @@ body { background: #e8e8ec; color: #1e1e24; }
 /* メニュー項目（ファイル・編集 などの見出し） */
 .menu__item { color: #1e1e24; }
 /* メニュー項目：ホバー/選択中（WPF メニューの淡い青ハイライト） */
-.menu__item:hover, .menu__item.is-active { background: #c0ddeb; color: #1e1e24; }
+.menu__item:hover, .menu__item.is-active { background: #c0ddeb; color: #1e1e24;border: 2px solid #26a0da; }
 .menu__item .ti { color: #75757e; }
 .menu__item:hover .ti, .menu__item.is-active .ti { color: #1e1e24; }
 
