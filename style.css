@@ -586,12 +586,12 @@ body.is-no-preview.is-no-items .layout { grid-template-columns: 1fr; }
 .transport__controls { display: flex; gap: 6px; justify-self: center; }
 .tbtn {
     width: 34px; height: 34px;
-    background: #e3e6ec; border: 1px solid #ccd2dc;
+    background: #dddddd; border: 1px solid #707070;
     color: #1c2330; border-radius: 5px;
     cursor: pointer; font-size: 12px; transition: all .15s;
     display: grid; place-items: center;
 }
-.tbtn:hover { background: #d6dae3; }
+.tbtn:hover { background: #bee6fd; }
 .tbtn .ti { font-size: 16px; line-height: 1; }
 .tbtn--play {
     width: 42px; height: 38px; font-size: 14px;
