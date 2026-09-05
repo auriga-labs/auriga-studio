@@ -1218,13 +1218,14 @@ Season2</textarea>
       if (!document.querySelector('.ymm4-statusbar')) {
         const bar = document.createElement('footer');
         bar.className = 'ymm4-statusbar';
-        // 区切り線で仕切った小さな枠を左から並べる。「/」も本家どおり独立した枠にする
-        const cell = (key, text) =>
-          `<span class="ymm4-statusbar__cell"${key ? ` data-sb="${key}"` : ''}>${text}</span>`;
+        // 区切り線で仕切った小さな枠を左から並べる。
+        // 「現在時刻 / 総時間」「現在フレーム / 総フレーム」はそれぞれ 1 つの枠にまとめる（「/」の前後に区切り線は置かない）
+        const cell = (html) => `<span class="ymm4-statusbar__cell">${html}</span>`;
         bar.innerHTML =
-          cell('cur', '00:00:00.00') + cell(null, '/') + cell('dur', '00:00:00.00') +
-          cell('frame', '0') + cell(null, '/') + cell('frames', '0') +
-          cell('format', '') + cell('name', '無題');
+          cell('<span data-sb="cur">00:00:00.00</span> / <span data-sb="dur">00:00:00.00</span>') +
+          cell('<span data-sb="frame">0</span> / <span data-sb="frames">0</span>') +
+          cell('<span data-sb="format"></span>') +
+          cell('<span data-sb="name">無題</span>');
         document.body.appendChild(bar);
       }
 

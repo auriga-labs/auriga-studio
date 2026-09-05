@@ -471,7 +471,8 @@ body.theme-js--ymm4 .tl-zoom { display: none; }
   font-variant-numeric: tabular-nums;
   white-space: nowrap; overflow: hidden;
 }
-.ymm4-statusbar__cell { flex: none; display: flex; align-items: center; padding: 0 8px; }
+/* 枠の中の「現在 / 合計」は gap で「/」の前後を空ける（flex の匿名テキスト項目は端の空白が落ちるため） */
+.ymm4-statusbar__cell { flex: none; display: flex; align-items: center; gap: 4px; padding: 0 8px; }
 
 
 /* ===== メディアブラウザ（非表示だが念のため既定を保つ） ===== */
