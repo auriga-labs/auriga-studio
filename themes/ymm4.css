@@ -168,6 +168,9 @@ body.theme-js--ymm4 .transport__right { display: none; }
 /* トランスポート帯の中ではボタンと同じく帯の高さいっぱいに伸ばす（動画出力ダイアログ側は 22px のまま） */
 .ymm4-transport .ymm4-speed { align-self: stretch; height: auto; }
 
+/* ズームコンボ（描画サイズ / 動画サイズの比率）の左に置く虫眼鏡アイコン（本家の「🔍 33%」） */
+.ymm4-tpico { flex: none; display: inline-flex; align-items: center; margin: 0 2px 0 4px; font-size: 13px; }
+
 /* シークバー：余り幅いっぱいに伸ばす */
 .ymm4-seek { flex: 1 1 auto; min-width: 60px; }
 

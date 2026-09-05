@@ -17,6 +17,7 @@
   let volumeInputHandler = null;   // 音量スライダーの % 表示更新
   let savedPrevIcon = null;        // 差し替えたフレーム送りアイコンの復元用
   let savedNextIcon = null;
+  let zoomUnsub = null;            // 描画比率の変化の購読解除（ズームコンボの表示更新）
   // タイムラインツールバー関連の後始末用
   let tlZoomHandler = null;        // ズーム倍率表示（100.0 など）の更新
   let savedToolIcons = null;       // 差し替えたツールボタン（⤧✂✋）の絵文字の復元用
@@ -49,11 +50,13 @@
   // 既存のボタン（再生・先頭へ など）は main.js のリスナーを保ったままの移動にとどめ、
   // 本家にしかない部品（停止・再生速度・シークバー・音量 % 表示）を新たに作って足す。
   // 並びは本家と同じ:
-  //   再生 / 停止 / 速度 / リピート / フィット | 先頭 / 前アイテム / 前フレーム
+  //   再生 / 停止 / 速度 / リピート / フィット / ズーム | 先頭 / 前アイテム / 前フレーム
   //   [シークバー] 次フレーム / 次アイテム / 末尾 | 音量アイコン / % / スライダー
 
   // プレビューの再生速度の選択肢（本家のコンボボックスと同じ並び）
   const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 3.5, 4, 5];
+  // プレビューの描画比率（描画サイズ / 動画サイズ）の選択肢（%。本家のズームコンボと同じ並び）
+  const ZOOM_OPTIONS = [50, 75, 100, 150, 200, 400, 800];
 
   // 「x 1.0」「x 1.25」の表示形式（整数は 1 桁小数で見せる）
   function speedLabel(v) {
@@ -92,12 +95,26 @@
     speed.value = String(ctx.transport.getRate());
     speed.addEventListener('change', () => ctx.transport.setRate(speed.value));
 
-    // プレビューは常にフィット表示のため、いまは押下状態の切り替えのみ
-    const btnFit = tpButton('映像を画面サイズに合わせる', 'ti ti-arrows-diagonal', (e) => {
-      e.currentTarget.classList.toggle('is-active');
+    // フィット：プレビューを領域に収まる大きさへ戻す（押下状態は syncZoom が現在の状態に合わせる）
+    const btnFit = tpButton('映像を画面サイズに合わせる', 'ti ti-arrows-diagonal', () => ctx.preview.fit());
+    btnFit.classList.add('ymm4-tp__fit');
+
+    // ズーム：描画サイズ / 動画サイズの比率を表示・選択するコンボ（本家の「🔍 33%」）。
+    // 先頭項目は現在の比率（フィット中や Ctrl+ホイールでの任意倍率）を示し、選ぶとフィットに戻る
+    const zoomIco = document.createElement('i');
+    zoomIco.className = 'ti ti-zoom ymm4-tpico';
+    const zoom = document.createElement('select');
+    zoom.className = 'ymm4-speed ymm4-zoom';
+    zoom.title = '描画サイズの比率';
+    zoom.innerHTML = '<option value="fit">--%</option>'
+      + ZOOM_OPTIONS.map((v) => `<option value="${v}">${v}%</option>`).join('');
+    zoom.addEventListener('change', () => {
+      if (zoom.value === 'fit') ctx.preview.fit();
+      else ctx.preview.setRatio(Number(zoom.value) / 100);
+      syncZoom(ctx);   // 変更できなかった場合（プレビュー非表示など）も表示を実状態へ戻す
     });
 
-    gPlay.append(ctx.$('#btnPlay'), btnStop, speed, ctx.$('#btnLoop'), btnFit);
+    gPlay.append(ctx.$('#btnPlay'), btnStop, speed, ctx.$('#btnLoop'), btnFit, zoomIco, zoom);
 
     // --- 中央：フレーム移動ボタンとシークバー ---
     const btnPrev = ctx.$('#btnPrev');
@@ -150,6 +167,21 @@
 
     wrap.append(gPlay, gPrev, seek, gNext, vol);
     bar.appendChild(wrap);
+  }
+
+  // ズームコンボとフィットボタンを現在の描画比率にそろえる
+  function syncZoom(ctx) {
+    const zoom = document.querySelector('.ymm4-transport .ymm4-zoom');
+    if (!zoom) return;
+    const isFit = ctx.preview.isFit();
+    const pct = Math.round(ctx.preview.ratio() * 100);
+    const fixed = !isFit && ZOOM_OPTIONS.includes(pct);
+    // 先頭項目：固定値を選択中はフィット比率、それ以外（フィット中・任意倍率）は現在の比率を見せる
+    const headPct = fixed ? Math.round(ctx.preview.fitRatio() * 100) : pct;
+    zoom.options[0].textContent = headPct > 0 ? `${headPct}%` : '--%';
+    zoom.value = fixed ? String(pct) : 'fit';
+    const fit = document.querySelector('.ymm4-transport .ymm4-tp__fit');
+    if (fit) fit.classList.toggle('is-active', isFit);
   }
 
   // 再生コントロール帯を既定の構成へ戻す（他テーマへの切替時）
@@ -1149,8 +1181,12 @@ Season2</textarea>
       buildPropsPanel(ctx);
       detachPropsPanel(ctx);
 
-      // 再生コントロールを本家の帯（停止・速度・シークバーつき）へ組み替える
+      // 再生コントロールを本家の帯（停止・速度・シークバー・ズームつき）へ組み替える
       buildTransport(ctx);
+      // ズームコンボは描画比率の変化（リサイズ・解像度変更・Ctrl+ホイール）に追従させる
+      if (zoomUnsub) zoomUnsub();
+      zoomUnsub = ctx.preview.onChange(() => syncZoom(ctx));
+      syncZoom(ctx);
 
       // タイムライン上部を本家の構成（シーンタブ＋アイテム追加・編集ツールバー）へ組み替える
       buildTimelineTabs(ctx);
@@ -1203,7 +1239,8 @@ Season2</textarea>
       // アイテムパネルを元の内容・元の位置へ戻す
       restorePropsPanel(ctx);
       reattachPropsPanel(ctx);
-      // 再生コントロールを既定の構成へ戻す
+      // ズームコンボの購読を外し、再生コントロールを既定の構成へ戻す
+      if (zoomUnsub) { zoomUnsub(); zoomUnsub = null; }
       restoreTransport(ctx);
       // タイムライン上部（シーンタブ・ツールバー）を既定の構成へ戻す
       restoreTimelineToolbar(ctx);

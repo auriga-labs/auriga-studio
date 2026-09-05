@@ -83,7 +83,7 @@
         floats: { preview: null, items: null, timeline: null },
         // 「自動的に隠す」中のパネル（画面端のタブへ畳み、ホバーでせり出す）
         autoHide: { preview: false, items: false },
-        previewScale: 1,       // 映像プレビューの表示倍率（Ctrl+ホイールで変更。1=等倍）
+        previewScale: 1,       // 映像プレビューの表示倍率（Ctrl+ホイールやテーマのズームコンボで変更。1=フィット）
     };
 
     // ---- トラック定義（上から） ----
@@ -176,6 +176,7 @@
         renderTracks();
         renderRuler();
         bindUI();
+        observePreviewSize();      // プレビュー領域のサイズ変化を監視（描画比率の表示更新用）
         await initCompositor();    // 描画基盤（WebGPU / WebGL / Canvas 2D）を初期化
         restorePersistedState();   // 保存済みの解像度・再生ヘッド位置を復元
         els.previewVideo.volume = state.volume;   // ソースモニターの初期音量を状態に合わせる
@@ -2401,6 +2402,7 @@
             els.compositor.width = w;
             els.compositor.height = h;
         }
+        notifyPreviewZoom();   // 動画サイズが変わると描画比率も変わる
     }
 
     // canvas の合成モード名 → Pixi のブレンドモード名。
@@ -3225,6 +3227,19 @@
             // 素材を持たない種別（テキストなど）を既定レイヤーの再生ヘッド位置へ追加する
             addItem(type, name, dur) {
                 addClip(type, name, DEFAULT_TRACK, state.playhead, dur || 3);
+            },
+        },
+        // 映像プレビューの描画比率（描画サイズ / 動画サイズ）の窓口（YMM4 テーマのズームコンボが使う）
+        preview: {
+            ratio: () => previewRatio(),          // 現在の描画比率（1 = 等倍）
+            fitRatio: () => previewFitRatio(),    // 領域に収まる大きさ（フィット）のときの描画比率
+            isFit: () => state.previewScale === 1,
+            setRatio: (r) => setPreviewRatio(r),  // 描画比率を指定する（フィットは解除される）
+            fit: () => fitPreview(),              // フィットへ戻す
+            // 描画比率の変化を購読する。戻り値は購読解除の関数
+            onChange(fn) {
+                previewZoomListeners.add(fn);
+                return () => previewZoomListeners.delete(fn);
             },
         },
     };
@@ -4273,14 +4288,63 @@
         z.dispatchEvent(new Event('input'));
     }
 
-    // 映像プレビューの表示倍率の範囲（25%〜400%）
-    const PREVIEW_SCALE_MIN = 0.25;
-    const PREVIEW_SCALE_MAX = 4;
+    // ======================================================
+    // 映像プレビューの表示倍率（描画サイズ / 動画サイズ）
+    // ======================================================
+    // 「フィット」= previewScale 1（CSS が領域に収まる最大サイズを決める）。
+    // 描画比率 = 画面上の描画幅 / 動画の幅（1 = 等倍）で、フィット比率 × 表示倍率に等しい。
+    // 比率は 10%〜800% に収める（本家 YMM4 のズームコンボは 50%〜800%）
+    const PREVIEW_RATIO_MIN = 0.1;
+    const PREVIEW_RATIO_MAX = 8;
+    // 描画比率の変化を知りたいテーマ（YMM4 のズームコンボなど）の購読先
+    const previewZoomListeners = new Set();
 
-    // 映像プレビューの表示倍率を反映する（等倍のときは transform を外して通常レイアウトに戻す）
+    // フィット時の描画比率（transform の影響を受けないレイアウト上の幅 / 動画幅）。
+    // プレビューが隠れているなど幅を測れないときは 0
+    function previewFitRatio() {
+        const w = els.viewerCanvas.offsetWidth;
+        const vw = els.compositor.width || 0;
+        return (w > 0 && vw > 0) ? w / vw : 0;
+    }
+
+    // 現在の描画比率
+    function previewRatio() {
+        return previewFitRatio() * state.previewScale;
+    }
+
+    // 表示倍率を反映する（フィットのときは transform を外して通常レイアウトに戻す）
     function applyPreviewScale() {
         els.viewerCanvas.style.transform =
             state.previewScale === 1 ? '' : `scale(${state.previewScale})`;
+        notifyPreviewZoom();
+    }
+
+    // 描画比率を指定する（フィット比率で割って表示倍率に換算する。範囲外は端に丸める）
+    function setPreviewRatio(r) {
+        const fit = previewFitRatio();
+        if (!(fit > 0) || !(r > 0)) return;
+        const clamped = Math.max(PREVIEW_RATIO_MIN, Math.min(PREVIEW_RATIO_MAX, r));
+        state.previewScale = clamped / fit;
+        applyPreviewScale();
+    }
+
+    // 領域に収まる大きさ（フィット）へ戻す
+    function fitPreview() {
+        state.previewScale = 1;
+        applyPreviewScale();
+    }
+
+    // 描画比率の変化を購読者へ知らせる
+    function notifyPreviewZoom() {
+        previewZoomListeners.forEach((fn) => {
+            try { fn(); } catch (e) { console.warn(e); }
+        });
+    }
+
+    // プレビュー領域のサイズ変化（ウィンドウやパネルのリサイズ）でもフィット比率が変わるので監視する
+    function observePreviewSize() {
+        if (!('ResizeObserver' in window)) return;
+        new ResizeObserver(() => notifyPreviewZoom()).observe(els.viewerCanvas);
     }
 
     // Ctrl+ホイールの割り当てをまとめてバインドする。
@@ -4301,10 +4365,8 @@
                 setZoom(state.zoom * factor);
                 els.tracksArea.scrollLeft = Math.max(0, anchorSec * state.zoom - cursorX);
             } else if (e.target.closest('.viewer')) {
-                // プレビュー：映像プレビューの表示倍率を拡縮する
-                state.previewScale = Math.max(PREVIEW_SCALE_MIN,
-                    Math.min(PREVIEW_SCALE_MAX, state.previewScale * factor));
-                applyPreviewScale();
+                // プレビュー：描画比率（描画サイズ / 動画サイズ）を拡縮する
+                setPreviewRatio(previewRatio() * factor);
             }
             // それ以外の場所では何もしない（既定ズームの無効化のみ）
         }, { passive: false, capture: true });

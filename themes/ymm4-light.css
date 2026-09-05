@@ -201,6 +201,8 @@ body { background: #e8e8ec; color: #1e1e24; }
 .ymm4-speed { background: #fdfdfd; border: 1px solid #c9c9cf; color: #1e1e24; }
 .ymm4-speed:hover { border-color: #8f8f96; }
 .ymm4-volnum { color: #1e1e24; }
+/* ズームコンボ左の虫眼鏡アイコン */
+.ymm4-tpico { color: #2e2e36; }
 
 
 /* ===== レンジ入力（スライダー） ===== */
