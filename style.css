@@ -173,7 +173,12 @@ body {
     white-space: nowrap;
     overflow: hidden;
 }
-.status-title__left, .status-title__right { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.status-title__left, .status-title__right, .status-title__text { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* 左側はロゴメニュー＋文言。ロゴと文言の間は少し広めに空ける */
+.status-title__left { gap: 10px; }
+/* 文言側だけが縮んで省略される（ロゴメニューは縮めない） */
+.status-title__text { flex: 1 1 auto; }
+.status-title .logo { flex: none; }
 /* 長いプロジェクト名は省略記号で切る */
 .status-title__project {
     font-weight: 600;

@@ -89,15 +89,24 @@
     </div>
 
     <!-- ===== ステータスタイトル ===== -->
-    <!-- メニューバーの上に置く細い帯。ウィンドウタイトルと同じ内容
-         （プロジェクト名 / アプリ名 / 対応ソフト名）と、現在のテーマを表示する。
+    <!-- メニューバーの上に置く細い帯。左端にロゴメニュー、続けてウィンドウタイトルと同じ内容
+         （プロジェクト名 / アプリ名 / 対応ソフト名）、右端に現在のテーマを表示する。
          文言は main.js の updateStatusTitle が document.title と同時に書き換える -->
-    <div class="status-title" id="statusTitle" role="status" aria-live="polite">
+    <div class="status-title" id="statusTitle">
         <div class="status-title__left">
-            <span class="status-title__project" id="statusTitleProject">無題のプロジェクト</span>
-            <span class="status-title__sep" aria-hidden="true">—</span>
-            <span class="status-title__app">Auriga Studio</span>
-            <span class="status-title__suffix" id="statusTitleSuffix"></span>
+            <!-- ロゴ文字のメニュー（全テーマ共通のアプリメニュー）。クリックでドロップダウンを開く -->
+            <button class="logo" id="appLogoMenu" type="button" title="Auriga Studio メニュー">
+                <img class="logo__mark" src="favicon-symbol.svg" alt="Auriga Studio" width="26" height="26">
+                <span class="logo__text">Auriga<b>Studio</b></span>
+                <i class="ti ti-chevron-down logo__caret"></i>
+            </button>
+            <!-- 文言部分。変更を読み上げ対象にするため、ボタンを含めずここだけライブリージョンにする -->
+            <div class="status-title__text" role="status" aria-live="polite">
+                <span class="status-title__project" id="statusTitleProject">無題のプロジェクト</span>
+                <span class="status-title__sep" aria-hidden="true">—</span>
+                <span class="status-title__app">Auriga Studio</span>
+                <span class="status-title__suffix" id="statusTitleSuffix"></span>
+            </div>
         </div>
         <div class="status-title__right">
             <span class="status-title__theme" id="statusTitleTheme"></span>
@@ -111,12 +120,7 @@
             <button class="menu-burger" id="menuBurger" type="button" title="メニュー" aria-haspopup="true" aria-expanded="false">
                 <i class="ti ti-menu-2"></i>
             </button>
-            <!-- ロゴ文字のメニュー（全テーマ共通のアプリメニュー）。クリックでドロップダウンを開く -->
-            <button class="logo" id="appLogoMenu" type="button" title="Auriga Studio メニュー">
-                <img class="logo__mark" src="favicon-symbol.svg" alt="Auriga Studio" width="26" height="26">
-                <span class="logo__text">Auriga<b>Studio</b></span>
-                <i class="ti ti-chevron-down logo__caret"></i>
-            </button>
+            <!-- ロゴ文字のメニュー（#appLogoMenu）は上のステータスタイトルへ移した -->
             <!-- メニューバーは menu_layout の定義から動的生成する -->
             <nav class="menu" id="appMenu"></nav>
         </div>
