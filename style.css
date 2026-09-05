@@ -194,7 +194,7 @@ body {
 .status-title__suffix::before { content: "— "; opacity: .6; }
 .status-title__theme { color: #8a93a3; }
 .status-title__theme:empty { display: none; } */
-.status-title { font-size: 12px !important; }
+.status-title { font-size: 13px !important; }
 /* ===== メニューバー ===== */
 .menubar {
     height: 52px;

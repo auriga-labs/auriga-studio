@@ -441,7 +441,7 @@ body.theme-js--ymm4 .tl-zoom { display: none; }
 /* ===== 下部ステータスバー（ymm4.js が生成する本家風の情報帯） ===== */
 
 .ymm4-statusbar {
-  flex: none; height: 22px;
+  flex: none; height: 32px;
   display: flex; align-items: center; gap: 18px;
   padding: 0 10px;
   font-size: 11px;
