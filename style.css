@@ -485,7 +485,7 @@ body.is-no-preview.is-no-items .layout { grid-template-columns: 1fr; }
 
 /* ===== ステージ（プレビュー） ===== */
 .stage {
-    background: #f4f5f8;
+    background: #fff;
     display: flex; flex-direction: column;
     min-height: 0;
 }

@@ -63,8 +63,10 @@ body { background: #e8e8ec; color: #1e1e24; }
 
 /* メニュー項目（ファイル・編集 などの見出し） */
 .menu__item { color: #1e1e24; }
-/* メニュー項目：ホバー/選択中（WPF メニューの淡い青ハイライト） */
-.menu__item:hover, .menu__item.is-active { background: #c0ddeb; color: #1e1e24;border: 2px solid #26a0da; }
+/* メニュー項目：ホバー/選択中（WPF メニューの淡い青ハイライト＋青い枠線）。
+   枠線は border ではなく内側の box-shadow で描く。border だと通常時（border: none）から
+   幅が 4px 増えて隣の項目が押され、transition: all と相まってホバーのたびに表示がゆがむ */
+.menu__item:hover, .menu__item.is-active { background: #c0ddeb; color: #1e1e24; box-shadow: inset 0 0 0 2px #26a0da; }
 .menu__item .ti { color: #75757e; }
 .menu__item:hover .ti, .menu__item.is-active .ti { color: #1e1e24; }
 
@@ -155,7 +157,7 @@ body { background: #e8e8ec; color: #1e1e24; }
 /* ===== ステージ（プレビュー） ===== */
 
 /* プレビュー領域の枠 */
-.stage { background: #f5f5f7; }
+.stage { background: #fff; }
 
 /* 「プレビュー」ラベル */
 .stage__label { color: #4a4a52; }
