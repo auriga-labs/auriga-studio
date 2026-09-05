@@ -140,8 +140,9 @@ body.is-no-items .layout { grid-template-columns: minmax(0, 1fr); }
 
 /* ===== トランスポート（本家の細い再生コントロール帯） ===== */
 
-/* グリッド中央寄せをやめ、本家同様に左寄せの細い帯にする */
-.transport { display: flex; align-items: center; height: 32px; padding: 0 8px; gap: 8px; }
+/* グリッド中央寄せをやめ、本家同様に左寄せの細い帯にする。
+   左の余白は 0 にして再生ボタン（.tbtn--play）を画面の左端にぴったり付ける */
+.transport { display: flex; align-items: center; height: 32px; padding: 0 8px 0 0; gap: 8px; }
 .transport__controls { order: -1; gap: 2px; }
 .transport__right { margin-left: auto; }
 /* ボタンは枠なしの小さなフラットアイコン */
