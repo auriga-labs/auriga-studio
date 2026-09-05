@@ -186,6 +186,8 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+.status-title__sep,.status-title__suffix,.status-title__app { display: none !important; }
 /* .status-title__sep { opacity: .6; } */
 /* 対応ソフト名は空のときは詰める（先頭に「—」を付けて区切る） */
 /* .status-title__suffix:empty { display: none; }
