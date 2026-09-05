@@ -1175,6 +1175,9 @@ Season2</textarea>
       const ptab = ctx.$('.panel--props .ptab');
       if (ptab) ptab.textContent = 'アイテム';
       ctx.setTitleSuffix('YMM4');
+      // 縦の分け目は本家と同じく「プレビューの高さ固定・タイムラインが残りを使う」構成にする
+      // （境界バーのドラッグはプレビューの高さを変え、ウィンドウの高さの変化はタイムラインが受ける）
+      ctx.layout.setPreviewFixed(true);
 
       // アイテムパネル（プロパティ）を本家と同じ構成に組み直し、
       // 画面右側の高さいっぱいへ移す
@@ -1231,6 +1234,8 @@ Season2</textarea>
     // 他テーマへの切替時：このテーマ専用の状態を片付ける
     cleanup(ctx) {
       document.body.classList.remove('theme-js--ymm4');
+      // 縦の分け目を既定の「タイムラインの高さ固定・プレビューが残りを使う」構成へ戻す
+      ctx.layout.setPreviewFixed(false);
       // 変更した各ラベルを既定へ戻す
       const label = ctx.$('.stage__label');
       if (label) label.textContent = 'プログラムモニター';

@@ -3242,6 +3242,13 @@
                 return () => previewZoomListeners.delete(fn);
             },
         },
+        // レイアウトの窓口
+        layout: {
+            // 縦の分け目を「プレビューの高さ固定・タイムラインが残りを使う」構成にする（本家 YMM4 の配置）。
+            // false で既定の「タイムラインの高さ固定・プレビューが残りを使う」構成へ戻す。
+            // 固定中は境界バーのドラッグがプレビューの高さを変え、:root の --preview-h に書き込む
+            setPreviewFixed: (on) => setPreviewFixed(on),
+        },
     };
 
     // テーマ JS からの登録窓口（テーマ JS は main.js より後に読み込まれる）
@@ -4583,11 +4590,20 @@
     }
 
     // ======================================================
-    // タイムラインの高さリサイズ
+    // プレビューとタイムラインの縦の分け目（高さリサイズ）
     // ======================================================
+    // 境界バー（.tl-resizer）のドラッグで、プレビューとタイムラインの縦の分け目を動かす。
+    // 既定はタイムラインの高さを固定してプレビューが残りを使う構成だが、
+    // テーマが「プレビュー固定」（body.is-preview-fixed）を指定すると逆になり、
+    // プレビューの高さを固定してタイムラインが残りを使う（本家 YMM4 と同じ構成）。
     // 高さの下限・上限（px）。上限はウィンドウ高さから一定量を引いて算出する
     const TL_MIN_HEIGHT = 120;
     const TL_HEIGHT_KEY = 'auriga.timelineHeight';
+    // プレビュー固定モードのプレビュー高さ。:root の --preview-h に書き、テーマ CSS がグリッドの行の高さに使う
+    const PREVIEW_MIN_HEIGHT = 160;
+    const PREVIEW_HEIGHT_KEY = 'auriga.previewHeight';
+    const PREVIEW_DEFAULT_HEIGHT = 480;
+    let previewHeight = 0;   // 望みのプレビュー高さ（0 = 未指定）。適用時にウィンドウの上限内へ収める
     // timelineHeight = 619
     
     // ウィンドウサイズに応じた高さの上限を求める
@@ -4595,6 +4611,43 @@
         return Math.max(TL_MIN_HEIGHT, window.innerHeight - 240);
     }
 
+    // プレビュー固定モード（テーマが themeCtx.layout.setPreviewFixed で指定する）か
+    function isPreviewFixed() {
+        return document.body.classList.contains('is-preview-fixed');
+    }
+
+    // ウィンドウサイズに応じたプレビュー高さの上限を求める（下のタイムラインを潰しきらない）
+    function previewMaxHeight() {
+        return Math.max(PREVIEW_MIN_HEIGHT, window.innerHeight - 240);
+    }
+
+    // 望みのプレビュー高さを、その時点のウィンドウの上限内に収めて :root の --preview-h へ書く。
+    // 望みの高さ自体は書き換えないので、ウィンドウを低くして縮んでも、戻せば元の高さに戻る
+    function applyPreviewHeight() {
+        const clamped = Math.min(previewMaxHeight(), previewHeight);
+        document.documentElement.style.setProperty('--preview-h', clamped + 'px');
+        return clamped;
+    }
+
+    // 望みのプレビュー高さを設定して適用する（戻り値は実際に適用された高さ）
+    function setPreviewHeight(h) {
+        previewHeight = Math.max(PREVIEW_MIN_HEIGHT, Math.round(h));
+        return applyPreviewHeight();
+    }
+
+    // プレビュー固定モードを切り替える（テーマ JS が apply / cleanup から呼ぶ）
+    function setPreviewFixed(on) {
+        document.body.classList.toggle('is-preview-fixed', !!on);
+        const resizer = $('#tlResizer');
+        if (resizer) resizer.title = on ? 'ドラッグでプレビューの高さを調整' : 'ドラッグでタイムラインの高さを調整';
+        // 固定モードへ入る初回だけ高さを決める（2 回目以降はそのセッションで決めた高さを保つ）。
+        // 保存済みの高さがあれば復元し、無ければ切替前のプレビュー領域の高さをそのまま引き継ぐ
+        if (!on || previewHeight) return;
+        const stored = parseInt(localStorage.getItem(PREVIEW_HEIGHT_KEY), 10);
+        const layout = $('.layout');
+        const current = layout ? layout.getBoundingClientRect().height : 0;
+        setPreviewHeight(Number.isFinite(stored) ? stored : (current || PREVIEW_DEFAULT_HEIGHT));
+    }
 
     // 高さを範囲内に収めてタイムラインへ適用する
     function setTimelineHeight(h) {
@@ -4634,10 +4687,12 @@
         });
     }
 
-    // 境界バーのドラッグでタイムラインの高さを変える
+    // 境界バーのドラッグで縦の分け目を動かす
+    // （既定はタイムラインの高さを、プレビュー固定モードではプレビューの高さを変える）
     function bindTimelineResizer() {
         const resizer = $('#tlResizer');
         const timeline = $('.timeline');
+        const layout = $('.layout');
         if (!resizer || !timeline) return;
 
         // 保存済みの高さがあれば復元する（なければ CSS 初期値を上限内に収める）
@@ -4645,11 +4700,16 @@
         setTimelineHeight(Number.isFinite(stored) ? stored : timeline.getBoundingClientRect().height);
 
         let startY = 0;
-        let startHeight = 0;
+        let startHeight = 0;          // ドラッグ開始時のタイムラインの高さ
+        let startPreviewHeight = 0;   // ドラッグ開始時のプレビュー領域（.layout）の高さ
+        let fixedDrag = false;        // このドラッグがプレビュー固定モードか（開始時に確定し、途中で切り替わらない）
 
         function onMove(e) {
-            // 上にドラッグするほど高さが増える
-            setTimelineHeight(startHeight - (e.clientY - startY));
+            const dy = e.clientY - startY;
+            // 境界バーはどちらのモードでもポインタに追従する。
+            // プレビュー固定モードでは下へドラッグするほどプレビューが、既定では上へドラッグするほどタイムラインが高くなる
+            if (fixedDrag) setPreviewHeight(startPreviewHeight + dy);
+            else setTimelineHeight(startHeight - dy);
         }
 
         function onUp() {
@@ -4657,14 +4717,22 @@
             window.removeEventListener('pointerup', onUp);
             document.body.classList.remove('is-resizing-timeline');
             resizer.classList.remove('is-dragging');
-            // 確定した高さを保存する
-            localStorage.setItem(TL_HEIGHT_KEY, parseInt(timeline.style.height, 10));
+            // 確定した高さをモードごとのキーへ保存する
+            if (fixedDrag) {
+                // 上限で止まっていたら、止まった高さを望みの高さとして確定する
+                previewHeight = applyPreviewHeight();
+                localStorage.setItem(PREVIEW_HEIGHT_KEY, previewHeight);
+            } else {
+                localStorage.setItem(TL_HEIGHT_KEY, parseInt(timeline.style.height, 10));
+            }
         }
 
         resizer.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             startY = e.clientY;
             startHeight = timeline.getBoundingClientRect().height;
+            startPreviewHeight = layout ? layout.getBoundingClientRect().height : previewHeight;
+            fixedDrag = isPreviewFixed();
             document.body.classList.add('is-resizing-timeline');
             resizer.classList.add('is-dragging');
             window.addEventListener('pointermove', onMove);
@@ -4674,6 +4742,7 @@
         // ウィンドウ縮小時に上限を超えないよう再クランプする
         window.addEventListener('resize', () => {
             if (timeline.style.height) setTimelineHeight(parseInt(timeline.style.height, 10));
+            if (previewHeight) applyPreviewHeight();
         });
     }
 
