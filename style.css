@@ -154,7 +154,7 @@ body {
 /* メニューバーの上に置く細い帯。左にプロジェクト名とアプリ名、右に現在のテーマを出す。
    配色（背景・境界線・文字色）は themes/*.css がメニューバーとそろえて上書きする */
 .status-title {
-    height: 24px;
+    height: 36px;
     flex: none;
     background: #f4f5f8;
     border-bottom: 1px solid #ccd2dc;
