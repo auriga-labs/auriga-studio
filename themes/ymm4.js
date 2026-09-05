@@ -6,6 +6,8 @@
   let timeObserver = null;
   // 解像度セレクトの change リスナー（cleanup で外すため保持する）
   let resHandler = null;
+  // プロジェクト情報の変更（auriga:project）でステータスバーを更新するリスナー
+  let projectHandler = null;
   // 差し替え前のプロパティパネル（cleanup で書き戻す）
   let originalPropsHTML = null;
   // 数値表示（.ymm4-num）を出力欄に追従させる監視とリスナー
@@ -25,23 +27,40 @@
   // ---------------------------------------------------------
   // 下部ステータスバー
   // ---------------------------------------------------------
-  // トランスポートの時刻と解像度セレクトの値を下部ステータスバーへ写す
+  // 本家の並び: 現在時刻 / 総時間 | 現在フレーム / 総フレーム | 動画形式（1920x1080 60fps 48000Hz） | プロジェクト名
+
+  // 秒を本家の時刻表記「HH:MM:SS.ff」（ff は 1/100 秒、切り捨て）にする
+  function sbTime(sec) {
+    const t = Math.max(0, Number(sec) || 0);
+    // 浮動小数の誤差で 1 つ手前の値に落ちないよう、切り捨ての前にごく小さな値を足す
+    const whole = Math.floor(t + 1e-6);
+    const cs = Math.min(99, Math.floor((t - whole) * 100 + 1e-6));
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(Math.floor(whole / 3600))}:${pad(Math.floor(whole / 60) % 60)}:${pad(whole % 60)}.${pad(cs)}`;
+  }
+
+  // 秒をフレーム番号（切り捨て）にする
+  function sbFrame(sec, fps) {
+    return String(Math.floor(Math.max(0, Number(sec) || 0) * fps + 1e-6));
+  }
+
+  // 再生ヘッド・尺・プロジェクト情報（解像度・FPS・音声レート・名前）を下部ステータスバーへ写す
   function syncStatusbar(ctx) {
     const bar = document.querySelector('.ymm4-statusbar');
     if (!bar) return;
-    const cur = ctx.$('#curTime');
-    const dur = ctx.$('#durTime');
-    const sbCur = bar.querySelector('[data-sb="cur"]');
-    const sbDur = bar.querySelector('[data-sb="dur"]');
-    if (cur && sbCur) sbCur.textContent = cur.textContent;
-    if (dur && sbDur) sbDur.textContent = dur.textContent;
-    // 「1920 × 1080 (16:9)」→「1920x1080」の形式へ整形する
-    const res = ctx.$('#resSelect');
-    const sbRes = bar.querySelector('[data-sb="res"]');
-    if (res && sbRes) {
-      const m = String(res.value).match(/(\d+)\s*[×x]\s*(\d+)/);
-      sbRes.textContent = m ? `${m[1]}x${m[2]}` : '';
-    }
+    const set = (key, text) => {
+      const el = bar.querySelector(`[data-sb="${key}"]`);
+      if (el && el.textContent !== text) el.textContent = text;
+    };
+    const fps = ctx.project.fps();
+    const cur = ctx.transport.playhead();
+    const dur = ctx.transport.duration();
+    set('cur', sbTime(cur));
+    set('dur', sbTime(dur));
+    set('frame', sbFrame(cur, fps));
+    set('frames', sbFrame(dur, fps));
+    set('format', `${ctx.project.width()}x${ctx.project.height()} ${fps}fps ${ctx.project.hz()}Hz`);
+    set('name', (ctx.project.name() || '').trim() || '無題');
   }
 
   // ---------------------------------------------------------
@@ -1195,15 +1214,17 @@ Season2</textarea>
       buildTimelineTabs(ctx);
       buildTimelineToolbar(ctx);
 
-      // 下部ステータスバー（本家はここに現在時刻・プロジェクト情報を表示する）
+      // 下部ステータスバー（本家はここに現在時刻・フレーム・動画形式・プロジェクト名を表示する）
       if (!document.querySelector('.ymm4-statusbar')) {
         const bar = document.createElement('footer');
         bar.className = 'ymm4-statusbar';
+        // 区切り線で仕切った小さな枠を左から並べる。「/」も本家どおり独立した枠にする
+        const cell = (key, text) =>
+          `<span class="ymm4-statusbar__cell"${key ? ` data-sb="${key}"` : ''}>${text}</span>`;
         bar.innerHTML =
-          '<span class="ymm4-statusbar__time">' +
-          '<span data-sb="cur">00:00:00:00</span> / <span data-sb="dur">00:00:00:00</span>' +
-          '</span>' +
-          '<span class="ymm4-statusbar__right"><span data-sb="res"></span></span>';
+          cell('cur', '00:00:00.00') + cell(null, '/') + cell('dur', '00:00:00.00') +
+          cell('frame', '0') + cell(null, '/') + cell('frames', '0') +
+          cell('format', '') + cell('name', '無題');
         document.body.appendChild(bar);
       }
 
@@ -1222,6 +1243,10 @@ Season2</textarea>
         resHandler = () => syncStatusbar(ctx);
         res.addEventListener('change', resHandler);
       }
+      // プロジェクト情報（名前・FPS・解像度・音声レート）の変更（新規作成・読み込み）にも追従する
+      if (projectHandler) document.removeEventListener('auriga:project', projectHandler);
+      projectHandler = () => syncStatusbar(ctx);
+      document.addEventListener('auriga:project', projectHandler);
       syncStatusbar(ctx);
       syncSeekbar(ctx);
     },
@@ -1255,6 +1280,7 @@ Season2</textarea>
       if (timeObserver) { timeObserver.disconnect(); timeObserver = null; }
       const res = ctx.$('#resSelect');
       if (res && resHandler) { res.removeEventListener('change', resHandler); resHandler = null; }
+      if (projectHandler) { document.removeEventListener('auriga:project', projectHandler); projectHandler = null; }
       const bar = document.querySelector('.ymm4-statusbar');
       if (bar) bar.remove();
     },

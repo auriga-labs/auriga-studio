@@ -323,6 +323,8 @@ input[type="range"]::-webkit-slider-thumb { background: #c9c9cf; border: 1px sol
 /* ===== 下部ステータスバー ===== */
 
 .ymm4-statusbar { background: #2a2a2f; border-top: 1px solid #3f3f46; color: #c9c9cf; }
+/* 各枠の右側の区切り線 */
+.ymm4-statusbar__cell { border-right: 1px solid #3f3f46; }
 
 
 /* ===== トースト通知 ===== */

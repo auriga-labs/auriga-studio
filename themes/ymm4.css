@@ -461,15 +461,17 @@ body.theme-js--ymm4 .tl-zoom { display: none; }
 
 /* ===== 下部ステータスバー（ymm4.js が生成する本家風の情報帯） ===== */
 
+/* 本家の並び: 現在時刻 / 総時間 | 現在フレーム / 総フレーム | 動画形式 | プロジェクト名。
+   区切り線で仕切った小さな枠を左端から詰めて並べる（区切り線の色はライト/ダーク側で塗る） */
 .ymm4-statusbar {
   flex: none; height: 32px;
-  display: flex; align-items: center; gap: 18px;
-  padding: 0 10px;
+  display: flex; align-items: stretch;
+  padding: 0;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap; overflow: hidden;
 }
-.ymm4-statusbar__right { margin-left: auto; display: flex; gap: 18px; }
+.ymm4-statusbar__cell { flex: none; display: flex; align-items: center; padding: 0 8px; }
 
 
 /* ===== メディアブラウザ（非表示だが念のため既定を保つ） ===== */

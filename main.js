@@ -6,6 +6,7 @@
 
     // ---- 定数 ----
     let FPS = 30;   // 1秒あたりのフレーム数（プロジェクト読み込みで上書きされる）
+    const APP_VERSION = '0.1';   // ウィンドウタイトル「Auriga Studio v0.1」に出すバージョン（index.html の <title> と合わせる）
     const THEME_KEY = 'auriga.theme';   // テーマ（モード）設定の保存キー
     const RES_KEY = 'auriga.resolution';   // 解像度選択の保存キー
     const PLAYHEAD_KEY = 'auriga.playhead'; // 再生ヘッド位置(秒)の保存キー
@@ -77,6 +78,7 @@
         projectName: null,     // プロジェクト名（読み込んだファイル名由来。書き出しファイル名に使う）
         projectWidth: null,    // YMM4 プロジェクトの解像度（px 座標の換算基準。null=未読込）
         projectHeight: null,
+        audioHz: 48000,        // 音声のサンプリング周波数（Hz）。YMM4 の VideoInfo.Hz 由来（ステータスバーの動画形式に出す）
         // ツールメニューのチェックリストで切り替えるパネルの表示状態
         panels: { preview: true, items: true },
         // 独立ウィンドウ化（フローティング）したパネルの状態。{ on, x, y, w, h } を持つ
@@ -168,6 +170,7 @@
     async function init() {
         restorePanelVisibility();   // パネルの表示状態を先に確定させる（メニューのチェックがこれに従う）
         applyStoredTheme();   // 保存済みテーマを最初に適用（対応するメニューバーも生成される）
+        document.title = `Auriga Studio v${APP_VERSION}`;   // ウィンドウタイトルはバージョン固定（テーマ・プロジェクト名は含めない）
         updateStatusTitle();  // ステータスタイトル（メニューバー上の帯）を初期表示にそろえる
         renderMedia();
         renderEffects();
@@ -1066,6 +1069,7 @@
         const fps = Number(info.FPS) > 0 ? Number(info.FPS) : 60;
         const width = Number(info.Width) > 0 ? Number(info.Width) : 1920;
         const height = Number(info.Height) > 0 ? Number(info.Height) : 1080;
+        const hz = Number(info.Hz) > 0 ? Number(info.Hz) : 48000;
 
         const items = (Array.isArray(tl.Items) ? tl.Items : [])
             .map((raw) => ymmpNormalizeItem(raw, fps, width, height))
@@ -1075,7 +1079,7 @@
             name: pathBaseName(data.FilePath || '').replace(/\.ymmp$/i, '')
                 || String(tl.Name || '').trim()
                 || 'YMM4 プロジェクト',
-            fps, width, height,
+            fps, width, height, hz,
             layerSettings: (tl.LayerSettings && Array.isArray(tl.LayerSettings.Items))
                 ? tl.LayerSettings.Items : [],
             items,
@@ -1107,8 +1111,9 @@
         const endSec = project.items.reduce((m, it) => Math.max(m, it.start + it.dur), 0);
         ensureTimelineCapacity(endSec + 5);   // 末尾に少し余白を持たせる
 
-        // プロジェクトの FPS・解像度へ表示を追従させる
+        // プロジェクトの FPS・音声レート・解像度へ表示を追従させる
         FPS = project.fps;
+        state.audioHz = project.hz;
         state.projectWidth = project.width;
         state.projectHeight = project.height;
         applyProjectResolution(project.width, project.height);
@@ -1264,6 +1269,10 @@
         }
 
         state.projectName = name;   // 書き出しファイル名などに使う
+        // フレームレート（コマ送り・書き出しの基準）と音声レートは、ステータスタイトルの更新
+        // （テーマへのプロジェクト情報の変更通知を兼ねる）より前に確定させる
+        if (Number.isFinite(fps) && fps > 0) FPS = fps;
+        state.audioHz = 48000;
         updateStatusTitle();
         // 解像度は px 換算の基準（projectWidth/Height）にも反映する
         const m = res.match(/(\d+)\s*[×x]\s*(\d+)/);
@@ -1279,9 +1288,6 @@
             applyResolution(res, true);
             try { localStorage.setItem(RES_KEY, res); } catch (e) {}
         }
-        // フレームレート（コマ送り・書き出しの基準）
-        if (Number.isFinite(fps) && fps > 0) FPS = fps;
-
         closeOnboardModal();
         toast(`プロジェクト「${name}」を作成しました 🎬`);
     }
@@ -1510,6 +1516,7 @@
         return {
             name: state.projectName || null,
             fps: FPS,
+            hz: state.audioHz,
             width: state.projectWidth,
             height: state.projectHeight,
             timelineSeconds: TIMELINE_SECONDS,
@@ -1760,15 +1767,17 @@
         state.projectName = (typeof proj.name === 'string' && proj.name.trim())
             ? proj.name.trim()
             : String(fileName || '').replace(/\.(auriproj|auripack)$/i, '') || null;
-        updateStatusTitle();
 
-        // FPS・解像度・タイムライン長を復元する
+        // FPS・音声レート・解像度・タイムライン長を復元する
         if (Number(proj.fps) > 0) FPS = Number(proj.fps);
+        state.audioHz = Number(proj.hz) > 0 ? Number(proj.hz) : 48000;
         if (Number(proj.width) > 0 && Number(proj.height) > 0) {
             state.projectWidth = Number(proj.width);
             state.projectHeight = Number(proj.height);
             applyProjectResolution(state.projectWidth, state.projectHeight);
         }
+        // プロジェクト情報がそろってからステータスタイトルを更新する（テーマへの変更通知を兼ねる）
+        updateStatusTitle();
         ensureTimelineCapacity(Number(proj.timelineSeconds) || 60);
 
         // トラックを既定へ戻してから保存値を反映する
@@ -3154,13 +3163,15 @@
     // ======================================================
     // ステータスタイトル（メニューバーの上の帯）
     // ======================================================
-    // ウィンドウタイトル（document.title）と、メニューバー上の帯の表示を一か所で更新する。
+    // メニューバー上の帯の表示を一か所で更新する。
     // 形式: 「<プロジェクト名> — Auriga Studio — <対応ソフト名>」。右側には現在のテーマ名を出す。
-    // テーマ切替・プロジェクトの新規作成/読み込み・起動時に呼ぶ
+    // ウィンドウタイトル（document.title）は init で「Auriga Studio v<バージョン>」に固定しており、
+    // テーマやプロジェクト名では変えないのでここでは触らない。
+    // テーマ切替・プロジェクトの新規作成/読み込み・起動時に呼ぶ。
+    // 併せて auriga:project イベントを配信し、テーマ JS（YMM4 の下部ステータスバーなど）へ
+    // プロジェクト情報（名前・FPS・解像度・音声レート）の変更を知らせる
     function updateStatusTitle() {
         const project = (state.projectName || '').trim() || '無題のプロジェクト';
-        const suffix = titleSuffix || '動画編集';
-        document.title = `${project} — Auriga Studio — ${suffix}`;
 
         const projEl = $('#statusTitleProject');
         const suffixEl = $('#statusTitleSuffix');
@@ -3172,6 +3183,7 @@
         // 対応ソフト名が空（Auriga オリジナル）のときは末尾を出さない
         if (suffixEl) suffixEl.textContent = titleSuffix;
         if (themeEl) themeEl.textContent = THEME_LABELS[currentTheme] || '';
+        document.dispatchEvent(new CustomEvent('auriga:project'));
     }
 
     // テーマ JS が apply/cleanup から使う共通 API。DOM 操作はここに集約する
@@ -3194,6 +3206,16 @@
         rebindProps() {
             bindProps();
             updateProps();
+        },
+        // プロジェクト情報の窓口（YMM4 テーマの下部ステータスバーが使う）。
+        // 変更は auriga:project イベント（updateStatusTitle が配信）で知らせる
+        project: {
+            name: () => state.projectName,
+            // 現在の出力解像度（モニターの解像度切替もここに反映される）
+            width: () => els.compositor.width,
+            height: () => els.compositor.height,
+            fps: () => FPS,
+            hz: () => state.audioHz,
         },
         // トランスポート操作の窓口（YMM4 テーマの再生コントロールが使う）
         transport: {
