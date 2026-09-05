@@ -89,7 +89,7 @@ body.is-no-items .layout { grid-template-columns: minmax(0, 1fr); }
 /* ===== ステータスタイトル / メニューバー（本家の細い帯に合わせる） ===== */
 
 .status-title { height: 36px; padding: 0 8px; font-size: 11px; }
-.menubar { height: 30px; padding: 0 8px; gap: 8px; }
+.menubar { height: 20px; padding: 0 8px; gap: 8px; }
 .menubar__left { gap: 6px; }
 .logo { padding: 2px 6px; gap: 6px; border-radius: 3px; }
 .logo__mark { width: 16px; height: 16px; border-radius: 3px; box-shadow: none; }
