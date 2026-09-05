@@ -186,12 +186,12 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.status-title__sep { opacity: .6; }
+/* .status-title__sep { opacity: .6; } */
 /* 対応ソフト名は空のときは詰める（先頭に「—」を付けて区切る） */
-.status-title__suffix:empty { display: none; }
+/* .status-title__suffix:empty { display: none; }
 .status-title__suffix::before { content: "— "; opacity: .6; }
 .status-title__theme { color: #8a93a3; }
-.status-title__theme:empty { display: none; }
+.status-title__theme:empty { display: none; } */
 
 /* ===== メニューバー ===== */
 .menubar {
