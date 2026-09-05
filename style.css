@@ -492,7 +492,7 @@ body.is-no-preview.is-no-items .layout { grid-template-columns: 1fr; }
 .stage__head {
     flex: none; height: 40px;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 14px; border-bottom: 1px solid #ccd2dc;
+    padding: 0 14px;
 }
 .stage__label { font-size: 12px; color: #5a6373; }
 .stage__res select {
