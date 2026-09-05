@@ -4602,7 +4602,7 @@
     // プレビュー固定モードのプレビュー高さ。:root の --preview-h に書き、テーマ CSS がグリッドの行の高さに使う
     const PREVIEW_MIN_HEIGHT = 160;
     const PREVIEW_HEIGHT_KEY = 'auriga.previewHeight';
-    const PREVIEW_DEFAULT_HEIGHT = 480;
+    const PREVIEW_DEFAULT_HEIGHT = 442;
     let previewHeight = 0;   // 望みのプレビュー高さ（0 = 未指定）。適用時にウィンドウの上限内へ収める
     // timelineHeight = 619
     
@@ -4641,12 +4641,10 @@
         const resizer = $('#tlResizer');
         if (resizer) resizer.title = on ? 'ドラッグでプレビューの高さを調整' : 'ドラッグでタイムラインの高さを調整';
         // 固定モードへ入る初回だけ高さを決める（2 回目以降はそのセッションで決めた高さを保つ）。
-        // 保存済みの高さがあれば復元し、無ければ切替前のプレビュー領域の高さをそのまま引き継ぐ
+        // 保存済みの高さがあれば復元し、無ければ既定値（PREVIEW_DEFAULT_HEIGHT）を使う
         if (!on || previewHeight) return;
         const stored = parseInt(localStorage.getItem(PREVIEW_HEIGHT_KEY), 10);
-        const layout = $('.layout');
-        const current = layout ? layout.getBoundingClientRect().height : 0;
-        setPreviewHeight(Number.isFinite(stored) ? stored : (current || PREVIEW_DEFAULT_HEIGHT));
+        setPreviewHeight(Number.isFinite(stored) ? stored : PREVIEW_DEFAULT_HEIGHT);
     }
 
     // 高さを範囲内に収めてタイムラインへ適用する
