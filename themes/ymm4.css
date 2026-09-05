@@ -159,12 +159,14 @@ body.theme-js--ymm4 .transport__right { display: none; }
 .ymm4-transport .tbtn--play { width: auto; height: auto; }
 .ymm4-transport .tbtn .ti { font-size: 13px; }
 
-/* 再生速度のコンボボックス（x 1.0 など） */
+/* 再生速度のコンボボックス（x 1.0 など）。動画出力ダイアログのコンボにも使う共通サイズ */
 .ymm4-speed {
   flex: none; height: 22px; padding: 0 2px;
   font: inherit; font-size: 11px;
   border-radius: 2px; cursor: pointer;
 }
+/* トランスポート帯の中ではボタンと同じく帯の高さいっぱいに伸ばす（動画出力ダイアログ側は 22px のまま） */
+.ymm4-transport .ymm4-speed { align-self: stretch; height: auto; }
 
 /* シークバー：余り幅いっぱいに伸ばす */
 .ymm4-seek { flex: 1 1 auto; min-width: 60px; }
