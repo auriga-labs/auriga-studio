@@ -146,13 +146,17 @@ body.is-no-items .layout { grid-template-columns: minmax(0, 1fr); }
 body.theme-js--ymm4 .transport__controls,
 body.theme-js--ymm4 .transport__right { display: none; }
 
-/* 帯全体：ボタン群を左右に置き、中央のシークバーが余り幅を全て使う */
-.ymm4-transport { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; }
-.ymm4-tp__group { flex: none; display: flex; align-items: center; gap: 2px; }
+/* 帯全体：ボタン群を左右に置き、中央のシークバーが余り幅を全て使う。
+   帯（.transport）の高さいっぱいに伸ばし、ボタンの高さの基準にする */
+.ymm4-transport { flex: 1 1 auto; min-width: 0; align-self: stretch; display: flex; align-items: center; gap: 8px; }
+/* ボタン群も帯の高さいっぱいに伸ばす（速度コンボなど固定高さの部品は中央にそろえる） */
+.ymm4-tp__group { flex: none; align-self: stretch; display: flex; align-items: center; gap: 2px; }
 
-/* WPF ツールバー風の枠付き小ボタン（配色はライト/ダーク側で塗る） */
-.ymm4-transport .tbtn { width: 24px; height: 22px; border-radius: 2px; }
-.ymm4-transport .tbtn--play { width: 26px; height: 22px; }
+/* WPF ツールバー風の枠付きボタン（配色はライト/ダーク側で塗る）。
+   帯の高さいっぱいに伸ばし、幅は高さと同じ 1:1 の正方形にする
+   （共通スタイルの固定 width/height は auto に戻して stretch と aspect-ratio に任せる） */
+.ymm4-transport .tbtn { align-self: stretch; width: auto; height: auto; aspect-ratio: 1 / 1; border-radius: 2px; }
+.ymm4-transport .tbtn--play { width: auto; height: auto; }
 .ymm4-transport .tbtn .ti { font-size: 13px; }
 
 /* 再生速度のコンボボックス（x 1.0 など） */
