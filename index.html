@@ -88,6 +88,22 @@
         </div>
     </div>
 
+    <!-- ===== ステータスタイトル ===== -->
+    <!-- メニューバーの上に置く細い帯。ウィンドウタイトルと同じ内容
+         （プロジェクト名 / アプリ名 / 対応ソフト名）と、現在のテーマを表示する。
+         文言は main.js の updateStatusTitle が document.title と同時に書き換える -->
+    <div class="status-title" id="statusTitle" role="status" aria-live="polite">
+        <div class="status-title__left">
+            <span class="status-title__project" id="statusTitleProject">無題のプロジェクト</span>
+            <span class="status-title__sep" aria-hidden="true">—</span>
+            <span class="status-title__app">Auriga Studio</span>
+            <span class="status-title__suffix" id="statusTitleSuffix"></span>
+        </div>
+        <div class="status-title__right">
+            <span class="status-title__theme" id="statusTitleTheme"></span>
+        </div>
+    </div>
+
     <!-- ===== メニューバー ===== -->
     <header class="menubar">
         <div class="menubar__left">

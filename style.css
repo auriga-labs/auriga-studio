@@ -11,7 +11,7 @@
 }
 .menubar__center { display: none !important; } /* いったんけす */
 /* テーマ切替時の色変化を滑らかに */
-.menubar, .panel, .stage, .timeline, .btn, .menu__item, .ws-tab {
+.status-title, .menubar, .panel, .stage, .timeline, .btn, .menu__item, .ws-tab {
     transition: background-color .25s ease, color .25s ease, border-color .25s ease;
 }
 
@@ -149,6 +149,40 @@ body {
 .btn--ghost { background: transparent; }
 .btn--block { width: 100%; justify-content: center; }
 .btn--sm { padding: 5px 10px; font-size: 11.5px; }
+
+/* ===== ステータスタイトル ===== */
+/* メニューバーの上に置く細い帯。左にプロジェクト名とアプリ名、右に現在のテーマを出す。
+   配色（背景・境界線・文字色）は themes/*.css がメニューバーとそろえて上書きする */
+.status-title {
+    height: 24px;
+    flex: none;
+    background: #f4f5f8;
+    border-bottom: 1px solid #ccd2dc;
+    color: #5a6373;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    gap: 12px;
+    font-size: 11.5px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.status-title__left, .status-title__right { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* 長いプロジェクト名は省略記号で切る */
+.status-title__project {
+    font-weight: 600;
+    color: #1c2330;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.status-title__sep { opacity: .6; }
+/* 対応ソフト名は空のときは詰める（先頭に「—」を付けて区切る） */
+.status-title__suffix:empty { display: none; }
+.status-title__suffix::before { content: "— "; opacity: .6; }
+.status-title__theme { color: #8a93a3; }
+.status-title__theme:empty { display: none; }
 
 /* ===== メニューバー ===== */
 .menubar {
@@ -1156,6 +1190,9 @@ body.has-strip-right { padding-right: var(--strip-w); }
     .menubar__center { display: none; }
     .menubar { gap: 8px; }
     .logo__text { display: none; }   /* ロゴはマークのみに */
+    /* ステータスタイトルはプロジェクト名を優先し、右側のテーマ名は隠す */
+    .status-title { padding: 0 10px; }
+    .status-title__right { display: none; }
     .account-pop { width: min(280px, calc(100vw - 24px)); }
 }
 

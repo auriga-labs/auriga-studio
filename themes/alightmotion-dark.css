@@ -50,6 +50,10 @@ body { background: #15171c; color: #e7eaf0; }
 
 /* 画面最上部のメニューバー */
 .menubar { background: #1d2026; border-bottom: 1px solid #343a45; }
+/* メニューバーの上のステータスタイトル（帯はメニューバーと同じ配色、文字は控えめに） */
+.status-title { background: #1d2026; border-bottom: 1px solid #343a45; color: #aab2bf; }
+.status-title__project { color: #e7eaf0; }
+.status-title__theme { color: #717a89; }
 /* ロゴボタン：ホバー/展開中の背景 */
 .logo:hover, .logo.is-active { background: #2a2e37; }
 /* ロゴマークの影 */

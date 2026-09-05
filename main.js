@@ -168,6 +168,7 @@
     async function init() {
         restorePanelVisibility();   // パネルの表示状態を先に確定させる（メニューのチェックがこれに従う）
         applyStoredTheme();   // 保存済みテーマを最初に適用（対応するメニューバーも生成される）
+        updateStatusTitle();  // ステータスタイトル（メニューバー上の帯）を初期表示にそろえる
         renderMedia();
         renderEffects();
         renderTextPresets();
@@ -1173,6 +1174,7 @@
 
         const displayName = String(fileName || '').replace(/\.ymmp$/i, '') || project.name;
         state.projectName = displayName;   // 書き出しファイル名に使う
+        updateStatusTitle();
         toast(`YMM4 プロジェクト「${displayName}」を読み込みました（${project.items.length} アイテム）`);
     }
 
@@ -1261,6 +1263,7 @@
         }
 
         state.projectName = name;   // 書き出しファイル名などに使う
+        updateStatusTitle();
         // 解像度は px 換算の基準（projectWidth/Height）にも反映する
         const m = res.match(/(\d+)\s*[×x]\s*(\d+)/);
         if (m) { state.projectWidth = +m[1]; state.projectHeight = +m[2]; }
@@ -1756,6 +1759,7 @@
         state.projectName = (typeof proj.name === 'string' && proj.name.trim())
             ? proj.name.trim()
             : String(fileName || '').replace(/\.(auriproj|auripack)$/i, '') || null;
+        updateStatusTitle();
 
         // FPS・解像度・タイムライン長を復元する
         if (Number(proj.fps) > 0) FPS = Number(proj.fps);
@@ -3112,6 +3116,7 @@
         if (menuKey !== state.menuLayoutKey) loadMenuBar(menuKey);
         try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* 保存不可でも継続 */ }
         syncThemeMenuChecks();
+        updateStatusTitle();   // 右側のテーマ名を反映（対応ソフト名はテーマ JS の apply 後に更新される）
         if (!silent) toast(`テーマ：${THEME_LABELS[theme]}`);
     }
 
@@ -3142,6 +3147,30 @@
     const themeHooks = {};          // name -> { apply, cleanup }
     const themeScriptLoad = {};     // name -> Promise（スクリプトの多重読込を防ぐ）
     let activeThemeName = null;     // 現在 apply 済みのテーマ名
+    let titleSuffix = '';           // タイトル末尾の対応ソフト名（テーマ JS が setTitleSuffix で設定）
+
+    // ======================================================
+    // ステータスタイトル（メニューバーの上の帯）
+    // ======================================================
+    // ウィンドウタイトル（document.title）と、メニューバー上の帯の表示を一か所で更新する。
+    // 形式: 「<プロジェクト名> — Auriga Studio — <対応ソフト名>」。右側には現在のテーマ名を出す。
+    // テーマ切替・プロジェクトの新規作成/読み込み・起動時に呼ぶ
+    function updateStatusTitle() {
+        const project = (state.projectName || '').trim() || '無題のプロジェクト';
+        const suffix = titleSuffix || '動画編集';
+        document.title = `${project} — Auriga Studio — ${suffix}`;
+
+        const projEl = $('#statusTitleProject');
+        const suffixEl = $('#statusTitleSuffix');
+        const themeEl = $('#statusTitleTheme');
+        if (projEl) {
+            projEl.textContent = project;
+            projEl.title = project;   // 省略表示されても全体をツールチップで読めるようにする
+        }
+        // 対応ソフト名が空（Auriga オリジナル）のときは末尾を出さない
+        if (suffixEl) suffixEl.textContent = titleSuffix;
+        if (themeEl) themeEl.textContent = THEME_LABELS[currentTheme] || '';
+    }
 
     // テーマ JS が apply/cleanup から使う共通 API。DOM 操作はここに集約する
     const themeCtx = {
@@ -3152,9 +3181,11 @@
                 if (labels[i] != null) t.textContent = labels[i];
             });
         },
-        // ドキュメントタイトルの末尾（対応ソフト名）を設定する
+        // ドキュメントタイトルの末尾（対応ソフト名）を設定する。
+        // ウィンドウタイトルとステータスタイトルの両方を同じ内容で更新する
         setTitleSuffix(suffix) {
-            document.title = suffix ? `Auriga Studio — ${suffix}` : 'Auriga Studio — 動画編集';
+            titleSuffix = suffix || '';
+            updateStatusTitle();
         },
         // プロパティパネルの DOM をテーマが差し替えたあと、入力の購読をやり直す。
         // 差し替え前の要素に付いたリスナーは要素ごと捨てられるため、二重購読にはならない。

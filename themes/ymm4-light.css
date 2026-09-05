@@ -49,6 +49,10 @@ body { background: #e8e8ec; color: #1e1e24; }
 
 /* 画面最上部のメニューバー */
 .menubar { background: #f5f5f7; border-bottom: 1px solid #d4d4da; }
+/* メニューバーの上のステータスタイトル（帯はメニューバーと同じ配色、文字は控えめに） */
+.status-title { background: #f5f5f7; border-bottom: 1px solid #d4d4da; color: #75757e; }
+.status-title__project { color: #1e1e24; }
+.status-title__theme { color: #75757e; }
 /* ロゴボタン：ホバー/展開中の背景 */
 .logo:hover, .logo.is-active { background: #e4e7f0; }
 .logo__mark { box-shadow: none; }
