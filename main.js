@@ -4495,11 +4495,13 @@
     // 高さの下限・上限（px）。上限はウィンドウ高さから一定量を引いて算出する
     const TL_MIN_HEIGHT = 120;
     const TL_HEIGHT_KEY = 'auriga.timelineHeight';
-
+    // timelineHeight = 619
+    
     // ウィンドウサイズに応じた高さの上限を求める
     function timelineMaxHeight() {
         return Math.max(TL_MIN_HEIGHT, window.innerHeight - 240);
     }
+
 
     // 高さを範囲内に収めてタイムラインへ適用する
     function setTimelineHeight(h) {
@@ -4589,6 +4591,7 @@
     // style.css（3カラム）と themes/ymm4.css（body 2カラム）の両方がこれを見る。
     const ITEMS_MIN_WIDTH = 200;
     const ITEMS_WIDTH_KEY = 'auriga.itemsWidth';
+    // itemsWidth = 448
     let itemsWidth = 0;   // 現在適用中の幅（0 = 未指定でテーマ既定のまま）
 
     // ウィンドウ幅に応じた幅の上限を求める（左隣のプレビューを潰しきらない）
