@@ -17,22 +17,17 @@
     const ONBOARD_KEY = 'auriga.onboarding'; // 起動時オンボーディングの表示設定の保存キー（'off'=表示しない）
 
     // ---- OAuth（Google ログイン）----
-    // Google の認可画面を新しいタブで直接開く。リダイレクト先の PHP バックエンド
-    // （app.auriga.studio/oauth/callback.php）がトークン交換を行い、postMessage で
-    // ユーザー情報を返す。client_id / redirect_uri / scope は公開情報なのでここに持つ。
-    const OAUTH_ORIGIN = 'https://app.auriga.studio';            // 認証サーバーのオリジン
-    const OAUTH_GOOGLE_AUTH = 'https://accounts.google.com/o/oauth2/v2/auth';  // Google 認可エンドポイント
-    const OAUTH_CLIENT_ID = '1056602047872-2ajrhud4bs4iemgnhtro9bhb4fa9alpf.apps.googleusercontent.com';
-    const OAUTH_REDIRECT_URI = OAUTH_ORIGIN + '/oauth/callback.php';  // 承認済みリダイレクトURI
-    // ⚠ oauth/config.php の GOOGLE_SCOPES と一致させること
-    const OAUTH_SCOPES = ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/drive'];
-    const OAUTH_LOGOUT_URL = OAUTH_ORIGIN + '/oauth/logout.php?app=1'; // ログアウトURL（Electron 用）
-    // Web（app.auriga.studio）で開かれているときに使う PHP の認証ページ。
-    // Electron は file: で動くので遷移先が無く、従来どおりタブで Google を開く。
-    const AUTH_LOGIN_PATH  = '/login';        // /login?redirect_to=%2F
-    const AUTH_SIGNUP_PATH = '/signup';       // /signup?redirect_to=%2F
-    const AUTH_ME_URL      = '/oauth/me.php'; // セッションのログイン状態を返す
-    const AUTH_LOGOUT_PATH = '/oauth/logout.php';
+    // 認証は共通の認証サーバー account.auriga.studio に任せる。
+    // Web 配信時は /login ・ /signup へ遷移し、認可後に戻り先（このアプリの URL）へ戻る。
+    // Electron（file:）は /authorize をポップアップで開き、結果を postMessage で受け取る。
+    // client_id / redirect_uri / scope は認証サーバー側が持つのでここには置かない。
+    const OAUTH_ORIGIN = 'https://account.auriga.studio';        // 認証サーバーのオリジン
+    const APP_ORIGIN   = 'https://app.auriga.studio';            // このアプリ自身のオリジン（Cloud API）
+    const OAUTH_LOGOUT_URL = OAUTH_ORIGIN + '/logout?app=1';      // ログアウトURL（Electron 用・自動で閉じる）
+    const AUTH_LOGIN_PATH  = OAUTH_ORIGIN + '/login';            // /login?redirect_to=<絶対URL>
+    const AUTH_SIGNUP_PATH = OAUTH_ORIGIN + '/signup';           // /signup?redirect_to=<絶対URL>
+    const AUTH_ME_URL      = OAUTH_ORIGIN + '/api/me';           // セッションのログイン状態を返す（CORS + cookie）
+    const AUTH_LOGOUT_PATH = OAUTH_ORIGIN + '/logout';
     const THEMES = ['auriga', 'ymm4', 'davinci', 'premiere', 'capcut', 'alightmotion'];
     const THEME_LABELS = { auriga: 'Aurigaオリジナル', ymm4: 'YMM4', davinci: 'DaVinci', premiere: 'Premiere', capcut: 'CapCut', alightmotion: 'Alight Motion' };
 
@@ -5580,8 +5575,9 @@
     // ======================================================
     // バックエンド（app.auriga.studio/cloud/*.php）が Google ドライブの
     // 「Auriga Cloud」フォルダを橋渡しする。アクセストークンを Bearer で送る。
-    const CLOUD_LIST_URL = OAUTH_ORIGIN + '/cloud/list.php';
-    const CLOUD_DOWNLOAD_URL = OAUTH_ORIGIN + '/cloud/download.php';
+    // （認証は account.auriga.studio に移したが、Cloud API はこのアプリ側に残る）
+    const CLOUD_LIST_URL = APP_ORIGIN + '/cloud/list.php';
+    const CLOUD_DOWNLOAD_URL = APP_ORIGIN + '/cloud/download.php';
     let cloudFiles = [];           // 取得済みのクラウドファイル一覧
     let cloudFilesLoaded = false;  // 一度でも取得に成功したか
     let cloudLoading = false;      // 取得中フラグ（多重取得の抑制）
@@ -5809,16 +5805,17 @@
         return location.protocol === 'http:' || location.protocol === 'https:';
     }
 
-    // 現在の画面を戻り先に指定して、PHP の認証ページへ遷移する
+    // 現在の画面を戻り先に指定して、認証サーバーのページへ遷移する
+    // （別オリジンなので戻り先は絶対 URL で渡す）
     function gotoAuthPage(path) {
-        const back = location.pathname + location.search + location.hash;
-        location.href = path + '?redirect_to=' + encodeURIComponent(back || '/');
+        location.href = path + '?redirect_to=' + encodeURIComponent(location.href);
     }
 
-    // サーバーセッションのログイン状態を取り込む（/login から戻った直後に使う）
+    // 認証サーバーのセッションからログイン状態を取り込む（/login から戻った直後に使う）。
+    // クロスオリジンだが *.auriga.studio 同士は same-site なので cookie が付く。
     async function fetchSessionUser() {
         try {
-            const res = await fetch(AUTH_ME_URL, { credentials: 'same-origin' });
+            const res = await fetch(AUTH_ME_URL, { credentials: 'include' });
             if (!res.ok) return;
             const data = await res.json();
             if (!data || !data.user) return;
@@ -5844,24 +5841,14 @@
             return;
         }
 
-        // 以降は Electron（file:）向け。Google の認可画面を新しいタブで直接開く。
+        // 以降は Electron（file:）向け。認証サーバーの /authorize をポップアップで開く。
         // 既存のログインタブがあれば前面化するだけ
         if (authPopup && !authPopup.closed) { authPopup.focus(); return; }
 
         // state はクライアントで生成する。'app.' プレフィックスで
-        // callback.php がアプリ起点だと判別し、照合はこちらで行う。
+        // 認証サーバーがアプリ起点だと判別し、照合はこちらで行う。
         authState = 'app.' + randomHex(16);
-
-        const params = new URLSearchParams({
-            client_id:     OAUTH_CLIENT_ID,
-            redirect_uri:  OAUTH_REDIRECT_URI,
-            response_type: 'code',
-            scope:         OAUTH_SCOPES.join(' '),
-            state:         authState,
-            access_type:   'offline',   // refresh_token を取得する
-            prompt:        'consent',
-        });
-        const url = OAUTH_GOOGLE_AUTH + '?' + params.toString();
+        const url = OAUTH_ORIGIN + '/authorize?provider=google&state=' + encodeURIComponent(authState);
 
         // 名前付きターゲットで開く（サイズ指定なし＝新しいタブ）。
         // 結果は postMessage で受け取るため opener を残す必要があり、noopener は付けない。
@@ -5886,10 +5873,9 @@
         cloudLoading = false;
         renderCloudList();
 
-        // Web 配信時はサーバーセッションを破棄して同じ画面に戻る
+        // Web 配信時は認証サーバーのセッションを破棄して同じ画面に戻る
         if (isWebHosted()) {
-            const back = location.pathname + location.search + location.hash;
-            location.href = AUTH_LOGOUT_PATH + '?redirect_to=' + encodeURIComponent(back || '/');
+            location.href = AUTH_LOGOUT_PATH + '?redirect_to=' + encodeURIComponent(location.href);
             return;
         }
 

@@ -1,25 +1,9 @@
-# 拡張子なしの認証 URL を PHP に振り分ける（Apache + mod_rewrite）
-#
-#   /login?redirect_to=%2F        → login.php
-#   /signup?redirect_to=%2F       → signup.php
-#   /sessions/forgot_password     → sessions/forgot_password.php
-#
-# nginx の場合はこのファイルの代わりにサーバー設定へ次を追加すること:
-#   location = /login  { try_files $uri /login.php?$query_string; }
-#   location = /signup { try_files $uri /signup.php?$query_string; }
-#   location = /sessions/forgot_password { try_files $uri /sessions/forgot_password.php?$query_string; }
+# 認証は account.auriga.studio（共通の認証サーバー）へ移した。
+# 旧 URL（/login /signup /sessions/forgot_password）をブックマーク等から開かれても
+# 認証サーバーの同じページへ飛ばし、認可後はこのアプリのトップへ戻す。
 
 RewriteEngine On
 
-# 実ファイル・実ディレクトリはそのまま配信する
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^login/?$  login.php  [L,QSA]
-
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^signup/?$ signup.php [L,QSA]
-
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^sessions/forgot_password/?$ sessions/forgot_password.php [L,QSA]
+RewriteRule ^login/?$  https://account.auriga.studio/login?redirect_to=https://app.auriga.studio/  [R=302,L]
+RewriteRule ^signup/?$ https://account.auriga.studio/signup?redirect_to=https://app.auriga.studio/ [R=302,L]
+RewriteRule ^sessions/forgot_password/?$ https://account.auriga.studio/sessions/forgot_password [R=302,L]

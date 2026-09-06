@@ -12,7 +12,7 @@ const os = require('os');
 const { execFile } = require('child_process');
 
 // 認証ポップアップを許可するオリジン（OAuth は window.open + postMessage で動く）
-const OAUTH_ORIGIN = 'https://app.auriga.studio';
+const OAUTH_ORIGIN = 'https://account.auriga.studio';
 
 // ウィンドウの位置・サイズ・最大化状態を保存するファイル
 const WINDOW_STATE_PATH = path.join(app.getPath('userData'), 'window-state.json');

@@ -44,9 +44,8 @@
 │   ├── ymm4_4.53.0.9.json          （YMM4 実機メニューを再現）
 │   └── schema.ts                   （定義の型メモ・実行には未使用）
 │
-├── oauth/                  # Google OAuth バックエンド（PHP / 別サーバー app.auriga.studio）
-│   ├── callback.php / oauth.php / config.php(gitignore)
-│   └── index.php / dashboard.php / logout.php
+├── .htaccess               # 旧 /login /signup を account.auriga.studio へ 302 で転送
+│   （認証は共通の認証サーバー auriga-account = account.auriga.studio に移した）
 │
 ├── scripts/write-version.js   # version.json 生成スクリプト（※現在ほぼコメントアウト）
 └── assets/vendor/             # Tabler Icons Webfont 3.44.0（同梱）
@@ -64,7 +63,7 @@
 │  ・BrowserWindow 生成 (1440x900, contextIsolation:true)        │
 │  ・nodeIntegration:false（レンダラーは純ブラウザコード）          │
 │  ・setWindowOpenHandler:                                       │
-│      app.auriga.studio / accounts.google.com → 子ウィンドウ許可 │
+│      account.auriga.studio / accounts.google.com → 子ウィンドウ許可│
 │      その他 http(s) → 既定ブラウザで開く                         │
 └───────────────────────────┬──────────────────────────────────┘
                             │ loadFile('index.html')
@@ -85,9 +84,10 @@
                             │ window.open + postMessage
                             ▼
 ┌──────────────────────────────────────────────────────────────┐
-│  OAuth バックエンド  (PHP @ https://app.auriga.studio/oauth/)   │
-│  callback.php: 認可コード→トークン交換→ユーザー情報              │
-│  render_app_bridge(): postMessage でレンダラーへ user+token 返却 │
+│  認証サーバー  (auriga-account @ https://account.auriga.studio)  │
+│  /authorize → 各プロバイダー → /oauth/callback*.php でトークン交換 │
+│  Web: /login?redirect_to=… で戻り、/api/me (CORS+cookie) で取込 │
+│  Electron: ブリッジページの postMessage で user+token 返却        │
 └──────────────────────────────────────────────────────────────┘
 ```
 

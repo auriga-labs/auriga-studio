@@ -23,7 +23,7 @@ const PRECACHE_URLS = [
 ];
 
 // API・認証系のパス（動的なので絶対にキャッシュしない）
-const NETWORK_ONLY_PREFIXES = ['/oauth/', '/cloud/', '/api/'];
+const NETWORK_ONLY_PREFIXES = ['/cloud/', '/api/'];
 
 // インストール時：アプリシェルを先読みキャッシュする
 self.addEventListener('install', (event) => {
