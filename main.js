@@ -5975,7 +5975,7 @@
             else startGoogleLogin(false);
         });
 
-        // 未ログイン時にメニューバーへ出るログイン／新規登録ボタン
+        // 未ログイン時にステータスタイトル右端へ出るログイン／新規登録ボタン
         const loginBtn = $('#btnLogin');
         const signUpBtn = $('#btnSignUp');
         if (loginBtn) loginBtn.addEventListener('click', () => startGoogleLogin(false));
