@@ -738,11 +738,14 @@ body.is-no-preview .layout > .panel--props > .panel-resizer { display: none; }
 .tl-zoom input { width: 120px; }
 
 .timeline__body { flex: 1 1 auto; display: flex; min-height: 0; }
+/* レイヤー欄は .tracks-area の中で行と横に並び、横スクロールしても左端に貼り付く。
+   縦スクロールは行と同じ領域なので、ずれることがない */
 .track-headers {
     flex: none; width: 130px;
+    position: sticky; left: 0; z-index: 9;
+    min-height: 100%;
     background: #ffffff;
     border-right: 1px solid #ccd2dc;
-    overflow: hidden;
 }
 /* ルーラー(28px)と高さを合わせるスティッキースペーサー。
    縦スクロール時にレイヤー行が上端へ潜り込むのを隠す */
@@ -776,7 +779,15 @@ body.is-no-preview .layout > .panel--props > .panel-resizer { display: none; }
 
 .tracks-area {
     flex: 1 1 auto; position: relative;
+    /* stretch だと子が表示領域の高さに固定されて行がはみ出すので、中身の高さに任せる */
+    display: flex; align-items: flex-start;
     overflow: auto; background: #e9ebf0;
+}
+/* 時間軸のコンテンツ（ルーラー・レーン・行・再生ヘッド）。
+   表示領域より行が少なくても再生ヘッドが下端まで届くよう、最低でも領域の高さを取る */
+.tracks-content {
+    flex: none; position: relative;
+    min-width: max-content; min-height: 100%;
 }
 .ruler {
     position: sticky; top: 0; z-index: 5;

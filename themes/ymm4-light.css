@@ -408,4 +408,4 @@ input[type="range"]::-webkit-slider-thumb { background: #6a6a72; border: 1px sol
 
 #propsBody,.panel__head { background: #fff !important; }
 
-。timeline__toolbar
+.timeline__toolbar { background-color: #eef5fd !important; }

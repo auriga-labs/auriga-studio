@@ -139,6 +139,7 @@
         ruler: $('#ruler'),
         playhead: $('#playhead'),
         tracksArea: $('#tracksArea'),
+        tracksContent: $('#tracksContent'),
         curTime: $('#curTime'),
         durTime: $('#durTime'),
         btnPlay: $('#btnPlay'),
@@ -365,7 +366,8 @@
                 trackEl.classList.remove('track--drop');
 
                 const rect = trackEl.getBoundingClientRect();
-                const x = e.clientX - rect.left + els.tracksArea.scrollLeft;
+                // 行の矩形はスクロール分も動くので scrollLeft は足さない
+                const x = e.clientX - rect.left;
                 const start = Math.max(0, x / state.zoom);
 
                 // OSのファイルエクスプローラーからのドロップ
@@ -3035,8 +3037,9 @@
     // タイムライン上のマウス位置から時間を求めてシークする（ドラッグ継続対応）
     function startScrub(e) {
         const scrub = (ev) => {
-            const rect = els.tracksArea.getBoundingClientRect();
-            const x = ev.clientX - rect.left + els.tracksArea.scrollLeft;
+            // コンテンツの矩形はスクロール分も動くので、左端からの距離がそのまま時間軸の x になる
+            const rect = els.tracksContent.getBoundingClientRect();
+            const x = ev.clientX - rect.left;
             seek(x / state.zoom);
         };
         scrub(e);
@@ -3051,29 +3054,13 @@
     }
 
     function updatePlayhead() {
-        // 再生ヘッドは tracksArea 内の absolute 要素なので、
+        // 再生ヘッドは #tracksContent 内の absolute 要素なので、
         // クリップやルーラーと同じコンテンツ座標（秒 × ズーム）をそのまま使う
         els.playhead.style.left = (state.playhead * state.zoom) + 'px';
         // 拡張レーン（TRIBE v2）が再生位置の値を出せるように知らせる
         document.dispatchEvent(new CustomEvent('auriga:playhead', {
             detail: { playhead: state.playhead },
         }));
-    }
-
-    // レイヤー欄と再生ヘッドの縦方向をタイムライン本体の行にそろえる
-    function syncTimelineRows() {
-        const area = els.tracksArea;
-        const cs = getComputedStyle(area);
-        // 横スクロールバーの高さ。レイヤー欄にはバーが無いので、その分だけ下に余白を足して
-        // 最下部までスクロールしたときに行がずれないようにする
-        const barH = Math.max(0, area.offsetHeight - area.clientHeight
-            - parseFloat(cs.borderTopWidth) - parseFloat(cs.borderBottomWidth));
-        els.trackHeaders.style.paddingBottom = barH + 'px';
-        els.trackHeaders.scrollTop = area.scrollTop;
-        // 再生ヘッドは top:0 / bottom:0 だと見えている高さ分しか伸びないため、
-        // 縦スクロールしても最下段のレイヤーまで届くよう行全体の高さを入れる
-        const contentH = els.tracks.offsetTop + els.tracks.offsetHeight;
-        els.playhead.style.height = Math.max(area.clientHeight, contentH) + 'px';
     }
 
     function updateTimeDisplay() {
@@ -3490,8 +3477,7 @@
         bindTimelineResizer();   // タイムラインの高さをドラッグで調整
         // タイムラインの表示領域を監視し、広がったら収まる数だけレイヤーを追加する
         // （ドックのドラッグだけでなく、独立ウィンドウ化中のリサイズも拾える）
-        // 横スクロールバーの出入り・行数の変化でずれないよう、レイヤー欄と再生ヘッドもそろえ直す
-        const tlFitObserver = new ResizeObserver(() => { fitLayersToTimeline(); syncTimelineRows(); });
+        const tlFitObserver = new ResizeObserver(() => fitLayersToTimeline());
         tlFitObserver.observe(els.tracksArea);
         // テーマ CSS の読み込み・切り替えで行の高さが変わった時も数え直す
         // （行の高さの変化は #tracks 自体の高さの変化として現れる）
@@ -3581,6 +3567,8 @@
             // スクロールバーを掴んだときはシークしない（再生位置がずれるのを防ぐ）
             if (isOnScrollbar(els.tracksArea, e)) return;
             if (e.target.closest('.clip')) return;
+            // レイヤー欄は同じスクロール領域にあるが、シーク対象ではない
+            if (e.target.closest('.track-headers')) return;
             // 赤線（再生ヘッド）上は専用ハンドラに任せる
             if (e.target.closest('.playhead')) return;
             selectClip(null);   // 空白クリックで選択解除
@@ -3593,11 +3581,6 @@
             e.preventDefault();
             startScrub(e);
         });
-        // 縦スクロールをレイヤーヘッダー側にも反映する（再生ヘッドはコンテンツと一緒にスクロールする）
-        els.tracksArea.addEventListener('scroll', syncTimelineRows);
-        // TRIBE v2 レーンの表示切り替えで行の開始位置が変わるので、そろえ直す
-        document.addEventListener('auriga:tribe-visibility', () => requestAnimationFrame(syncTimelineRows));
-        document.addEventListener('auriga:layout', () => requestAnimationFrame(syncTimelineRows));
 
         // ルーラードラッグでスクラブ
         els.ruler.addEventListener('mousedown', (e) => {
@@ -3797,7 +3780,8 @@
     // ---- タイムライン空白用メニュー ----
     function showTimelineMenu(x, y, trackEl, e) {
         const rect = trackEl.getBoundingClientRect();
-        const dropX = e.clientX - rect.left + els.tracksArea.scrollLeft;
+        // 行の矩形はスクロール分も動くので scrollLeft は足さない
+        const dropX = e.clientX - rect.left;
         const at = Math.max(0, Math.round((dropX / state.zoom) * 10) / 10);
         showContextMenu(x, y, [
             { icon: '📋', label: 'ここに貼り付け', key: 'Ctrl+V', disabled: !state.clipboard,
@@ -4401,8 +4385,9 @@
 
             if (e.target.closest('.timeline')) {
                 // タイムライン：カーソル位置の時刻を固定点にして時間スケールを拡縮する
+                // 左端に貼り付くレイヤー欄の分を除いた、時間軸の見えている範囲での位置
                 const rect = els.tracksArea.getBoundingClientRect();
-                const cursorX = e.clientX - rect.left;
+                const cursorX = e.clientX - rect.left - els.trackHeaders.offsetWidth;
                 const anchorSec = (els.tracksArea.scrollLeft + cursorX) / state.zoom;
                 setZoom(state.zoom * factor);
                 els.tracksArea.scrollLeft = Math.max(0, anchorSec * state.zoom - cursorX);

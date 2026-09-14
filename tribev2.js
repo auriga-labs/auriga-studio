@@ -257,7 +257,10 @@
 
     const area = document.getElementById('tracksArea');
     const scrollLeft = area ? area.scrollLeft : 0;
-    const viewW = Math.max(1, area ? area.clientWidth : lane.clientWidth);
+    // レイヤー欄は同じスクロール領域の左端に貼り付くので、その幅を除いた分が見えている時間軸
+    const headers = document.getElementById('trackHeaders');
+    const headersW = headers ? headers.offsetWidth : 0;
+    const viewW = Math.max(1, area ? area.clientWidth - headersW : lane.clientWidth);
     const laneH = lane.clientHeight || laneHeight();
     const dpr = window.devicePixelRatio || 1;
 
@@ -269,7 +272,11 @@
     }
     canvas.style.width = viewW + 'px';
     canvas.style.height = laneH + 'px';
-    if (view) view.style.width = viewW + 'px';
+    if (view) {
+      view.style.width = viewW + 'px';
+      // レイヤー欄の右端に貼り付けて、欄の下に潜り込まないようにする
+      view.style.left = headersW + 'px';
+    }
 
     const g = ctx2d;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);

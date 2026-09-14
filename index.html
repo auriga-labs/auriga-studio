@@ -391,11 +391,12 @@
         </div>
 
         <div class="timeline__body">
-            <!-- トラックヘッダー -->
-            <div class="track-headers" id="trackHeaders"></div>
-
-            <!-- タイムライン本体 -->
+            <!-- タイムライン本体（レイヤー欄と行を同じスクロール領域に並べ、横にひとつづきにする） -->
             <div class="tracks-area" id="tracksArea">
+                <!-- トラックヘッダー（横スクロールしても左端に残る） -->
+                <div class="track-headers" id="trackHeaders"></div>
+                <!-- 時間軸のコンテンツ。x=0 がタイムラインの 0 秒 -->
+                <div class="tracks-content" id="tracksContent">
                 <div class="ruler" id="ruler"></div>
                 <!-- TRIBE v2 レーン（素材への脳反応の予測。描画は tribev2.js） -->
                 <div class="track tribe-lane" id="tribeLane">
@@ -411,6 +412,7 @@
                 </div>
                 <div class="tracks" id="tracks"></div>
                 <div class="playhead" id="playhead"><div class="playhead__head"></div><div class="playhead__hit"></div></div>
+                </div>
             </div>
         </div>
     </section>
