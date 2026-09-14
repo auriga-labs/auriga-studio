@@ -405,3 +405,7 @@ input[type="range"]::-webkit-slider-thumb { background: #6a6a72; border: 1px sol
 .ymm4-ex__tp .tbtn { background: #fdfdfd; border: 1px solid #c9c9cf; color: #2e2e36; }
 .ymm4-ex__tp .tbtn:hover { background: #e4e7f0; border-color: #b4b4bc; }
 .ymm4-ex__tp .tbtn.is-active { background: #cdd9f6; border: 1px solid #3f62d8; color: #1e1e24; }
+
+#propsBody,.panel__head { background: #fff !important; }
+
+。timeline__toolbar

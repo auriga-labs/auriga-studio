@@ -3060,6 +3060,22 @@
         }));
     }
 
+    // レイヤー欄と再生ヘッドの縦方向をタイムライン本体の行にそろえる
+    function syncTimelineRows() {
+        const area = els.tracksArea;
+        const cs = getComputedStyle(area);
+        // 横スクロールバーの高さ。レイヤー欄にはバーが無いので、その分だけ下に余白を足して
+        // 最下部までスクロールしたときに行がずれないようにする
+        const barH = Math.max(0, area.offsetHeight - area.clientHeight
+            - parseFloat(cs.borderTopWidth) - parseFloat(cs.borderBottomWidth));
+        els.trackHeaders.style.paddingBottom = barH + 'px';
+        els.trackHeaders.scrollTop = area.scrollTop;
+        // 再生ヘッドは top:0 / bottom:0 だと見えている高さ分しか伸びないため、
+        // 縦スクロールしても最下段のレイヤーまで届くよう行全体の高さを入れる
+        const contentH = els.tracks.offsetTop + els.tracks.offsetHeight;
+        els.playhead.style.height = Math.max(area.clientHeight, contentH) + 'px';
+    }
+
     function updateTimeDisplay() {
         els.curTime.textContent = formatTimecode(state.playhead);
         els.durTime.textContent = formatTimecode(state.duration);
@@ -3474,7 +3490,8 @@
         bindTimelineResizer();   // タイムラインの高さをドラッグで調整
         // タイムラインの表示領域を監視し、広がったら収まる数だけレイヤーを追加する
         // （ドックのドラッグだけでなく、独立ウィンドウ化中のリサイズも拾える）
-        const tlFitObserver = new ResizeObserver(() => fitLayersToTimeline());
+        // 横スクロールバーの出入り・行数の変化でずれないよう、レイヤー欄と再生ヘッドもそろえ直す
+        const tlFitObserver = new ResizeObserver(() => { fitLayersToTimeline(); syncTimelineRows(); });
         tlFitObserver.observe(els.tracksArea);
         // テーマ CSS の読み込み・切り替えで行の高さが変わった時も数え直す
         // （行の高さの変化は #tracks 自体の高さの変化として現れる）
@@ -3577,9 +3594,10 @@
             startScrub(e);
         });
         // 縦スクロールをレイヤーヘッダー側にも反映する（再生ヘッドはコンテンツと一緒にスクロールする）
-        els.tracksArea.addEventListener('scroll', () => {
-            els.trackHeaders.scrollTop = els.tracksArea.scrollTop;
-        });
+        els.tracksArea.addEventListener('scroll', syncTimelineRows);
+        // TRIBE v2 レーンの表示切り替えで行の開始位置が変わるので、そろえ直す
+        document.addEventListener('auriga:tribe-visibility', () => requestAnimationFrame(syncTimelineRows));
+        document.addEventListener('auriga:layout', () => requestAnimationFrame(syncTimelineRows));
 
         // ルーラードラッグでスクラブ
         els.ruler.addEventListener('mousedown', (e) => {
