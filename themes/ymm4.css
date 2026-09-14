@@ -425,11 +425,9 @@ body.theme-js--ymm4 .tl-zoom { display: none; }
 .ruler { height: 20px; }
 .ruler__tick { font-size: 9.5px; padding: 2px 0 0 3px; }
 
-/* トラック行の縦じま（1 目盛りごとの目安線） */
+/* トラック行の高さ */
 .track {
   height: 38px;
-  background:
-    repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(128, 128, 128, .08) 49px, rgba(128, 128, 128, .08) 50px);
 }
 
 /* クリップ：角丸・影・黒帯をなくした本家のフラットな矩形 */

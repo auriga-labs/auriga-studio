@@ -815,8 +815,6 @@ body.is-no-preview .layout > .panel--props > .panel-resizer { display: none; }
     height: 56px;
     border-bottom: 1px solid #ccd2dc;
     position: relative;
-    background:
-        repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(255,255,255,.02) 49px, rgba(255,255,255,.02) 50px);
 }
 .track--drop { background: rgba(108,92,231,.12); box-shadow: inset 0 0 0 2px #2bae8f; }
 

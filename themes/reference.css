@@ -306,11 +306,9 @@ input[type="range"]::-webkit-slider-thumb { background: #2bae8f; border: 2px sol
 .ruler__tick { border-left: 1px solid #ccd2dc; color: #8a93a3; }
 .ruler__tick::after { background: #ccd2dc; }
 
-/* 各トラックの行（薄い縦じまの目安線つき） */
+/* 各トラックの行 */
 .track {
   border-bottom: 1px solid #ccd2dc;
-  background:
-    repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(255, 255, 255, .02) 49px, rgba(255, 255, 255, .02) 50px);
 }
 /* ドラッグでクリップを落とせるトラック（アクセント枠） */
 .track--drop { background: rgba(108, 92, 231, .12); box-shadow: inset 0 0 0 2px #2bae8f; }
